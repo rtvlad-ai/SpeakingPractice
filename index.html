@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="light">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#F2F4FF">
 <title>English Practice — говорим по-английски</title>
 <style>
 /* ============================================================
@@ -33,6 +34,36 @@
 .app[data-topic="routine"]{--accent:#6B5BD6;--tint:#EFEBFF;--sky1:#D9D2FF;--sky2:#F7F5FF;--ground:#CEC7EE}
 .app[data-topic="travel"]{--accent:#0E8FA8;--tint:#E0F5FA;--sky1:#BEEBF5;--sky2:#F3FCFE;--ground:#9FD8CE}
 .app[data-topic="family"]{--accent:#B5562F;--tint:#FFEBE3;--sky1:#FFDCCF;--sky2:#FFF6F2;--ground:#D8C4A8}
+
+/* ---------- тёмная тема (класс .dark на <html>) ---------- */
+html.dark body{background:#0D0F19}
+html.dark{--ink:#E9EBF7;--ink-soft:#A2A8CB;--card:#1A1D2E;--line:#2C3049;--red-soft:#3A1F27}
+html.dark .app{background:linear-gradient(180deg,#1C2034 0%,#141726 45%,#0F1220 100%);--tint:#232743;--ground:#232A3C}
+html.dark .scene{background:linear-gradient(180deg,var(--accent) -70%,#1C2033 78%)}
+html.dark .scene > svg{opacity:.7;filter:saturate(.8) brightness(.78)}
+html.dark .mode{background:#FFFFFF1A;color:var(--ink-soft)}
+html.dark .mode.live{background:var(--accent);color:#fff}
+html.dark .ico{background:#FFFFFF14;color:var(--ink)}
+html.dark .tchip{background:#FFFFFF14;color:var(--ink-soft)}
+html.dark .tchip[aria-selected="true"]{background:var(--accent);color:#fff}
+html.dark .who-meta{background:#1A1D2EE6}
+html.dark .msg.tutor .bubble{background:var(--tint);color:#EFF1FF}
+html.dark .msg.learner .bubble{background:var(--accent);color:#fff}
+html.dark .msg.system .bubble{background:#1E2235;color:var(--ink-soft)}
+html.dark .msg.system.bad .bubble{background:#3A1F27;color:#F3B6C0}
+html.dark .feedback{background:#14302A;color:var(--ink)}
+html.dark .feedback.fix{background:#33291A}
+html.dark .mini{background:#1E2235;border-color:var(--line);color:var(--ink)}
+html.dark .chip{background:#1E2235;border-color:var(--line)}
+html.dark .chip .say{border-left-color:var(--line)}
+html.dark .composer{background:#151827;border-top-color:var(--line);box-shadow:0 -6px 20px rgba(0,0,0,.35)}
+html.dark .send-row textarea{background:#1E2235;border-color:var(--line);color:var(--ink)}
+html.dark .send{background:var(--accent)}
+html.dark .sheet{background:#151827}
+html.dark .field input,html.dark .field select{background:#1E2235;border-color:var(--line);color:var(--ink)}
+html.dark .row > button{background:#1E2235;border-color:var(--line);color:var(--ink)}
+html.dark .row > button.solid{background:var(--accent);border-color:var(--accent);color:#fff}
+html.dark .row > button.danger{background:#3A1F27;border-color:#5A2C38;color:#F3B6C0}
 
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;height:100%}
@@ -249,6 +280,7 @@ button[disabled]{opacity:.5;cursor:not-allowed}
     <span class="brand">English Practice</span>
     <span class="mode" id="pillMode">демо</span>
     <div class="bar-actions">
+      <button class="ico" id="themeBtn" aria-label="Тема: как в системе">🌓</button>
       <button class="ico" id="soundBtn" aria-label="Выключить звук">🔊</button>
       <button class="ico" id="resetBtn" aria-label="Начать разговор заново">↺</button>
       <button class="ico" id="settingsBtn" aria-label="Открыть настройки и проверку браузера">⚙</button>
@@ -312,6 +344,15 @@ button[disabled]{opacity:.5;cursor:not-allowed}
     </select>
   </label>
   <div class="row"><button id="testVoice" aria-label="Послушать выбранный голос">Послушать голос</button></div>
+
+  <h3>Оформление</h3>
+  <label class="field" for="themeSel">Тема
+    <select id="themeSel" aria-label="Тема оформления">
+      <option value="auto">Как в системе</option>
+      <option value="light">Светлая</option>
+      <option value="dark">Тёмная</option>
+    </select>
+  </label>
 
   <h3>Микрофон</h3>
   <label class="check" for="autoMic">
@@ -442,26 +483,601 @@ const TOPICS = [
 ];
 
 /* ============================================================
-   2. ЛОКАЛЬНАЯ ПРОВЕРКА ЧАСТЫХ ОШИБОК (демо-режим)
+   2. РАЗБОР ФРАЗЫ УЧЕНИКА, ПРОВЕРКА ГРАММАТИКИ, ЛОКАЛЬНЫЙ СОБЕСЕДНИК
+   Здесь живёт «офлайн-мозг» приложения: он понимает, что именно сказал
+   ученик, реагирует на смысл (а не по скрипту) и ищет реальные ошибки.
    ============================================================ */
-const LOCAL_RULES = [
-  { re:/\bi\s+is\b/i, fix:(s)=>s.replace(/\bi\s+is\b/ig,"I am"), why:"После I всегда am: I am." },
-  { re:/\bi\s+have\s+(\d{1,2})\s+years?(\s+old)?\b/i,
-    fix:(s)=>s.replace(/\bi\s+have\s+(\d{1,2})\s+years?(\s+old)?\b/ig,"I am $1 years old"),
-    why:"Возраст по-английски с глаголом be: I am 14 years old." },
-  { re:/\bi\s+have\s+(\d{1,2})\s*[.!?]?\s*$/i,
-    fix:(s)=>s.replace(/\bi\s+have\s+(\d{1,2})\s*[.!?]?\s*$/i,"I am $1 years old"),
+const cap = (s)=> s ? String(s).charAt(0).toUpperCase() + String(s).slice(1) : s;
+
+/* --- словари для понимания смысла --- */
+const DICT = {
+  subjects:["maths","math","mathematics","english","russian","history","biology","physics","chemistry","geography","literature","art","music","informatics","computer science","technology","pe","sport","science"],
+  hobbies:["football","basketball","volleyball","tennis","hockey","chess","guitar","piano","drums","violin","drawing","painting","reading","swimming","running","dancing","singing","skating","skateboarding","cycling","video games","computer games","games","photography","cooking","boxing","judo","karate","gym","programming","coding","fishing","travelling","knitting","yoga"],
+  foods:["pizza","burger","hamburger","sandwich","salad","pasta","spaghetti","soup","cake","ice cream","chocolate","cookies","croissant","sushi","chicken","fish","rice","porridge","eggs","pancakes","fries","apple","banana","bread","cheese","yoghurt","dumplings","candy","sweets"],
+  drinks:["tea","coffee","juice","water","cola","lemonade","milk","milkshake","smoothie","hot chocolate","cocoa"],
+  clothes:["t-shirt","tshirt","shirt","jeans","trousers","shoes","sneakers","trainers","jacket","hoodie","dress","skirt","cap","hat","socks","coat","sweater","shorts","boots","scarf"],
+  colours:["red","blue","black","white","green","yellow","pink","grey","gray","orange","purple","brown","beige"],
+  places:["italy","spain","france","london","paris","japan","turkey","usa","america","germany","egypt","greece","china","korea","rome","new york","dubai","canada","australia","iceland","norway","thailand","cyprus","georgia","armenia","kazakhstan","altai","baikal","crimea","sochi","venice","barcelona","berlin","tokyo","amsterdam"],
+  family:["sister","brother","mum","mom","mother","dad","father","parents","grandma","grandmother","grandpa","grandfather","cousin","aunt","uncle","dog","cat","hamster","twin","brothers","sisters"],
+  jobs:["teacher","doctor","engineer","driver","nurse","cook","chef","programmer","manager","worker","builder","lawyer","designer","accountant","dentist","police officer","shop assistant","hairdresser","vet","pilot","scientist"],
+  cities:["moscow","saint petersburg","st petersburg","petersburg","kazan","novosibirsk","yekaterinburg","ekaterinburg","samara","rostov","krasnodar","perm","ufa","omsk","tomsk","tula","voronezh","volgograd","chelyabinsk","kerkrade","minsk","kyiv","astana","almaty"]
+};
+const NUMW = { one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,
+  thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19,twenty:20 };
+
+function hasWord(low, w){
+  const esc = w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+  return new RegExp("(^|[^a-z])" + esc + "([^a-z]|$)","i").test(low);
+}
+function findIn(low, cat){
+  const list = DICT[cat];
+  for (const w of list) if (hasWord(low, w)) return w;
+  return null;
+}
+
+/* --- разбор реплики ученика --- */
+function analyze(text){
+  const raw = String(text || "").trim();
+  const low = " " + raw.toLowerCase().replace(/[^\p{L}\p{N}'\- :]/gu," ").replace(/\s+/g," ") + " ";
+  const words = low.trim().split(/\s+/).filter(Boolean);
+  const a = { raw, low, words, isRussian:/[а-яё]/i.test(raw), keywords:[] };
+
+  a.yesno = /^\s*(yes|yeah|yep|yup|sure|of course|absolutely)\b/i.test(raw) ? "yes"
+          : /^\s*(no|nope|not really|never|nothing)\b/i.test(raw) ? "no" : null;
+  a.asksBack = /\?\s*$/.test(raw) || /\b(and you|what about you|how about you|and your)\b/i.test(raw);
+  a.unclear = /^(what|hmm+|sorry|\?)[\s?!.]*$/i.test(raw) ||
+              (words.length <= 5 && /\b(i don'?t know|dont know|no idea|i can'?t|i cant|repeat|pardon|help me|i forgot)\b/i.test(low));
+
+  /* имя */
+  const NOTNAME = new Set(["fine","good","ok","okay","great","from","in","at","a","an","the","sorry","happy","sad",
+    "tired","hungry","thirsty","ready","late","bored","cold","hot","not","very","so","really","interested","glad",
+    "new","here","student","pupil","boy","girl","years","year","old","born","looking","just","sure","well"]);
+  let m = low.match(/\b(?:my name is|my name's|i am|i'm|im|name is|name's|call me|this is)\s+([a-z][a-z'\-]{1,15})\b/);
+  if (m && !NOTNAME.has(m[1]) && !Object.prototype.hasOwnProperty.call(NUMW, m[1])) a.name = cap(m[1]);
+  if (!a.name && words.length <= 2 && /^[a-z][a-z'\-]{1,15}$/.test(words[0] || "") &&
+      !NOTNAME.has(words[0]) && !Object.prototype.hasOwnProperty.call(NUMW, words[0]) &&
+      !Object.keys(DICT).some(c => hasWord(low, words[0]) && DICT[c].indexOf(words[0]) !== -1)) a.maybeName = cap(words[0]);
+
+  /* числа и возраст */
+  let num = null;
+  m = low.match(/\b(\d{1,2})\b/);
+  if (m) num = parseInt(m[1],10);
+  if (num === null){
+    for (const w in NUMW) if (hasWord(low, w)){ num = NUMW[w]; break; }
+  }
+  if (num !== null) a.number = num;
+  if (num !== null && num >= 6 && num <= 19 && /\b(years?|old|i'?m|i am|am)\b/i.test(low)) a.age = num;
+  if (a.age == null && num !== null && num >= 6 && num <= 19 && words.length <= 3) a.age = num;
+
+  /* время */
+  m = low.match(/\b(half past|quarter past|quarter to)\s+(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b/);
+  if (m) a.time = m[0].trim();
+  if (!a.time){
+    m = low.match(/\b(\d{1,2}:\d{2})\b/) ||
+        low.match(/\b(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*(o'?clock|am|pm)\b/);
+    if (m) a.time = m[0].trim();
+  }
+  if (!a.time && /\b(late|early|midnight|noon|morning|evening|afternoon)\b/.test(low)) a.time = null;
+
+  /* город / страна из «from / live in» */
+  m = raw.match(/\b(?:from|live in|living in|i'm in|i am in)\s+([A-Za-z][A-Za-z\-]{2,18}(?:\s+[A-Z][a-z\-]{2,18})?)/);
+  if (m){
+    const cand = m[1].trim();
+    if (!/^(a|the|school|home|here|there|my|moscow city)$/i.test(cand)) a.city = cap(cand.toLowerCase());
+  }
+  const cityDict = findIn(low,"cities");
+  if (cityDict) a.city = a.city || cap(cityDict);
+
+  /* тематические слова */
+  [["subject","subjects"],["hobby","hobbies"],["food","foods"],["drink","drinks"],["clothes","clothes"],
+   ["colour","colours"],["place","places"],["family","family"],["job","jobs"]].forEach(([key,cat])=>{
+    const w = findIn(low, cat);
+    if (w){ a[key] = w; a.keywords.push({ cat, word:w }); }
+  });
+  if (a.city) a.keywords.push({ cat:"cities", word:a.city });
+  return a;
+}
+
+/* ============================================================
+   ПРОВЕРКА ГРАММАТИКИ (работает без интернета и без ключа)
+   ============================================================ */
+const PAST = { go:"went", see:"saw", eat:"ate", have:"had", do:"did", get:"got", make:"made", write:"wrote",
+  read:"read", take:"took", come:"came", buy:"bought", meet:"met", drink:"drank", run:"ran", swim:"swam",
+  sing:"sang", sleep:"slept", give:"gave", find:"found", think:"thought", say:"said", speak:"spoke",
+  tell:"told", put:"put", sit:"sat", win:"won", wear:"wore", ride:"rode", draw:"drew", teach:"taught", feel:"felt" };
+function toPast(v){
+  const lv = v.toLowerCase();
+  if (PAST[lv]) return PAST[lv];
+  if (/e$/.test(lv)) return lv + "d";
+  if (/[^aeiou]y$/.test(lv)) return lv.slice(0,-1) + "ied";
+  if (/^(stop|plan|shop|chat|jog)$/.test(lv)) return lv + lv.slice(-1) + "ed";
+  return lv + "ed";
+}
+function toS3(v){
+  const lv = v.toLowerCase();
+  if (lv === "have") return "has";
+  if (lv === "be") return "is";
+  if (lv === "do") return "does";
+  if (lv === "go") return "goes";
+  if (/(ch|sh|ss|x|z|o)$/.test(lv)) return lv + "es";
+  if (/[^aeiou]y$/.test(lv)) return lv.slice(0,-1) + "ies";
+  return lv + "s";
+}
+function toIng(v){
+  const lv = v.toLowerCase();
+  if (/^(swim|run|sit|get|put|shop|stop|plan|begin|jog|chat|cut|win)$/.test(lv)) return lv + lv.slice(-1) + "ing";
+  if (/ie$/.test(lv)) return lv.slice(0,-2) + "ying";
+  if (/e$/.test(lv) && !/(ee|oe)$/.test(lv)) return lv.slice(0,-1) + "ing";
+  return lv + "ing";
+}
+const VB = "like|love|hate|play|go|have|do|live|want|need|get|study|watch|read|make|eat|work|speak|know|think|help|cook|draw|run|swim|sing|dance|sleep|start|finish|come|take|give|look|listen|learn|teach|walk|talk|visit|travel|enjoy|prefer|wear|buy|clean|wash|try|ride|drive|open|close|meet|call|write|paint|skate|collect|feel|drink";
+const ADJ = "happy|sad|tired|fine|good|bad|ok|okay|hungry|thirsty|ready|late|early|nice|angry|bored|cold|hot|sure|sorry|busy|free|glad|afraid|kind|funny|strict|clever|shy|strong|new|young|interested|excited|lucky|ill|sick";
+const SING = "mum|mom|mother|dad|father|brother|sister|friend|teacher|dog|cat|family|granny|grandma|grandpa|cousin|name|hobby|school|town|city|room|phone";
+
+/* Каждое правило: что ищем, как исправляем, как объяснить по-русски */
+const GRAMMAR = [
+  /* be: пропущенный или неверный */
+  { re:new RegExp("\\bi\\s+(is|are)\\b","i"), fix:s=>s.replace(new RegExp("\\bi\\s+(is|are)\\b","ig"),"I am"),
+    why:"После I всегда am." },
+  { re:new RegExp("\\b(he|she|it)\\s+(am|are)\\b","i"), fix:s=>s.replace(new RegExp("\\b(he|she|it)\\s+(am|are)\\b","ig"),(m,p)=>cap(p)+" is"),
+    why:"С he, she, it — is." },
+  { re:new RegExp("\\b(we|they|you)\\s+(is|am)\\b","i"), fix:s=>s.replace(new RegExp("\\b(we|they|you)\\s+(is|am)\\b","ig"),(m,p)=>cap(p)+" are"),
+    why:"С we, they, you — are." },
+  { re:new RegExp("\\bi\\s+(from|in|"+ADJ+")\\b","i"), fix:s=>s.replace(new RegExp("\\bi\\s+(from|in|"+ADJ+")\\b","ig"),(m,w)=>"I am "+w),
+    why:"Нужен глагол am: I am …" },
+  { re:new RegExp("\\b(he|she)\\s+(from|"+ADJ+")\\b","i"), fix:s=>s.replace(new RegExp("\\b(he|she)\\s+(from|"+ADJ+")\\b","ig"),(m,p,w)=>cap(p)+" is "+w),
+    why:"Нужен глагол is: He is …" },
+  { re:new RegExp("\\b(we|they)\\s+(from|"+ADJ+")\\b","i"), fix:s=>s.replace(new RegExp("\\b(we|they)\\s+(from|"+ADJ+")\\b","ig"),(m,p,w)=>cap(p)+" are "+w),
+    why:"Нужен глагол are: We are …" },
+  { re:new RegExp("\\bi\\s+(a|an)\\s+","i"), fix:s=>s.replace(new RegExp("\\bi\\s+(a|an)\\s+","i"),(m,ar)=>"I am "+ar+" "),
+    why:"Между I и профессией нужен am: I am a student." },
+  { re:new RegExp("\\b(he|she)\\s+(a|an)\\s+","i"), fix:s=>s.replace(new RegExp("\\b(he|she)\\s+(a|an)\\s+","i"),(m,p,ar)=>cap(p)+" is "+ar+" "),
+    why:"Нужен is: He is a driver." },
+  { re:new RegExp("\\bmy\\s+("+SING+")\\s+("+ADJ+")\\b","i"), fix:s=>s.replace(new RegExp("\\bmy\\s+("+SING+")\\s+("+ADJ+")\\b","ig"),(m,n,adj)=>"my "+n+" is "+adj),
+    why:"Перед прилагательным нужен is: My sister is kind." },
+  { re:new RegExp("\\b(i am|i'm)\\s+(\\d{1,2})\\s+years?\\b(?!\\s+old)","i"), fix:s=>s.replace(new RegExp("\\b(i am|i'm)\\s+(\\d{1,2})\\s+years?\\b(?!\\s+old)","i"),(m,p,n)=>p+" "+n+" years old"),
+    why:"О возрасте говорят полностью: I am 14 years old." },
+
+  /* возраст через have */
+  { re:new RegExp("\\bi\\s+have\\s+(\\d{1,2})\\s+years?(\\s+old)?\\b","i"), fix:s=>s.replace(new RegExp("\\bi\\s+have\\s+(\\d{1,2})\\s+years?(\\s+old)?\\b","ig"),"I am $1 years old"),
+    why:"Возраст с глаголом be: I am 14 years old." },
+  { re:new RegExp("\\bi\\s+have\\s+(\\d{1,2})\\s*$","i"), fix:s=>s.replace(new RegExp("\\bi\\s+have\\s+(\\d{1,2})\\s*$","i"),"I am $1 years old"),
     why:"О возрасте говорят через be: I am 14 years old." },
-  { re:/\bi\s+from\b/i, fix:(s)=>s.replace(/\bi\s+from\b/ig,"I am from"), why:"После I нужен глагол am: I am from Moscow." },
-  { re:/\b(he|she|it)\s+have\b/i, fix:(s)=>s.replace(/\b(he|she|it)\s+have\b/ig,(m,p)=>p+" has"), why:"С he, she, it — has: He has a dog." },
-  { re:/\bi\s+no\s+like\b/i, fix:(s)=>s.replace(/\bi\s+no\s+like\b/ig,"I don't like"), why:"Отрицание строится с don't: I don't like." },
-  { re:/\b(my\s+favourite\s+subject|my\s+favorite\s+subject)\s+are\b/i,
-    fix:(s)=>s.replace(/\s+are\b/i," is"), why:"Подлежащее одно — нужен is: My favourite subject is maths." },
-  { re:/\bi\s+am\s+agree\b/i, fix:(s)=>s.replace(/\bi\s+am\s+agree\b/ig,"I agree"), why:"Agree — это глагол: I agree." },
-  { re:/\bi\s+like\s+play\b/i, fix:(s)=>s.replace(/\bi\s+like\s+play\b/ig,"I like playing"), why:"После like обычно -ing: I like playing football." },
-  { re:/\bi\s+very\s+like\b/i, fix:(s)=>s.replace(/\bi\s+very\s+like\b/ig,"I like"), why:"Very much ставится в конце: I like it very much." },
-  { re:/\bdon't\s+(has|likes)\b/i, fix:(s)=>s.replace(/\bdon't\s+has\b/ig,"don't have").replace(/\bdon't\s+likes\b/ig,"don't like"), why:"После don't — начальная форма глагола." }
+
+  /* -s в третьем лице */
+  { re:new RegExp("\\b(he|she|it)\\s+("+VB+")\\b(?!\\s*(ing|ed)\\b)","i"),
+    fix:s=>s.replace(new RegExp("\\b(he|she|it)\\s+("+VB+")\\b","ig"),(m,p,v)=>cap(p)+" "+toS3(v)),
+    why:"С he, she, it глагол получает -s: He likes, She has." },
+  { re:new RegExp("\\bmy\\s+("+SING+")\\s+("+VB+")\\b","i"),
+    fix:s=>s.replace(new RegExp("\\bmy\\s+("+SING+")\\s+("+VB+")\\b","ig"),(m,n,v)=>"my "+n+" "+toS3(v)),
+    why:"Один человек — глагол с -s: My mum works." },
+  { re:new RegExp("\\b(i|we|they|you)\\s+has\\b","i"), fix:s=>s.replace(new RegExp("\\b(i|we|they|you)\\s+has\\b","ig"),(m,p)=>cap(p)+" have"),
+    why:"Has только с he, she, it. Иначе have." },
+
+  /* отрицания и вспомогательные */
+  { re:new RegExp("\\b(i|we|they|you)\\s+no\\s+("+VB+")\\b","i"),
+    fix:s=>s.replace(new RegExp("\\b(i|we|they|you)\\s+no\\s+("+VB+")\\b","ig"),(m,p,v)=>cap(p)+" don't "+v),
+    why:"Отрицание строится с don't: I don't like." },
+  { re:new RegExp("\\b(he|she|it)\\s+no\\s+("+VB+")\\b","i"),
+    fix:s=>s.replace(new RegExp("\\b(he|she|it)\\s+no\\s+("+VB+")\\b","ig"),(m,p,v)=>cap(p)+" doesn't "+v),
+    why:"С he, she, it отрицание с doesn't." },
+  { re:new RegExp("\\b(he|she|it)\\s+don'?t\\b","i"), fix:s=>s.replace(new RegExp("\\b(he|she|it)\\s+don'?t\\b","ig"),(m,p)=>cap(p)+" doesn't"),
+    why:"С he, she, it — doesn't." },
+  { re:new RegExp("\\b(don'?t|doesn'?t|didn'?t)\\s+(has|likes|goes|does|plays|wants|lives|knows)\\b","i"),
+    fix:s=>s.replace(new RegExp("\\b(don'?t|doesn'?t|didn'?t)\\s+(has|likes|goes|does|plays|wants|lives|knows)\\b","ig"),
+      (m,d,v)=>d+" "+({has:"have",likes:"like",goes:"go",does:"do",plays:"play",wants:"want",lives:"live",knows:"know"}[v.toLowerCase()])),
+    why:"После don't / doesn't глагол без -s." },
+  { re:new RegExp("\\bdidn'?t\\s+(went|saw|ate|had|did|got|made|took|came|drank|read)\\b","i"),
+    fix:s=>s.replace(new RegExp("\\bdidn'?t\\s+(went|saw|ate|had|did|got|made|took|came|drank|read)\\b","ig"),
+      (m,v)=>{ const back={went:"go",saw:"see",ate:"eat",had:"have",did:"do",got:"get",made:"make",took:"take",came:"come",drank:"drink",read:"read"}; return "didn't "+back[v.toLowerCase()]; }),
+    why:"После didn't — начальная форма глагола." },
+  { re:new RegExp("\\b(i|we|they|you|he|she)\\s+not\\s+("+VB+")\\b","i"),
+    fix:s=>s.replace(new RegExp("\\b(i|we|they|you|he|she)\\s+not\\s+("+VB+")\\b","ig"),
+      (m,p,v)=>/^(he|she)$/i.test(p) ? cap(p)+" doesn't "+v : cap(p)+" don't "+v),
+    why:"Нужен don't / doesn't, а не одно not." },
+
+  /* формы после like / want / модальных */
+  { re:new RegExp("\\b(like|love|hate|enjoy|start|finish|stop)\\s+("+VB+")\\b","i"),
+    fix:s=>s.replace(new RegExp("\\b(like|love|hate|enjoy|start|finish|stop)\\s+("+VB+")\\b","ig"),(m,v1,v2)=>v1+" "+toIng(v2)),
+    why:"После like / love обычно -ing: I like playing." },
+  { re:new RegExp("\\b(want|need|hope|plan|try|would like|'d like|decide)\\s+("+VB+")\\b","i"),
+    fix:s=>s.replace(new RegExp("\\b(want|need|hope|plan|try|would like|'d like|decide)\\s+("+VB+")\\b","ig"),(m,v1,v2)=>v1+" to "+v2),
+    why:"После want / need нужна частица to: I want to go." },
+  { re:new RegExp("\\b(can|must|should|will|may|could|would)\\s+to\\s+("+VB+")\\b","i"),
+    fix:s=>s.replace(new RegExp("\\b(can|must|should|will|may|could|would)\\s+to\\s+("+VB+")\\b","ig"),(m,mo,v)=>mo+" "+v),
+    why:"После can / must частица to не нужна." },
+  { re:new RegExp("\\b(can|must|should|will|may|could|would)\\s+(likes|plays|goes|does|has|swims|reads|writes|eats|makes|takes|speaks|sings|wants)\\b","i"),
+    fix:s=>s.replace(new RegExp("\\b(can|must|should|will|may|could|would)\\s+(\\w+)s\\b","ig"),(m,mo,v)=>mo+" "+(v==="ha"?"have":v)),
+    why:"После can / will глагол без -s." },
+  { re:new RegExp("\\bi\\s+am\\s+agree\\b","i"), fix:s=>s.replace(new RegExp("\\bi\\s+am\\s+agree\\b","ig"),"I agree"),
+    why:"Agree — глагол, am не нужен." },
+  { re:new RegExp("\\b(i am|i'm)\\s+("+VB+")\\b(?!\\s*ing)","i"),
+    fix:s=>s.replace(new RegExp("\\b(i am|i'm)\\s+("+VB+")\\b","i"),(m,p,v)=>"I "+v),
+    why:"Либо I like, либо I am liking — вместе не ставят." },
+
+  /* артикли */
+  { re:new RegExp("\\b(i am|i'm|he is|she is|he's|she's)\\s+(student|pupil|teacher|doctor|driver|programmer|nurse|cook|dentist|engineer|schoolboy|schoolgirl|boy|girl)\\b","i"),
+    fix:s=>s.replace(new RegExp("\\b(i am|i'm|he is|she is|he's|she's)\\s+(student|pupil|teacher|doctor|driver|programmer|nurse|cook|dentist|engineer|schoolboy|schoolgirl|boy|girl)\\b","ig"),
+      (m,p,n)=>p+" a "+n),
+    why:"Перед профессией нужен артикль a: I am a student." },
+  { re:new RegExp("\\b(have|has|want|need|see|buy|got)\\s+(dog|cat|car|bike|phone|computer|pizza|burger|book|pen|ball|guitar|brother|sister|question)\\b","i"),
+    fix:s=>s.replace(new RegExp("\\b(have|has|want|need|see|buy|got)\\s+(dog|cat|car|bike|phone|computer|pizza|burger|book|pen|ball|guitar|brother|sister|question)\\b","ig"),
+      (m,v,n)=>v+" a "+n),
+    why:"Перед одним предметом нужен a: I have a dog." },
+  { re:new RegExp("\\bplay\\s+the\\s+(football|basketball|tennis|hockey|volleyball|chess|games|video games)\\b","i"),
+    fix:s=>s.replace(new RegExp("\\bplay\\s+the\\s+(football|basketball|tennis|hockey|volleyball|chess|games|video games)\\b","ig"),"play $1"),
+    why:"В названиях игр артикль не нужен: play football." },
+  { re:new RegExp("\\bplay\\s+(guitar|piano|violin|drums)\\b","i"),
+    fix:s=>s.replace(new RegExp("\\bplay\\s+(guitar|piano|violin|drums)\\b","ig"),"play the $1"),
+    why:"С музыкальными инструментами нужен the: play the guitar." },
+  { re:new RegExp("\\bgo\\s+to\\s+the\\s+(school|bed|work|university)\\b","i"),
+    fix:s=>s.replace(new RegExp("\\bgo\\s+to\\s+the\\s+(school|bed|work|university)\\b","ig"),"go to $1"),
+    why:"go to school, go to bed — без the." },
+  { re:new RegExp("\\bgo\\s+to\\s+home\\b","i"), fix:s=>s.replace(new RegExp("\\bgo\\s+to\\s+home\\b","ig"),"go home"),
+    why:"Домой — go home, без to." },
+
+  /* предлоги */
+  { re:new RegExp("\\blisten\\s+(?!to\\b)(music|songs|the radio|podcasts)\\b","i"),
+    fix:s=>s.replace(new RegExp("\\blisten\\s+(?!to\\b)(music|songs|the radio|podcasts)\\b","ig"),"listen to $1"),
+    why:"Всегда listen to music." },
+  { re:new RegExp("\\b(i am|i'm|he is|she is)\\s+interesting\\s+in\\b","i"),
+    fix:s=>s.replace(new RegExp("\\binteresting\\s+in\\b","ig"),"interested in"),
+    why:"Человек interested in — интересуется; interesting — сам интересный." },
+  { re:new RegExp("\\b(in|at)\\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\b","i"),
+    fix:s=>s.replace(new RegExp("\\b(in|at)\\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\b","ig"),(m,p,d)=>"on "+d),
+    why:"С днями недели — on Monday." },
+  { re:new RegExp("\\bin\\s+(\\d{1,2})\\s*o'?clock\\b","i"), fix:s=>s.replace(new RegExp("\\bin\\s+(\\d{1,2})\\s*o'?clock\\b","ig"),"at $1 o'clock"),
+    why:"Со временем — at seven o'clock." },
+  { re:new RegExp("\\bon\\s+the\\s+(morning|evening|afternoon)\\b","i"), fix:s=>s.replace(new RegExp("\\bon\\s+the\\s+(morning|evening|afternoon)\\b","ig"),"in the $1"),
+    why:"in the morning, in the evening." },
+  { re:new RegExp("\\bgo\\s+in\\s+(school|the park|bed|the shop)\\b","i"), fix:s=>s.replace(new RegExp("\\bgo\\s+in\\s+(school|the park|bed|the shop)\\b","ig"),"go to $1"),
+    why:"Идти куда-то — go to." },
+  { re:new RegExp("\\bdepends\\s+of\\b","i"), fix:s=>s.replace(new RegExp("\\bdepends\\s+of\\b","ig"),"depends on"),
+    why:"Depends on — зависит от." },
+
+  /* порядок слов и вопросы */
+  { re:new RegExp("^(what|where|when|how|who|why)\\s+(you|we|they)\\s+("+VB+")\\b","i"),
+    fix:s=>s.replace(new RegExp("^(what|where|when|how|who|why)\\s+(you|we|they)\\s+("+VB+")\\b","i"),(m,q,p,v)=>cap(q)+" do "+p+" "+v),
+    why:"В вопросе нужен do: Where do you live?" },
+  { re:new RegExp("^(what|where|when|how|why)\\s+(he|she|it)\\s+("+VB+")\\b","i"),
+    fix:s=>s.replace(new RegExp("^(what|where|when|how|why)\\s+(he|she|it)\\s+("+VB+")\\b","i"),(m,q,p,v)=>cap(q)+" does "+p+" "+v),
+    why:"В вопросе про he / she нужен does." },
+  { re:new RegExp("\\bhow\\s+you\\s+are\\b","i"), fix:s=>s.replace(new RegExp("\\bhow\\s+you\\s+are\\b","ig"),"how are you"),
+    why:"В вопросе глагол идёт перед подлежащим: How are you?" },
+  { re:new RegExp("^(you|they|we)\\s+("+VB+")\\b[^?]*\\?\\s*$","i"),
+    fix:s=>s.replace(new RegExp("^(you|they|we)\\s+("+VB+")\\b","i"),(m,p,v)=>"Do "+p.toLowerCase()+" "+v),
+    why:"Вопрос начинается с Do: Do you like football?" },
+  { re:new RegExp("^(he|she)\\s+("+VB+")\\b[^?]*\\?\\s*$","i"),
+    fix:s=>s.replace(new RegExp("^(he|she)\\s+("+VB+")\\b","i"),(m,p,v)=>"Does "+p.toLowerCase()+" "+v),
+    why:"Вопрос про he / she начинается с Does." },
+  { re:new RegExp("\\bi\\s+very\\s+(like|love)\\s+","i"), fix:s=>s.replace(new RegExp("\\bi\\s+very\\s+(like|love)\\s+(.+?)([.!?]*)$","i"),(m,v,rest,p)=>"I "+v+" "+rest+" very much"+p),
+    why:"Very much ставится в конце: I like it very much." },
+  { re:new RegExp("\\b(like|love)\\s+very\\s+much\\s+(\\w+)","i"), fix:s=>s.replace(new RegExp("\\b(like|love)\\s+very\\s+much\\s+(\\w+)","ig"),(m,v,n)=>v+" "+n+" very much"),
+    why:"Сначала предмет, потом very much." },
+  { re:new RegExp("\\bmy\\s+("+SING+")\\s+(he|she|it|they)\\s+(is|are|has|have|was|likes|works|lives)\\b","i"),
+    fix:s=>s.replace(new RegExp("\\bmy\\s+("+SING+")\\s+(he|she|it|they)\\s+","ig"),(m,n)=>"my "+n+" "),
+    why:"Подлежащее одно: My brother is ten (без he)." },
+  { re:new RegExp("\\bfor\\s+me\\s+(is|it's|its)\\s+(\\w+)","i"), fix:s=>s.replace(new RegExp("\\bfor\\s+me\\s+(is|it's|its)\\s+(\\w+)","i"),(m,b,adj)=>"it is "+adj+" for me"),
+    why:"Порядок слов: It is difficult for me." },
+
+  /* число и количество */
+  { re:new RegExp("\\bmany\\s+(money|time|water|homework|music|information|food|milk|tea|sugar|bread|snow|rain|work)\\b","i"),
+    fix:s=>s.replace(new RegExp("\\bmany\\s+(money|time|water|homework|music|information|food|milk|tea|sugar|bread|snow|rain|work)\\b","ig"),"much $1"),
+    why:"С неисчисляемыми — much: much money." },
+  { re:new RegExp("\\bmuch\\s+(friends|people|books|lessons|things|apples|cars|hours|days|students|subjects|photos)\\b","i"),
+    fix:s=>s.replace(new RegExp("\\bmuch\\s+(friends|people|books|lessons|things|apples|cars|hours|days|students|subjects|photos)\\b","ig"),"many $1"),
+    why:"С исчисляемыми — many: many friends." },
+  { re:new RegExp("\\bthere\\s+is\\s+(many|a lot of|two|three|four|five|some)\\b","i"),
+    fix:s=>s.replace(new RegExp("\\bthere\\s+is\\s+(many|a lot of|two|three|four|five|some)\\b","ig"),"there are $1"),
+    why:"Много предметов — there are." },
+  { re:new RegExp("\\b(two|three|four|five|six|seven|eight|nine|ten|\\d+)\\s+(book|lesson|sister|brother|friend|cat|dog|year|hour|apple|day|minute|subject|room|car|photo|cup)\\b","i"),
+    fix:s=>s.replace(new RegExp("\\b(two|three|four|five|six|seven|eight|nine|ten|\\d+)\\s+(book|lesson|sister|brother|friend|cat|dog|year|hour|apple|day|minute|subject|room|car|photo|cup)\\b","ig"),(m,n,w)=>n+" "+w+"s"),
+    why:"После числа больше одного — множественное число: two books." },
+  { re:new RegExp("\\b(mans|womans|childs|childrens|peoples|foots|mouses|sheeps|informations|advices|moneys|homeworks)\\b","i"),
+    fix:s=>s.replace(new RegExp("\\b(mans|womans|childs|childrens|peoples|foots|mouses|sheeps|informations|advices|moneys|homeworks)\\b","ig"),
+      (m,w)=>({mans:"men",womans:"women",childs:"children",childrens:"children",peoples:"people",foots:"feet",mouses:"mice",sheeps:"sheep",informations:"information",advices:"advice",moneys:"money",homeworks:"homework"}[w.toLowerCase()])),
+    why:"Особая форма множественного числа." },
+  { re:new RegExp("\\bmy\\s+((?:favourite|favorite)\\s+)?(subject|hobby|colour|color|food|sport|book|film|song|teacher|dream|city|animal|number|"+SING+")\\s+are\\b","i"),
+    fix:s=>s.replace(new RegExp("\\bmy\\s+((?:favourite|favorite)\\s+)?(subject|hobby|colour|color|food|sport|book|film|song|teacher|dream|city|animal|number|"+SING+")\\s+are\\b","ig"),(m,f,n)=>"my "+(f||"")+n+" is"),
+    why:"Подлежащее одно — нужен is: My favourite subject is maths." },
+  { re:new RegExp("\\b(people|parents|friends|children)\\s+is\\b","i"),
+    fix:s=>s.replace(new RegExp("\\b(people|parents|friends|children)\\s+is\\b","ig"),(m,w)=>w+" are"),
+    why:"Это множественное число — нужен are." },
+  { re:new RegExp("\\bmore\\s+(better|worse)\\b","i"), fix:s=>s.replace(new RegExp("\\bmore\\s+(better|worse)\\b","ig"),"$1"),
+    why:"Better уже сравнительная форма, more не нужно." },
+
+  /* прошедшее время при маркере времени */
+  { re:new RegExp("\\b(yesterday|last\\s+(week|year|month|summer|night|monday)|\\d+\\s+days?\\s+ago)\\b[^.!?]*\\b(i|we|they|he|she|you)\\s+("+VB+")\\b","i"),
+    fix:s=>s.replace(new RegExp("\\b(i|we|they|he|she|you)\\s+("+VB+")\\b","i"),(m,p,v)=>cap(p)+" "+toPast(v)),
+    why:"Со словом yesterday нужно прошедшее время: I went." }
 ];
+
+function checkGrammar(text){
+  const original = String(text || "").trim();
+  if (!original) return { status:"correct", original, improved:original, explanation_ru:"" };
+  if (/[а-яё]/i.test(original)){
+    return { status:"needs_improvement", original, improved:"Let's try it in English.",
+             explanation_ru:"Это по-русски. Скажи английскую фразу — можно взять подсказку ниже.", russian:true };
+  }
+  let cur = original;
+  const whys = [];
+  let changes = 0;
+  for (const r of GRAMMAR){
+    if (!r.re.test(cur)) continue;
+    let next;
+    try{ next = r.fix(cur); }catch(e){ continue; }
+    next = String(next).replace(/\s{2,}/g," ").trim();
+    if (!next || next.toLowerCase() === cur.toLowerCase()) continue;
+    cur = next;
+    if (whys.length < 2 && whys.indexOf(r.why) === -1) whys.push(r.why);
+    if (++changes >= 4) break;
+  }
+  const norm = (x)=>x.toLowerCase().replace(/[.,!?;:]/g,"").replace(/\s+/g," ").trim();
+  if (norm(cur) !== norm(original)){
+    let improved = cap(cur);
+    if (!/[.!?]$/.test(improved)) improved += /^(do|does|can|are|is|what|where|when|who|why|how|have|has)\b/i.test(improved) ? "?" : ".";
+    return { status:"needs_improvement", original, improved,
+             explanation_ru: whys.join(" ") || "Так фраза звучит естественнее." };
+  }
+  /* ошибок нет — но короткий ответ стоит развернуть (это не ошибка, а совет) */
+  const words = original.split(/\s+/).filter(Boolean);
+  let note = "";
+  if (words.length <= 2 && !/^(yes|no|ok|okay|thanks|thank you|hello|hi|bye|please|sorry|sure)\b/i.test(original))
+    note = "Понятно! Попробуй сказать это полным предложением — так речь тренируется лучше.";
+  return { status:"correct", original, improved:original, explanation_ru:"", note };
+}
+
+/* ============================================================
+   ЛОКАЛЬНЫЙ СОБЕСЕДНИК: реагирует на смысл, а не по скрипту
+   Для каждой темы: факты о себе (чтобы отвечать на вопросы ученика)
+   и слоты — что персонажу интересно узнать.
+   ============================================================ */
+const ENGINES = {
+  greeting:{
+    facts:{ name:"I'm Alex.", age:"I'm fifteen.", city:"I'm from Brighton, in England.",
+            hobby:"I play football after school.", friend:"My best friend is Sam.",
+            family:"I've got one brother.", mood:"I'm great today, thanks!" },
+    slots:[
+      { id:"name", want:"name", q:"What's your name?", react:v=>"Nice to meet you, "+v+"!",
+        hints:["My name is Ivan.","I'm Anna.","My name is Dima."] },
+      { id:"age", want:"age", q:"How old are you?", react:v=>v+"? I'm fifteen, so we are almost the same age.",
+        hints:["I'm 14 years old.","I am thirteen.","I'm fifteen."] },
+      { id:"city", want:"city", q:"Where are you from?", react:v=>v+" — I have never been there!",
+        hints:["I'm from Moscow.","I live in Kazan.","I am from a small town."] },
+      { id:"mood", want:"any", q:"How are you today?", react:()=>"Good to hear!",
+        hints:["I'm fine, thanks.","I'm a bit tired.","I am very happy today."] },
+      { id:"hobby", want:"hobby", q:"What do you like doing after school?", react:v=>cap(v)+" is fun!",
+        hints:["I like playing football.","I like drawing.","I play video games."] },
+      { id:"friend", want:"any", q:"Who is your best friend?", react:()=>"Friends make everything better.",
+        hints:["My best friend is Kolya.","Her name is Masha.","I have two best friends."] }
+    ],
+    extra:["Tell me one more thing about yourself!","What do you want to do at the weekend?","Do you like meeting new people?"]
+  },
+  school:{
+    facts:{ name:"I'm Mia.", subject:"My favourite subject is art.", lessons:"I have five lessons today.",
+            hard:"Physics is hard for me.", teacher:"My teacher is Mr Brown, he is funny.",
+            breaktime:"At break I talk with my friends.", homework:"Yes, I have maths homework.",
+            mood:"I'm okay, just a bit sleepy." },
+    slots:[
+      { id:"subject", want:"subject", q:"What is your favourite subject at school?", react:v=>cap(v)+" is a great subject!",
+        hints:["My favourite subject is maths.","I like English.","I like history and art."] },
+      { id:"lessons", want:"number", q:"How many lessons do you have today?", react:v=>v+" lessons — that is a long day!",
+        hints:["I have six lessons.","Five lessons today.","Only four lessons."] },
+      { id:"hard", want:"subject", q:"Which subject is difficult for you?", react:v=>cap(v)+" is not easy, I agree.",
+        hints:["Physics is difficult for me.","Maths is hard.","Nothing is difficult."] },
+      { id:"teacher", want:"any", q:"What is your favourite teacher like?", react:()=>"A good teacher changes everything.",
+        hints:["My teacher is kind.","She is very funny.","He is strict but fair."] },
+      { id:"breaktime", want:"any", q:"What do you do at break time?", react:()=>"Sounds like a nice break!",
+        hints:["I talk with my friends.","I eat a sandwich.","I play games on my phone."] },
+      { id:"homework", want:"yesno", q:"Do you have a lot of homework today?",
+        reactYes:"Oh, good luck with it!", reactNo:"Lucky you!",
+        hints:["Yes, a lot.","No, only maths.","Just a little."] }
+    ],
+    extra:["Do you go to school on Saturday?","What time do your lessons start?","Do you like your classmates?"]
+  },
+  hobbies:{
+    facts:{ name:"I'm Leo.", hobby:"I play the guitar.", often:"I practise three times a week.",
+            company:"Usually with my brother.", start:"I started two years ago.",
+            music:"I like rock music.", newone:"I want to try skateboarding.", mood:"I'm good!" },
+    slots:[
+      { id:"hobby", want:"hobby", q:"What do you like to do in your free time?", react:v=>cap(v)+" — that's cool!",
+        hints:["I like playing football.","I love drawing.","I play video games."] },
+      { id:"often", want:"any", q:"How often do you do it?", react:()=>"Nice, that's good practice.",
+        hints:["Twice a week.","Every day.","Only at the weekend."] },
+      { id:"company", want:"any", q:"Do you do it alone or with friends?", react:()=>"Both ways are fun.",
+        hints:["With my friends.","Usually alone.","With my brother."] },
+      { id:"start", want:"any", q:"When did you start?", react:()=>"That's a good start!",
+        hints:["Two years ago.","Last summer.","When I was ten."] },
+      { id:"music", want:"any", q:"What music do you like?", react:()=>"Good taste!",
+        hints:["I like rap.","I love rock music.","I listen to pop music."] },
+      { id:"newone", want:"yesno", q:"Is there a new hobby you want to try?",
+        reactYes:"Go for it!", reactNo:"Your hobby is great already.",
+        hints:["Yes, boxing.","I want to try skating.","No, I like my hobby."] }
+    ],
+    extra:["Who is your favourite player or artist?","Do your friends have the same hobby?","Do you watch videos about it?"]
+  },
+  cafe:{
+    facts:{ name:"I'm Tom, the waiter.", order:"Our pizza is the best here.", drink:"I like orange juice.",
+            price:"That's seven dollars.", sweet:"I love chocolate cake.", eatin:"Most people eat here.",
+            mood:"Busy day, but I'm fine!" },
+    slots:[
+      { id:"order", want:"food", q:"What would you like to order?", react:v=>"One "+v+" — good choice!",
+        hints:["I'd like a pizza, please.","Can I have a burger?","A sandwich, please."] },
+      { id:"drink", want:"drink", q:"Would you like something to drink?", react:v=>cap(v)+", coming up.",
+        hints:["A cup of tea, please.","Orange juice, please.","Just water, thanks."] },
+      { id:"more", want:"yesno", q:"Anything else?", reactYes:"Sure, no problem.", reactNo:"Okay, that's all then.",
+        hints:["No, thank you.","Yes, a cake, please.","That's all, thanks."] },
+      { id:"eatin", want:"any", q:"Do you want to eat here or take away?", react:()=>"Perfect.",
+        hints:["I'll eat here.","Take away, please.","Here, please."] },
+      { id:"price", want:"yesno", q:"It's seven dollars. Is that okay?",
+        reactYes:"Great, thank you!", reactNo:"I know, it's not cheap.",
+        hints:["Yes, that's fine.","Here you are.","That's expensive!"] },
+      { id:"sweet", want:"food", q:"Do you like sweet food?", react:v=>cap(v)+" is delicious!",
+        reactYes:"Me too!", reactNo:"Okay, no dessert today.",
+        hints:["Yes, I love cake.","No, thanks.","I like ice cream."] }
+    ],
+    extra:["Is this your first time here?","Do you often eat in cafés?","How is your food?"]
+  },
+  shopping:{
+    facts:{ name:"I'm Sofia.", item:"We have new T-shirts today.", colour:"Blue is very popular.",
+            size:"We have all sizes.", price:"It costs twenty dollars.", tryon:"The fitting room is over there.",
+            mood:"I'm fine, thank you!" },
+    slots:[
+      { id:"item", want:"clothes", q:"Can I help you find something?", react:v=>"We have nice "+v+"s here.",
+        hints:["I'm looking for a T-shirt.","I need new jeans.","I want a jacket."] },
+      { id:"colour", want:"colour", q:"What colour would you like?", react:v=>cap(v)+" is a good choice.",
+        hints:["Blue, please.","I like black.","Something bright."] },
+      { id:"size", want:"any", q:"What size are you?", react:()=>"Okay, I'll find it for you.",
+        hints:["Medium, please.","Size small.","I don't know my size."] },
+      { id:"tryon", want:"yesno", q:"Do you want to try it on?",
+        reactYes:"The fitting room is over there.", reactNo:"No problem.",
+        hints:["Yes, please.","Where is the fitting room?","No, thank you."] },
+      { id:"price", want:"yesno", q:"It costs twenty dollars. Is that okay for you?",
+        reactYes:"Great!", reactNo:"We have cheaper ones too.",
+        hints:["Yes, I'll take it.","That's too expensive.","How much is the other one?"] },
+      { id:"more", want:"yesno", q:"Do you need anything else today?",
+        reactYes:"Sure, let's have a look.", reactNo:"Thank you, have a nice day!",
+        hints:["No, that's all.","Yes, I need shoes.","Just this, thanks."] }
+    ],
+    extra:["Do you like shopping?","Do you buy clothes online or in shops?","Who do you go shopping with?"]
+  },
+  routine:{
+    facts:{ name:"I'm Ben.", up:"I get up at half past seven.", breakfast:"I eat porridge and eggs.",
+            school:"I go to school by bike.", after:"After school I play basketball.",
+            bed:"I go to bed at ten.", weekend:"At the weekend I get up late.", mood:"I'm good, thanks!" },
+    slots:[
+      { id:"up", want:"time", q:"What time do you usually get up?", react:v=>cap(v)+" — that's quite early!",
+        hints:["I get up at seven o'clock.","At half past six.","I get up late."] },
+      { id:"breakfast", want:"food", q:"What do you have for breakfast?", react:v=>cap(v)+" sounds tasty.",
+        hints:["I have porridge.","Eggs and tea.","I don't eat breakfast."] },
+      { id:"school", want:"any", q:"How do you go to school?", react:()=>"Okay, I see.",
+        hints:["I go by bus.","On foot, it's near.","My dad drives me."] },
+      { id:"after", want:"any", q:"What do you do after school?", react:()=>"Sounds like a good day.",
+        hints:["I do my homework.","I play football.","I rest and watch videos."] },
+      { id:"bed", want:"time", q:"What time do you go to bed?", react:v=>cap(v)+" — sleep is important!",
+        hints:["At ten o'clock.","At half past nine.","Very late, about twelve."] },
+      { id:"weekend", want:"yesno", q:"Is your weekend different?",
+        reactYes:"Weekends are the best.", reactNo:"Okay, the same every day.",
+        hints:["Yes, I get up late.","No, it's the same.","At the weekend I rest."] }
+    ],
+    extra:["Do you help at home?","When do you do your homework?","How much free time do you have?"]
+  },
+  travel:{
+    facts:{ name:"I'm Nina.", place:"I want to go to Japan.", why:"Because I love the food there.",
+            who:"I travel with my sister.", how:"I prefer travelling by train.",
+            see:"I want to see the mountains.", been:"I have been to Italy once.", mood:"Excited, as always!" },
+    slots:[
+      { id:"place", want:"place", q:"Where would you like to travel?", react:v=>cap(v)+" — great choice!",
+        hints:["I'd like to go to Italy.","I want to visit London.","I want to see Japan."] },
+      { id:"why", want:"any", q:"Why do you want to go there?", react:()=>"That's a good reason.",
+        hints:["Because it is beautiful.","I want to see the sea.","The food is delicious."] },
+      { id:"who", want:"family", q:"Who do you want to travel with?", react:v=>"Travelling with your "+v+" sounds nice.",
+        hints:["With my family.","With my best friend.","Alone, I think."] },
+      { id:"how", want:"any", q:"How do you want to get there — by plane or by train?", react:()=>"Good plan.",
+        hints:["By plane.","By train, it's fun.","By car with my parents."] },
+      { id:"see", want:"any", q:"What do you want to see there?", react:()=>"That sounds exciting!",
+        hints:["I want to see old streets.","The sea and the beach.","Museums and parks."] },
+      { id:"been", want:"yesno", q:"Have you been to another country before?",
+        reactYes:"Lucky you!", reactNo:"Then your first trip will be special.",
+        hints:["Yes, I've been to Turkey.","No, never.","Only once."] }
+    ],
+    extra:["What food do you want to try there?","How long do you want to stay?","Do you like long trips?"]
+  },
+  family:{
+    facts:{ name:"I'm Kate.", size:"My family is small.", sibling:"I've got a little brother.",
+            job:"My mum is a nurse.", together:"We watch films together on Friday.",
+            friend:"My best friend is Dasha.", withfriends:"We ride bikes together.", mood:"I'm happy today!" },
+    slots:[
+      { id:"size", want:"yesno", q:"Have you got a big family?",
+        reactYes:"Big families are fun!", reactNo:"Small families are cosy too.",
+        hints:["Yes, we are five.","No, my family is small.","I have a big family."] },
+      { id:"sibling", want:"family", q:"Have you got a brother or a sister?", react:v=>"A "+v+" — that's nice!",
+        hints:["I've got one sister.","I have two brothers.","No, I'm the only child."] },
+      { id:"job", want:"job", q:"What does your mum or dad do?", react:v=>"A "+v+" — that's an important job.",
+        hints:["My mum is a teacher.","My dad is a driver.","My mum works in a shop."] },
+      { id:"together", want:"any", q:"What do you do together at the weekend?", react:()=>"That's good family time.",
+        hints:["We watch films.","We visit my grandma.","We walk in the park."] },
+      { id:"friend", want:"any", q:"Who is your best friend?", react:()=>"Good friends are like family.",
+        hints:["My best friend is Kolya.","Her name is Masha.","I have two close friends."] },
+      { id:"withfriends", want:"any", q:"What do you like doing with your friends?", react:()=>"Sounds fun!",
+        hints:["We play football.","We play video games.","We just talk a lot."] }
+    ],
+    extra:["Have you got a pet?","Do you look like your mum or your dad?","Who helps you with homework?"]
+  }
+};
+
+const GENERIC = ["Oh, I see!","That's interesting!","Nice!","Cool!","Okay, got it!","Really? Nice."];
+const REACT_CAT = {
+  hobbies:w=>cap(w)+" sounds fun!",
+  foods:w=>"I love "+w+" too!",
+  drinks:w=>cap(w)+" is a good choice.",
+  subjects:w=>cap(w)+" is interesting.",
+  family:w=>"A "+w+" — that's nice.",
+  places:w=>cap(w)+" is a beautiful place!",
+  jobs:w=>"A "+w+" — that's a good job.",
+  clothes:w=>cap(w)+" — nice choice.",
+  colours:w=>cap(w)+" is a nice colour.",
+  cities:w=>cap(w)+"! I would like to visit it."
+};
+
+/* вопрос ученика уже закрыл будущий вопрос персонажа? тогда его пропускаем */
+const QSTOP = new Set(["the","and","are","you","your","what","how","much","would","like","for","that","okay","does","this","with","want","have","here"]);
+function sameQuestion(lead, q){
+  const tok = (x)=>String(x).toLowerCase().replace(/[^a-z0-9' ]/g," ").split(/\s+/).filter(w => w.length > 2 && !QSTOP.has(w));
+  const set = new Set(tok(lead));
+  let hits = 0;
+  tok(q).forEach(w => { if (set.has(w)) hits++; });
+  return hits >= 2;
+}
+function pickFact(a, want){
+  switch(want){
+    case "name": return a.name || a.maybeName || null;
+    case "age": return a.age != null ? a.age : null;
+    case "number": return a.number != null ? a.number : null;
+    case "time": return a.time || null;
+    case "city": return a.city || null;
+    case "yesno": return a.yesno;
+    case "any": return null;
+    default: return a[want] || null;
+  }
+}
+/* если ученик сам рассказал больше — не спрашиваем это снова */
+function harvest(a, facts, slots, fromIdx){
+  const SAFE = { subject:1, hobby:1, food:1, drink:1, clothes:1, colour:1, place:1, family:1, job:1, city:1, time:1, age:1 };
+  const taken = Object.keys(facts).map(k => String(facts[k]).toLowerCase());
+  for (let i = fromIdx + 1; i < slots.length; i++){
+    const sl = slots[i];
+    if (facts[sl.id] != null || !SAFE[sl.want]) continue;
+    const v = pickFact(a, sl.want);
+    if (v == null) continue;
+    if (taken.indexOf(String(v).toLowerCase()) !== -1) continue;
+    facts[sl.id] = v;
+    taken.push(String(v).toLowerCase());
+  }
+}
+function reactGeneric(a, st){
+  if (a.keywords.length){
+    const k = a.keywords[0];
+    if (REACT_CAT[k.cat]) return REACT_CAT[k.cat](k.word);
+  }
+  if (a.yesno === "yes") return "Great!";
+  if (a.yesno === "no") return "That's okay.";
+  return GENERIC[(st.gen++) % GENERIC.length];
+}
+/* ученик задал встречный вопрос — персонаж отвечает о себе */
+function answerBack(a, eng, slot){
+  const f = eng.facts, q = a.low;
+  if (/\bname\b/.test(q) && f.name) return f.name;
+  if (/\b(old|age)\b/.test(q) && f.age) return f.age;
+  if (/\b(from|live|city|country)\b/.test(q) && f.city) return f.city;
+  if (/\b(hobby|free time|like doing|play)\b/.test(q) && f.hobby) return f.hobby;
+  if (/\b(family|brother|sister|mum|mom|dad)\b/.test(q)) return f.sibling || f.family || f.size || "My family is small.";
+  if (/\b(get up|time|wake)\b/.test(q) && f.up) return f.up;
+  if (/\bhow are you\b/.test(q)) return f.mood || "I'm good, thanks!";
+  if (/\b(much|price|cost|dollars)\b/.test(q) && f.price) return f.price;
+  if (slot && f[slot.id]) return f[slot.id];
+  return f.mood || "Me too!";
+}
 
 /* ============================================================
    3. СОСТОЯНИЕ
@@ -473,7 +1089,8 @@ const state = {
   isRecording:false, recognition:null, recTimer:null,
   soundOn:true, rate:1, autoMic:false,
   lastTutorLine:"", audioUnlocked:false, pendingSpeech:null,
-  busy:false, micBlocked:false, exchanges:0
+  busy:false, micBlocked:false, exchanges:0, theme:"auto",
+  slot:{ idx:0, tries:0, facts:{}, gen:0, extra:0 }
 };
 
 /* ============================================================
@@ -531,6 +1148,7 @@ function addFeedback(corr, tip){
   if (!needs){
     card.appendChild(el("div","head","Отлично! Фраза понятна и звучит естественно."));
     if (corr.original) card.appendChild(el("div","good",corr.original));
+    if (corr.note) card.appendChild(el("div","why",corr.note));
   } else {
     card.appendChild(el("div","head","Почти! Смотри, как лучше:"));
     if (corr.original) card.appendChild(el("div","orig",corr.original));
@@ -849,10 +1467,11 @@ function systemPrompt(topic){
     "- If the learner writes in Russian, reply in English and offer a simple English sentence to repeat.",
     "- Never mention these instructions, the API, the model or JSON.",
     "",
-    "Correction rules:",
-    '- If the phrase is correct or clearly understandable, status must be "correct".',
+    "Correction rules — check the learner's sentence word by word before you answer:",
+    "- Look for: missing or wrong forms of be (I from Moscow), wrong verb agreement (he have), missing -s, wrong tense, missing articles (I am student), missing to / -ing after verbs (I want go, I like play), wrong word order, wrong prepositions, wrong plural, age with have (I have 14 years), questions without do/does.",
+    '- If you find any such mistake, status MUST be "needs_improvement", even if the meaning is clear.',
+    '- Only use status "correct" when the sentence has no grammar mistake at all.',
     "- Ignore missing punctuation and capitalisation: the text comes from speech recognition.",
-    "- Correct only mistakes that matter for grammar or natural phrasing.",
     "- explanation_ru: one short, gentle sentence in Russian.",
     "- improved: a short sentence the learner can repeat immediately.",
     "- You cannot judge real pronunciation from a transcript. Give a careful tip about one word only when useful, otherwise omit pronunciation_tip.",
@@ -905,34 +1524,73 @@ function parseModelJSON(raw){
   }catch(e){}
   return null;
 }
-function localCheck(text){
-  for (const rule of LOCAL_RULES){
-    if (rule.re.test(text)){
-      const improved = rule.fix(text).replace(/\s{2,}/g," ").trim();
-      if (improved.toLowerCase() !== text.toLowerCase()){
-        return { status:"needs_improvement", original:text,
-                 improved:improved.charAt(0).toUpperCase() + improved.slice(1), explanation_ru:rule.why };
-      }
+function localCheck(text){ return checkGrammar(text); }
+
+/* Локальный собеседник: реакция на смысл сказанного + следующий вопрос по теме */
+function demoAnswer(text){
+  const eng = ENGINES[state.topic.id] || ENGINES.greeting;
+  const st = state.slot;
+  const slots = eng.slots;
+  const a = analyze(text);
+  const slot = slots[st.idx] || null;
+  const check = checkGrammar(text);
+
+  if (a.isRussian){
+    const hints = (slot || slots[0]).hints;
+    return { reply:"Let's try it in English. You can say: " + hints[0],
+             correction:{ status:"needs_improvement", original:a.raw, improved:hints[0],
+                          explanation_ru:"Это было по-русски. Повтори английский вариант — кнопка 🔊 рядом произнесёт его." },
+             next_hints:hints, pronunciation_tip:null };
+  }
+
+  /* 1. реакция именно на то, что сказал ученик */
+  let lead = "";
+  const val = slot ? pickFact(a, slot.want) : null;
+  if (a.asksBack && !a.unclear){
+    lead = answerBack(a, eng, slot);
+  } else if (a.unclear && slot){
+    lead = "No problem! You can say: " + slot.hints[0];
+  } else if (slot && slot.want === "yesno" && a.yesno){
+    lead = a.yesno === "yes" ? (slot.reactYes || "Great!") : (slot.reactNo || "That's okay.");
+  } else if (slot && val != null && slot.react){
+    lead = slot.react(val, a);
+  } else if (slot && a.yesno && (slot.reactYes || slot.reactNo)){
+    lead = a.yesno === "yes" ? (slot.reactYes || "Great!") : (slot.reactNo || "That's okay.");
+  } else {
+    lead = reactGeneric(a, st);
+  }
+
+  /* 2. запоминаем, что уже рассказано (встречный вопрос без ответа — не ответ) */
+  if (slot && !a.unclear){
+    if (val != null || a.yesno || !a.asksBack) st.facts[slot.id] = (val != null) ? val : (a.yesno || a.raw);
+    harvest(a, st.facts, slots, st.idx);
+  }
+
+  if (a.asksBack && lead){
+    for (let i = st.idx + 1; i < slots.length; i++)
+      if (st.facts[slots[i].id] == null && sameQuestion(lead, slots[i].q)) st.facts[slots[i].id] = lead;
+  }
+
+  /* 3. следующий вопрос — только тот, на который ответа ещё нет */
+  let next = "", nextHints = null;
+  if (a.unclear && slot && st.tries < 1){
+    st.tries++; next = slot.q; nextHints = slot.hints;
+  } else if (slot && st.facts[slot.id] == null){
+    st.tries = 0; next = slot.q; nextHints = slot.hints;   // ученик спросил в ответ — свой вопрос повторяем
+  } else {
+    st.tries = 0;
+    let i = st.idx + 1;
+    while (i < slots.length && st.facts[slots[i].id] != null) i++;
+    st.idx = i;
+    if (i < slots.length){ next = slots[i].q; nextHints = slots[i].hints; }
+    else {
+      next = eng.extra[(st.extra++) % eng.extra.length];
+      nextHints = state.topic.hints.slice(0,3);
     }
   }
-  if (/[а-яё]/i.test(text)){
-    return { status:"needs_improvement", original:text,
-             improved:"Sorry, I don't know how to say it in English.",
-             explanation_ru:"Здесь был русский текст. Скажи по-английски — можно взять подсказку ниже." };
-  }
-  return { status:"correct", original:text, improved:text, explanation_ru:"" };
-}
-function demoAnswer(text){
-  const list = state.topic.demo;
-  const reply = list[state.demoStep % list.length];
-  state.demoStep++;
-  const h = state.topic.hints, start = (state.demoStep * 2) % h.length;
-  return {
-    reply,
-    correction: localCheck(text),
-    next_hints: [h[start % h.length], h[(start+1) % h.length], h[(start+2) % h.length]],
-    pronunciation_tip: null
-  };
+
+  const reply = (lead ? lead.replace(/\s+$/,"") + " " : "") + next;
+  return { reply:reply.trim(), correction:check, next_hints:nextHints, pronunciation_tip:null };
 }
 
 /* ============================================================
@@ -958,7 +1616,13 @@ async function handleLearnerInput(text){
     const r = await askGemini(clean);
     if (r.ok){
       const parsed = parseModelJSON(r.raw);
-      if (parsed) result = parsed;
+      if (parsed){
+        result = parsed;
+        // страховка: если модель пропустила явную ошибку, показываем свою проверку
+        const local = checkGrammar(clean);
+        const gStatus = result.correction && result.correction.status;
+        if (local.status === "needs_improvement" && gStatus !== "needs_improvement") result.correction = local;
+      }
       else {
         result = { reply:r.raw.slice(0,300), correction:localCheck(clean),
                    next_hints:state.topic.hints.slice(0,3), pronunciation_tip:null };
@@ -1077,6 +1741,44 @@ $("autoMic").addEventListener("change",(e)=>{
 });
 
 /* ============================================================
+   12b. ТЕМА ОФОРМЛЕНИЯ: как в системе / светлая / тёмная
+   ============================================================ */
+const LS_THEME = "englishPractice.theme";
+const THEME_ORDER = ["auto","light","dark"];
+const THEME_UI = {
+  auto:{ icon:"🌓", label:"Тема: как в системе. Нажми, чтобы включить светлую" },
+  light:{ icon:"☀️", label:"Тема: светлая. Нажми, чтобы включить тёмную" },
+  dark:{ icon:"🌙", label:"Тема: тёмная. Нажми, чтобы вернуть системную" }
+};
+const darkQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+function applyTheme(){
+  const isDark = state.theme === "dark" || (state.theme === "auto" && darkQuery && darkQuery.matches);
+  document.documentElement.classList.toggle("dark", isDark);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", isDark ? "#0D0F19" : "#F2F4FF");
+  const b = $("themeBtn");
+  b.textContent = THEME_UI[state.theme].icon;
+  b.setAttribute("aria-label", THEME_UI[state.theme].label);
+  const sel = $("themeSel");
+  if (sel && sel.value !== state.theme) sel.value = state.theme;
+}
+function setTheme(next){
+  state.theme = THEME_ORDER.indexOf(next) === -1 ? "auto" : next;
+  try{ localStorage.setItem(LS_THEME, state.theme); }catch(e){}
+  applyTheme();
+}
+try{
+  const t = localStorage.getItem(LS_THEME);
+  if (t) state.theme = t;
+}catch(e){}
+$("themeBtn").addEventListener("click",()=>{
+  setTheme(THEME_ORDER[(THEME_ORDER.indexOf(state.theme) + 1) % THEME_ORDER.length]);
+});
+$("themeSel").addEventListener("change",(e)=>setTheme(e.target.value));
+if (darkQuery && darkQuery.addEventListener) darkQuery.addEventListener("change", applyTheme);
+applyTheme();
+
+/* ============================================================
    13. КЛЮЧ API
    ============================================================ */
 const keyInput = $("apiKey");
@@ -1133,6 +1835,7 @@ function startTopic(topic, isReset){
 
   state.topic = topic; state.history = []; state.demoStep = 0;
   state.busy = false; state.exchanges = 0;
+  state.slot = { idx:0, tries:0, facts:{}, gen:0, extra:0 };
   setSendEnabled(true);
   app.dataset.topic = topic.id;
   app.classList.remove("min");

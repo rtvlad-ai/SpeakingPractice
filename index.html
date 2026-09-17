@@ -1,130 +1,91 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#F2F4FF">
 <title>English Practice — говорим по-английски</title>
 <style>
-/* ============================================================
-   ТОКЕНЫ И ТЕМЫ ПО ТЕМАМ РАЗГОВОРА
-   Каждая тема = своя «сцена»: небо, акцент, тон пузырей.
-   Шрифты: округлый сан-сериф для русского интерфейса,
-   сериф — только для английских фраз, чтобы язык был виден глазами.
-   ============================================================ */
+/* ===== токены: светлая / тёмная тема + палитра каждой темы разговора ===== */
 :root{
-  --ink:#1B1F3B;
-  --ink-soft:#5B618A;
-  --card:#FFFFFF;
-  --line:#E3E6F5;
-  --mint:#0FA678;
-  --amber:#FFC94A;
-  --red:#D6455B;
-  --red-soft:#FDEAED;
+  --ink:#1B1F3B; --ink-soft:#5B618A; --card:#FFFFFF; --line:#E3E6F5; --page:#EEF0FA;
+  --sys:#EDEFF8; --meta:#FFFFFFD9; --ico:#FFFFFFCC; --badge:#FFFFFFB3;
+  --learner-bg:#1B1F3B; --learner-fg:#FFFFFF;
+  --good:#E2F7F0; --good-line:#0FA678; --polish:#E7F0FF; --polish-line:#2E7BE0;
+  --fix:#FFF6E0; --fix-line:#E9B434; --red:#D6455B; --red-soft:#FDEAED; --red-ink:#98303F;
+  --glass:rgba(255,255,255,.80); --glass-line:rgba(255,255,255,.55);
+  --cloud:rgba(255,255,255,.93); --scrim-a:rgba(255,255,255,.30); --scrim-b:rgba(255,255,255,.72);
+  --shadow:0 8px 28px rgba(20,24,45,.18);
   --ui:ui-rounded,"SF Pro Rounded","Nunito","Segoe UI Variable",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --en:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
-  --accent:#5B4BE0; --tint:#EDEBFF; --sky1:#CFE3FF; --sky2:#F4F6FF; --ground:#BFE3C4;
+}
+:root[data-theme="dark"]{
+  --ink:#E9ECFA; --ink-soft:#9AA2C6; --card:#141A2C; --line:#29304F; --page:#090C16;
+  --sys:#1A2035; --meta:#0F1424D9; --ico:#FFFFFF1F; --badge:#FFFFFF14;
+  --learner-bg:#2C355A; --learner-fg:#F2F4FF;
+  --good:#12362D; --good-line:#25C795; --polish:#16243C; --polish-line:#6FB0FF;
+  --fix:#332A12; --fix-line:#E9B434; --red:#E4596E; --red-soft:#3A1C22; --red-ink:#FFB3BE;
+  --glass:rgba(16,20,34,.72); --glass-line:rgba(255,255,255,.10);
+  --cloud:rgba(18,23,40,.90); --scrim-a:rgba(4,7,15,.45); --scrim-b:rgba(4,7,15,.80);
+  --shadow:0 8px 28px rgba(0,0,0,.45);
 }
 .app[data-topic="greeting"]{--accent:#5B4BE0;--tint:#EDEBFF;--sky1:#CFE0FF;--sky2:#F4F6FF;--ground:#B7E2BC}
 .app[data-topic="school"]{--accent:#2E7BE0;--tint:#E6F0FF;--sky1:#C9E6FF;--sky2:#F2F8FF;--ground:#CFD8E8}
-.app[data-topic="hobbies"]{--accent:#0FA678;--tint:#E2F7F0;--sky1:#C7F0DF;--sky2:#F3FCF8;--ground:#A8E3BE}
+.app[data-topic="hobbies"]{--accent:#0F9E72;--tint:#E2F7F0;--sky1:#C7F0DF;--sky2:#F3FCF8;--ground:#A8E3BE}
 .app[data-topic="cafe"]{--accent:#C0562F;--tint:#FFEDE3;--sky1:#FFDCC4;--sky2:#FFF7F1;--ground:#E8C9A8}
 .app[data-topic="shopping"]{--accent:#C43E86;--tint:#FFE8F3;--sky1:#FFD6EA;--sky2:#FFF5FA;--ground:#F0CFE0}
 .app[data-topic="routine"]{--accent:#6B5BD6;--tint:#EFEBFF;--sky1:#D9D2FF;--sky2:#F7F5FF;--ground:#CEC7EE}
 .app[data-topic="travel"]{--accent:#0E8FA8;--tint:#E0F5FA;--sky1:#BEEBF5;--sky2:#F3FCFE;--ground:#9FD8CE}
 .app[data-topic="family"]{--accent:#B5562F;--tint:#FFEBE3;--sky1:#FFDCCF;--sky2:#FFF6F2;--ground:#D8C4A8}
-
-/* ---------- тёмная тема (класс .dark на <html>) ---------- */
-html.dark body{background:#0D0F19}
-html.dark{--ink:#E9EBF7;--ink-soft:#A2A8CB;--card:#1A1D2E;--line:#2C3049;--red-soft:#3A1F27}
-html.dark .app{background:linear-gradient(180deg,#1C2034 0%,#141726 45%,#0F1220 100%);--tint:#232743;--ground:#232A3C}
-html.dark .scene{background:linear-gradient(180deg,var(--accent) -70%,#1C2033 78%)}
-html.dark .scene > svg{opacity:.7;filter:saturate(.8) brightness(.78)}
-html.dark .mode{background:#FFFFFF1A;color:var(--ink-soft)}
-html.dark .mode.live{background:var(--accent);color:#fff}
-html.dark .ico{background:#FFFFFF14;color:var(--ink)}
-html.dark .tchip{background:#FFFFFF14;color:var(--ink-soft)}
-html.dark .tchip[aria-selected="true"]{background:var(--accent);color:#fff}
-html.dark .who-meta{background:#1A1D2EE6}
-html.dark .msg.tutor .bubble{background:var(--tint);color:#EFF1FF}
-html.dark .msg.learner .bubble{background:var(--accent);color:#fff}
-html.dark .msg.system .bubble{background:#1E2235;color:var(--ink-soft)}
-html.dark .msg.system.bad .bubble{background:#3A1F27;color:#F3B6C0}
-html.dark .feedback{background:#14302A;color:var(--ink)}
-html.dark .feedback.fix{background:#33291A}
-html.dark .mini{background:#1E2235;border-color:var(--line);color:var(--ink)}
-html.dark .chip{background:#1E2235;border-color:var(--line)}
-html.dark .chip .say{border-left-color:var(--line)}
-html.dark .composer{background:#151827;border-top-color:var(--line);box-shadow:0 -6px 20px rgba(0,0,0,.35)}
-html.dark .send-row textarea{background:#1E2235;border-color:var(--line);color:var(--ink)}
-html.dark .send{background:var(--accent)}
-html.dark .sheet{background:#151827}
-html.dark .field input,html.dark .field select{background:#1E2235;border-color:var(--line);color:var(--ink)}
-html.dark .row > button{background:#1E2235;border-color:var(--line);color:var(--ink)}
-html.dark .row > button.solid{background:var(--accent);border-color:var(--accent);color:#fff}
-html.dark .row > button.danger{background:#3A1F27;border-color:#5A2C38;color:#F3B6C0}
+:root[data-theme="dark"] .app[data-topic="greeting"]{--accent:#8E82FF;--tint:#1E2142;--sky1:#161B34;--sky2:#0D101E;--ground:#1C3326}
+:root[data-theme="dark"] .app[data-topic="school"]{--accent:#6FB0FF;--tint:#182742;--sky1:#122036;--sky2:#0B111D;--ground:#1B2740}
+:root[data-theme="dark"] .app[data-topic="hobbies"]{--accent:#2ED3A0;--tint:#123329;--sky1:#0E2A22;--sky2:#081512;--ground:#14372A}
+:root[data-theme="dark"] .app[data-topic="cafe"]{--accent:#F08A5C;--tint:#33211A;--sky1:#2A1B14;--sky2:#160E0A;--ground:#3A281C}
+:root[data-theme="dark"] .app[data-topic="shopping"]{--accent:#F06BA8;--tint:#33162A;--sky1:#2A1222;--sky2:#160910;--ground:#3A1B2E}
+:root[data-theme="dark"] .app[data-topic="routine"]{--accent:#9A8CFF;--tint:#1F1D3E;--sky1:#191734;--sky2:#0D0C1C;--ground:#221F44}
+:root[data-theme="dark"] .app[data-topic="travel"]{--accent:#3FC7DE;--tint:#0F2E36;--sky1:#0C252C;--sky2:#071316;--ground:#123029}
+:root[data-theme="dark"] .app[data-topic="family"]{--accent:#E8865A;--tint:#33201A;--sky1:#2A1A14;--sky2:#160D0A;--ground:#382A1E}
 
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;height:100%}
-body{
-  font-family:var(--ui);color:var(--ink);
-  background:#EEF0FA;-webkit-text-size-adjust:100%;
-}
-.app{
-  max-width:560px;margin:0 auto;height:100dvh;
-  display:flex;flex-direction:column;
-  background:linear-gradient(180deg,var(--sky1) 0%,var(--sky2) 42%,#FFFFFF 100%);
-  transition:background .5s ease;
-}
+body{font-family:var(--ui);color:var(--ink);background:var(--page);-webkit-text-size-adjust:100%}
+.app{position:relative;max-width:560px;margin:0 auto;height:100dvh;display:flex;flex-direction:column;
+  background:linear-gradient(180deg,var(--sky1) 0%,var(--sky2) 42%,var(--card) 100%);transition:background .5s ease}
+/* фото темы — на весь экран, под всем интерфейсом, включая окно диалога */
+.photo{position:absolute;inset:0;background-size:cover;background-position:center;
+  opacity:0;transition:opacity .7s ease;pointer-events:none}
+.photo.on{opacity:1}
+.scrim{position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,var(--scrim-a) 0%,var(--scrim-a) 34%,var(--scrim-b) 100%)}
+.app > .bar,.app > .stage,.app > .chat,.app > .chips,.app > .composer{position:relative;z-index:2}
 
-/* ---------- верхняя полоса (всё техническое — мелкое) ---------- */
-.bar{
-  display:flex;align-items:center;gap:8px;
-  padding:calc(env(safe-area-inset-top) + 8px) 12px 6px;
-}
-.brand{font-family:var(--en);font-size:17px;letter-spacing:-.01em}
-.mode{
-  font-size:11px;padding:3px 8px;border-radius:999px;
-  background:#FFFFFFB3;color:var(--ink-soft);white-space:nowrap;
-}
+.bar{display:flex;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top) + 8px) 12px 6px}
+.brand{font-family:var(--en);font-size:17px}
+.mode{font-size:11px;padding:3px 8px;border-radius:999px;background:var(--badge);color:var(--ink-soft);white-space:nowrap}
 .mode.live{background:var(--accent);color:#fff}
 .bar-actions{margin-left:auto;display:flex;gap:6px}
-.ico{
-  width:34px;height:34px;min-height:34px;padding:0;font-size:15px;
-  border-radius:11px;border:none;background:#FFFFFFCC;color:var(--ink);
-  display:grid;place-items:center;
-}
+.ico{width:34px;height:34px;min-height:34px;padding:0;font-size:15px;border-radius:11px;border:none;
+  background:var(--ico);color:var(--ink);display:grid;place-items:center}
 
-/* ---------- сцена с персонажем ---------- */
-.stage{position:relative;padding:2px 12px 8px;flex:none}
-.scene{
-  position:relative;height:132px;border-radius:20px;overflow:hidden;
-  background:#FFFFFF33;transition:height .35s ease;
-}
-.scene > svg{position:absolute;inset:0;width:100%;height:100%}
-.app.min .scene{height:64px}
-
-.who{
-  position:absolute;left:12px;bottom:10px;right:12px;
-  display:flex;align-items:flex-end;gap:10px;
-}
-.avatar{width:86px;height:86px;flex:none;transition:width .35s ease,height .35s ease}
-.app.min .avatar{width:48px;height:48px}
-.avatar svg{width:100%;height:100%;overflow:visible}
-.who-meta{
-  background:#FFFFFFD9;border-radius:14px;padding:6px 10px;
-  display:flex;flex-direction:column;line-height:1.25;min-width:0;
-}
-.who-meta b{font-size:15px}
-.who-meta span{font-size:12px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.app.min .who-meta span{display:none}
-.say-again{
-  margin-left:auto;flex:none;width:40px;height:40px;min-height:40px;padding:0;
-  border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:17px;
-  box-shadow:0 4px 12px rgba(27,31,59,.18);
-}
-/* «говорит»: рот + звуковые дуги */
+.stage{display:flex;align-items:flex-end;gap:8px;padding:4px 12px 8px;flex:none}
+.avatar{width:96px;height:96px;flex:none;filter:drop-shadow(0 6px 14px rgba(0,0,0,.28));transition:width .3s ease,height .3s ease}
+.app.min .avatar{width:68px;height:68px}
+.avatar svg,.avatar img{width:100%;height:100%;overflow:visible}
+.avatar img{object-fit:contain;border-radius:14px}
+.avatar.speaking img{animation:bob .55s ease-in-out infinite alternate}
+@keyframes bob{from{transform:translateY(0)}to{transform:translateY(-3px)}}
+/* облако с репликой собеседника — рядом с персонажем */
+.cloud{position:relative;flex:1 1 auto;min-width:0;background:var(--cloud);border-radius:22px;
+  padding:9px 12px 10px;box-shadow:var(--shadow);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.cloud::before,.cloud::after{content:"";position:absolute;background:var(--cloud);border-radius:50%}
+.cloud::before{width:15px;height:15px;left:-7px;bottom:16px}
+.cloud::after{width:9px;height:9px;left:-16px;bottom:5px}
+.cloud .top{display:flex;align-items:center;gap:6px;margin-bottom:2px}
+.cloud .name{font-size:11.5px;font-weight:700;color:var(--accent)}
+.cloud .role{font-size:11px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cloud .say{margin-left:auto;flex:none;width:30px;height:30px;min-height:30px;padding:0;border-radius:50%;
+  border:none;background:var(--accent);color:#fff;font-size:14px}
+.cloud .line{font-family:var(--en);font-size:19px;line-height:1.34;max-height:24vh;overflow-y:auto}
+.app.min .cloud .line{font-size:18px}
 .avatar .mouth{transform-box:fill-box;transform-origin:center}
 .avatar.speaking .mouth{animation:talk .26s ease-in-out infinite alternate}
 @keyframes talk{from{transform:scaleY(.35)}to{transform:scaleY(1.25)}}
@@ -136,50 +97,33 @@ body{
 .avatar .lid{transform-box:fill-box;transform-origin:center;animation:blink 6.5s infinite}
 @keyframes blink{0%,96%,100%{transform:scaleY(0)}98%{transform:scaleY(1)}}
 
-/* ---------- полоса тем ---------- */
-.topics{display:flex;gap:6px;overflow-x:auto;padding:8px 2px 0;scrollbar-width:none}
+.topics{position:relative;z-index:2;display:flex;gap:6px;overflow-x:auto;padding:0 12px 2px;scrollbar-width:none;flex:none}
 .topics::-webkit-scrollbar{display:none}
-.tchip{
-  flex:none;border:none;min-height:32px;padding:5px 11px;font-size:13px;font-weight:600;
-  border-radius:999px;background:#FFFFFFCC;color:var(--ink-soft);
-}
+.tchip{flex:none;border:none;min-height:32px;padding:5px 11px;font-size:13px;font-weight:600;border-radius:999px;background:var(--ico);color:var(--ink-soft)}
 .tchip[aria-selected="true"]{background:var(--accent);color:#fff}
 
-/* ---------- чат: главная площадь экрана ---------- */
-.chat{
-  flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;
-  padding:10px 14px 4px;display:flex;flex-direction:column;gap:11px;
-}
+.chat{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:10px 14px 4px;display:flex;flex-direction:column;gap:11px}
 .msg{display:flex;flex-direction:column;gap:4px;max-width:88%}
 .msg .who-label{font-size:11px;color:var(--ink-soft)}
 .bubble{padding:11px 14px;border-radius:18px;line-height:1.45}
 .msg.tutor{align-self:flex-start}
-.msg.tutor .bubble{
-  background:var(--tint);border-bottom-left-radius:6px;
-  font-family:var(--en);font-size:19px;
-}
+.msg.tutor .bubble{background:var(--glass);border:1px solid var(--glass-line);border-bottom-left-radius:6px;
+  font-family:var(--en);font-size:18px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .msg.learner{align-self:flex-end;align-items:flex-end}
-.msg.learner .bubble{
-  background:var(--ink);color:#fff;border-bottom-right-radius:6px;
-  font-family:var(--en);font-size:17px;
-}
+.msg.learner .bubble{background:var(--learner-bg);color:var(--learner-fg);border-bottom-right-radius:6px;
+  font-family:var(--en);font-size:17px;box-shadow:var(--shadow)}
 .msg.system{align-self:center;max-width:100%}
-.msg.system .bubble{background:#EDEFF8;color:var(--ink-soft);font-size:12.5px;text-align:center;padding:7px 12px}
-.msg.system.bad .bubble{background:var(--red-soft);color:#98303F}
+.msg.system .bubble{background:var(--glass);color:var(--ink-soft);font-size:12.5px;text-align:center;padding:7px 12px;
+  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.msg.system.bad .bubble{background:var(--red-soft);color:var(--red-ink)}
 .bubble-row{display:flex;align-items:flex-start;gap:6px}
-.bubble-row .mini{flex:none}
-.mini{
-  min-height:32px;padding:5px 9px;font-size:13px;border-radius:10px;
-  border:1px solid var(--line);background:#fff;color:var(--ink);font-weight:600;
-}
+.mini{min-height:32px;padding:5px 9px;font-size:13px;border-radius:10px;border:1px solid var(--line);
+  background:var(--card);color:var(--ink);font-weight:600;flex:none}
 
-/* карточка обратной связи */
-.feedback{
-  align-self:stretch;max-width:100%;border-radius:14px;padding:10px 13px;
-  display:flex;flex-direction:column;gap:6px;
-  background:#E2F7F0;border-left:4px solid var(--mint);
-}
-.feedback.fix{background:#FFF6E0;border-left-color:var(--amber)}
+.feedback{align-self:stretch;max-width:100%;border-radius:14px;padding:10px 13px;display:flex;flex-direction:column;gap:6px;
+  background:var(--good);border-left:4px solid var(--good-line);box-shadow:var(--shadow)}
+.feedback.polish{background:var(--polish);border-left-color:var(--polish-line)}
+.feedback.fix{background:var(--fix);border-left-color:var(--fix-line)}
 .feedback .head{font-weight:700;font-size:14px}
 .feedback .orig{font-family:var(--en);font-size:15px;color:var(--ink-soft);text-decoration:line-through}
 .feedback .good{font-family:var(--en);font-size:18px;font-weight:600}
@@ -193,62 +137,47 @@ body{
 .typing i:nth-child(3){animation-delay:.36s}
 @keyframes dots{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
 
-/* ---------- подсказки ---------- */
 .chips{display:flex;gap:7px;overflow-x:auto;padding:4px 14px 6px;scrollbar-width:none;flex:none}
 .chips::-webkit-scrollbar{display:none}
-.chip{flex:none;display:flex;border:1px solid var(--line);border-radius:999px;background:#fff;overflow:hidden}
-.chip button{border:none;border-radius:0;background:transparent;min-height:36px;font-weight:500}
+.chip{flex:none;display:flex;border:1px solid var(--glass-line);border-radius:999px;background:var(--glass);
+  overflow:hidden;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.chip button{border:none;border-radius:0;background:transparent;color:var(--ink);min-height:36px;font-weight:500}
 .chip .txt{font-family:var(--en);font-size:15.5px;white-space:nowrap;padding:6px 12px}
 .chip .say{padding:6px 10px;border-left:1px solid var(--line);font-size:13px}
 
-/* ---------- ввод ---------- */
-.composer{
-  flex:none;background:#fff;border-top:1px solid var(--line);
-  padding:9px 12px calc(9px + env(safe-area-inset-bottom));
-  display:flex;flex-direction:column;gap:8px;
-}
-.mic{
-  display:flex;align-items:center;justify-content:center;gap:9px;
-  width:100%;min-height:52px;font-size:17px;font-weight:700;
-  border-radius:16px;border:none;background:var(--accent);color:#fff;
-}
+.composer{flex:none;background:var(--glass);border-top:1px solid var(--glass-line);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  padding:9px 12px calc(9px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px}
+.mic{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-height:52px;font-size:17px;
+  font-weight:700;border-radius:16px;border:none;background:var(--accent);color:#fff}
 .mic.rec{background:var(--red)}
 .mic .dot{width:11px;height:11px;border-radius:50%;background:#fff;animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{transform:scale(.8);opacity:.7}50%{transform:scale(1.2);opacity:1}}
 .send-row{display:flex;gap:8px;align-items:flex-end}
-.send-row textarea{
-  flex:1 1 auto;font:inherit;font-size:16px;line-height:1.35;resize:none;
-  border:1px solid var(--line);border-radius:14px;padding:9px 12px;background:#FAFBFF;color:var(--ink);
-}
-.send{
-  flex:none;width:48px;min-height:42px;padding:0;font-size:18px;
-  border-radius:14px;border:none;background:var(--ink);color:#fff;
-}
+.send-row textarea{flex:1 1 auto;font:inherit;font-size:16px;line-height:1.35;resize:none;border:1px solid var(--line);
+  border-radius:14px;padding:9px 12px;background:var(--card);color:var(--ink)}
+.send{flex:none;width:48px;min-height:42px;padding:0;font-size:18px;border-radius:14px;border:none;background:var(--accent);color:#fff}
 .meta-row{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-soft);min-height:13px}
 
-/* ---------- нижний лист настроек ---------- */
-.veil{position:fixed;inset:0;background:rgba(27,31,59,.42);z-index:40}
+.veil{position:fixed;inset:0;background:rgba(5,8,18,.55);z-index:40}
 .veil[hidden],.sheet[hidden]{display:none}
-.sheet{
-  position:fixed;left:0;right:0;bottom:0;z-index:41;
-  max-width:560px;margin:0 auto;max-height:86dvh;overflow-y:auto;
-  background:#fff;border-radius:22px 22px 0 0;
-  padding:14px 16px calc(20px + env(safe-area-inset-bottom));
-  display:flex;flex-direction:column;gap:12px;
-  box-shadow:0 -10px 40px rgba(27,31,59,.25);
-}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;max-width:560px;margin:0 auto;max-height:86dvh;overflow-y:auto;
+  background:var(--card);color:var(--ink);border-radius:22px 22px 0 0;
+  padding:14px 16px calc(20px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px;
+  box-shadow:0 -10px 40px rgba(0,0,0,.35)}
 .sheet h2{margin:0;font-size:17px}
 .sheet h3{margin:6px 0 0;font-size:14px}
-.sheet .close{position:absolute;top:10px;right:12px}
+.sheet .close{position:absolute;top:10px;right:12px;background:var(--sys)}
 .field{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--ink-soft)}
-.field input,.field select{
-  font:inherit;font-size:16px;color:var(--ink);background:#FAFBFF;
-  border:1px solid var(--line);border-radius:12px;padding:10px 12px;width:100%;
-}
+.field input,.field select{font:inherit;font-size:16px;color:var(--ink);background:var(--page);
+  border:1px solid var(--line);border-radius:12px;padding:10px 12px;width:100%}
 .row{display:flex;gap:7px;flex-wrap:wrap}
-.row > button{flex:1 1 auto;min-height:40px;font-size:13.5px;border-radius:12px;border:1px solid var(--line);background:#fff}
+.row > button{flex:1 1 auto;min-height:40px;font-size:13.5px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
 .row > button.solid{background:var(--accent);border-color:var(--accent);color:#fff}
-.row > button.danger{background:var(--red-soft);border-color:#F5C6CE;color:#98303F}
+.row > button.danger{background:var(--red-soft);border-color:transparent;color:var(--red-ink)}
+.seg{display:flex;gap:6px}
+.seg button{flex:1 1 0;min-height:38px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:13.5px}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
 .check{display:flex;align-items:center;gap:9px;font-size:14px;color:var(--ink)}
 .check input{width:20px;height:20px;accent-color:var(--accent);flex:none}
 .note{font-size:12.5px;color:var(--ink-soft);line-height:1.5;margin:0}
@@ -263,24 +192,19 @@ button:active{transform:translateY(1px)}
 button[disabled]{opacity:.5;cursor:not-allowed}
 :focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-
-@media (max-height:680px){
-  .scene{height:104px}
-  .msg.tutor .bubble{font-size:18px}
-}
-@media (prefers-reduced-motion:reduce){
-  *{animation:none!important;transition:none!important}
-}
+@media (max-height:680px){.avatar{width:76px;height:76px}.cloud .line{font-size:17px}.msg.tutor .bubble{font-size:17px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
 <div class="app" id="app" data-topic="greeting">
-
+  <div class="photo" id="photo" aria-hidden="true"></div>
+  <div class="scrim" aria-hidden="true"></div>
   <div class="bar">
     <span class="brand">English Practice</span>
-    <span class="mode" id="pillMode">демо</span>
+    <span class="mode" id="pillMode">локальный</span>
     <div class="bar-actions">
-      <button class="ico" id="themeBtn" aria-label="Тема: как в системе">🌓</button>
+      <button class="ico" id="themeBtn" aria-label="Тема оформления: авто">🌗</button>
       <button class="ico" id="soundBtn" aria-label="Выключить звук">🔊</button>
       <button class="ico" id="resetBtn" aria-label="Начать разговор заново">↺</button>
       <button class="ico" id="settingsBtn" aria-label="Открыть настройки и проверку браузера">⚙</button>
@@ -288,21 +212,19 @@ button[disabled]{opacity:.5;cursor:not-allowed}
   </div>
 
   <section class="stage">
-    <div class="scene" id="scene">
-      <div class="who">
-        <div class="avatar" id="avatar" aria-hidden="true"></div>
-        <div class="who-meta">
-          <b id="charName">Alex</b>
-          <span id="charRole">новый знакомый</span>
-        </div>
-        <button class="say-again" id="repeatBtn" aria-label="Повторить последнюю фразу тьютора">🔊</button>
+    <div class="avatar" id="avatar" aria-hidden="true"></div>
+    <div class="cloud" id="cloud">
+      <div class="top">
+        <span class="name" id="charName">Alex</span>
+        <span class="role" id="charRole">новый знакомый</span>
+        <button class="say" id="repeatBtn" aria-label="Повторить последнюю фразу собеседника">🔊</button>
       </div>
+      <div class="line" id="cloudLine"></div>
     </div>
-    <div class="topics" id="topics" role="tablist" aria-label="Тема разговора"></div>
   </section>
+  <div class="topics" id="topics" role="tablist" aria-label="Тема разговора"></div>
 
-  <main class="chat" id="chat" role="log" aria-live="polite" aria-label="Диалог с тьютором"></main>
-
+  <main class="chat" id="chat" role="log" aria-live="polite" aria-label="Диалог с собеседником"></main>
   <div class="chips" id="chips" aria-label="Варианты ответа"></div>
 
   <section class="composer">
@@ -311,7 +233,7 @@ button[disabled]{opacity:.5;cursor:not-allowed}
     </button>
     <div class="send-row">
       <textarea id="textInput" rows="1" maxlength="250" placeholder="…или напиши ответ" aria-label="Написать ответ по-английски"></textarea>
-      <button class="send" id="sendBtn" aria-label="Отправить ответ тьютору">➤</button>
+      <button class="send" id="sendBtn" aria-label="Отправить ответ собеседнику">➤</button>
     </div>
     <div class="meta-row"><span id="micState">микрофон готов</span><span id="counter"></span></div>
   </section>
@@ -322,7 +244,18 @@ button[disabled]{opacity:.5;cursor:not-allowed}
   <button class="ico close" id="sheetClose" aria-label="Закрыть настройки">✕</button>
   <h2>Настройки</h2>
 
-  <label class="field" for="apiKey">Gemini API key (необязательно)
+  <h3>Оформление</h3>
+  <div class="seg" role="group" aria-label="Тема оформления">
+    <button id="themeAuto" aria-pressed="true">Авто</button>
+    <button id="themeLight" aria-pressed="false">Светлая</button>
+    <button id="themeDark" aria-pressed="false">Тёмная</button>
+  </div>
+
+  <label class="check" for="photosOn"><input type="checkbox" id="photosOn" checked> Фоновые фотографии темы</label>
+  <p class="note">Фото берутся с Unsplash по сети. Хочешь офлайн или свои картинки — положи рядом с index.html папку <b>photos</b> с файлами greeting.jpg, school.jpg, hobbies.jpg, cafe.jpg, shopping.jpg, routine.jpg, travel.jpg, family.jpg: они используются первыми. Если фото недоступно, остаётся цветной фон темы.</p>
+
+  <h3>Gemini API</h3>
+  <label class="field" for="apiKey">API key (необязательно)
     <input type="password" id="apiKey" autocomplete="off" spellcheck="false" placeholder="AIza…">
   </label>
   <div class="row">
@@ -330,14 +263,14 @@ button[disabled]{opacity:.5;cursor:not-allowed}
     <button id="rememberKey" aria-label="Сохранить ключ в этом браузере">Запомнить</button>
     <button id="forgetKey" class="danger" aria-label="Удалить сохранённый ключ из браузера">Удалить ключ</button>
   </div>
-  <p class="note">Без ключа работает демо-режим: голос, темы, подсказки, озвучка и проверка частых ошибок. «Запомнить» кладёт ключ в localStorage — только для личного теста на своём устройстве. В опубликованной странице ключ виден любому посетителю: там нужен backend-прокси.</p>
+  <p class="note">Без ключа работает локальный собеседник: он разбирает твой ответ, реагирует на него и ведёт свою линию вопросов. Проверка грамматики работает всегда, в том числе без ключа. С ключом диалог становится полностью свободным. Ключ в localStorage — только для личного теста; для публичной страницы нужен backend-прокси.</p>
 
-  <h3>Голос тьютора</h3>
+  <h3>Голос собеседника</h3>
   <label class="field" for="voiceSel">Голос (лучше выбрать Natural / Enhanced / Siri, если есть)
-    <select id="voiceSel" aria-label="Выбрать голос тьютора"></select>
+    <select id="voiceSel" aria-label="Выбрать голос собеседника"></select>
   </label>
   <label class="field" for="rate">Темп речи
-    <select id="rate" aria-label="Темп речи тьютора">
+    <select id="rate" aria-label="Темп речи собеседника">
       <option value="1">Естественный</option>
       <option value="0.92">Чуть медленнее</option>
       <option value="0.8">Медленно, для трудных фраз</option>
@@ -345,34 +278,20 @@ button[disabled]{opacity:.5;cursor:not-allowed}
   </label>
   <div class="row"><button id="testVoice" aria-label="Послушать выбранный голос">Послушать голос</button></div>
 
-  <h3>Оформление</h3>
-  <label class="field" for="themeSel">Тема
-    <select id="themeSel" aria-label="Тема оформления">
-      <option value="auto">Как в системе</option>
-      <option value="light">Светлая</option>
-      <option value="dark">Тёмная</option>
-    </select>
-  </label>
-
   <h3>Микрофон</h3>
-  <label class="check" for="autoMic">
-    <input type="checkbox" id="autoMic">
-    Авто-микрофон: включать запись сразу после реплики тьютора
-  </label>
+  <label class="check" for="autoMic"><input type="checkbox" id="autoMic"> Авто-микрофон: включать запись сразу после реплики собеседника</label>
   <div class="diag" id="diag"></div>
   <div class="row"><button id="micTest" aria-label="Проверить доступ к микрофону">Проверить микрофон</button></div>
 
   <h3>Микрофон, ключ и данные</h3>
-  <div class="note">
-    <ul>
-      <li>Микрофон включается только после нажатия кнопки и выключается сам после фразы.</li>
-      <li>Распознавание речи делает браузер; качество зависит от устройства.</li>
-      <li>Текст уходит в Gemini только если ты сам ввёл ключ.</li>
-      <li>API-ключ нельзя оставлять в опубликованном frontend-коде.</li>
-      <li>Для реального публичного запуска нужен backend endpoint, который хранит ключ на сервере.</li>
-      <li>Трекеров и аналитики на странице нет.</li>
-    </ul>
-  </div>
+  <div class="note"><ul>
+    <li>Микрофон включается только после нажатия кнопки и выключается сам после фразы.</li>
+    <li>Распознавание речи делает браузер; качество зависит от устройства.</li>
+    <li>Текст уходит в Gemini только если ты сам ввёл ключ.</li>
+    <li>Проверка грамматики выполняется локально в браузере.</li>
+    <li>Для публичного запуска нужен backend endpoint, который хранит ключ на сервере.</li>
+    <li>Трекеров и аналитики на странице нет.</li>
+  </ul></div>
 </aside>
 
 <div class="sr-only" id="srStatus" role="status" aria-live="assertive"></div>
@@ -380,722 +299,678 @@ button[disabled]{opacity:.5;cursor:not-allowed}
 <script>
 "use strict";
 
-/* ============================================================
-   1. ТЕМЫ: персонаж, сцена, реплики, подсказки, демо-ответы
-   ============================================================ */
+/* ===== 0. утилиты и формы глаголов ===== */
+const cap = (s)=>String(s||"").charAt(0).toUpperCase()+String(s||"").slice(1);
+const lowerFirst = (s)=>String(s||"").charAt(0).toLowerCase()+String(s||"").slice(1);
+const clean1 = (s)=>String(s||"").replace(/\s+/g," ").replace(/[.,!?;:]+$/,"").trim();
+
+const V3 = {have:"has",do:"does",go:"goes",watch:"watches",study:"studies",fly:"flies",brush:"brushes",
+  finish:"finishes",teach:"teaches",wash:"washes",miss:"misses",relax:"relaxes"};
+function third(v){ v=v.toLowerCase();
+  if (V3[v]) return V3[v];
+  if (/(ch|sh|ss|x|z|o)$/.test(v)) return v+"es";
+  if (/[^aeiou]y$/.test(v)) return v.slice(0,-1)+"ies";
+  return v+"s"; }
+const VING = {swim:"swimming",run:"running",ride:"riding",write:"writing",dance:"dancing",skate:"skating",
+  travel:"travelling",make:"making",take:"taking",come:"coming",shop:"shopping",sit:"sitting",get:"getting",
+  jog:"jogging",chat:"chatting",win:"winning"};
+function gerund(v){ v=v.toLowerCase();
+  if (VING[v]) return VING[v];
+  if (/ie$/.test(v)) return v.slice(0,-2)+"ying";
+  if (/e$/.test(v)) return v.slice(0,-1)+"ing";
+  return v+"ing"; }
+const PAST = {go:"went",see:"saw",eat:"ate",have:"had",do:"did",get:"got",meet:"met",buy:"bought",take:"took",
+  make:"made",come:"came",write:"wrote",swim:"swam",give:"gave",say:"said",tell:"told",think:"thought",
+  drink:"drank",sleep:"slept",read:"read",play:"played",watch:"watched",visit:"visited",like:"liked",study:"studied",help:"helped"};
+const BASE = {went:"go",saw:"see",ate:"eat",had:"have",did:"do",got:"get",met:"meet",bought:"buy",took:"take",
+  made:"make",came:"come",wrote:"write",swam:"swim",gave:"give",said:"say",told:"tell",thought:"think",
+  drank:"drink",slept:"sleep",was:"be",were:"be"};
+
+/* ===== 1. темы разговора: персонаж, сцена и СЛОТЫ =====
+   Слот = вопрос + как распознать ответ + как на него отреагировать +
+   полная форма фразы. Поэтому локальный собеседник реагирует на сказанное
+   и не задаёт вопрос, на который уже ответили. */
+const MOOD_GOOD = ["fine","good","great","ok","okay","well","happy","excellent","perfect","not bad","alright"];
+const MOOD_BAD  = ["tired","bad","sad","sick","ill","so-so","angry","bored","nervous","terrible"];
+
 const TOPICS = [
-  {
-    id:"greeting", emoji:"👋", ru:"Знакомство", en:"Greeting",
-    char:{ name:"Alex", role:"новый знакомый в парке",
-           skin:"#F1C9A5", hair:"#3B2A21", style:"short", shirt:"#5B4BE0", extra:"none" },
-    scene:"park",
-    role:"a friendly English-speaking teenager named Alex meeting someone new in a park",
-    goal:"представиться: имя, возраст, город, настроение",
-    start:"Hello! I'm Alex. What's your name?",
-    words:["My name is…","I'm 14.","I'm from Moscow.","Nice to meet you.","How are you?"],
-    hints:["My name is Ivan.","I'm from Moscow.","I'm 14 years old.","Nice to meet you!","I'm fine, thank you.","And you?"],
-    demo:["Nice to meet you! How old are you?","Cool! Where are you from?","That sounds great. Have you got any brothers or sisters?","Thanks for telling me! What do you like doing after school?","I like that too. Who is your best friend?"]
-  },
-  {
-    id:"school", emoji:"🎒", ru:"Школа", en:"School",
-    char:{ name:"Mia", role:"одноклассница",
-           skin:"#EFC49F", hair:"#6B3B2A", style:"long", shirt:"#2E7BE0", extra:"glasses" },
-    scene:"school",
-    role:"a friendly classmate named Mia talking about school life",
-    goal:"рассказать про предметы, расписание и учителей",
-    start:"Hi! What is your favourite subject at school?",
-    words:["My favourite subject is…","I have six lessons.","I like maths.","It's difficult.","My teacher is kind."],
-    hints:["My favourite subject is maths.","I like English and history.","I have six lessons today.","Maths is difficult for me.","My teacher is very kind.","I go to school at eight."],
-    demo:["Nice! How many lessons do you have today?","That's a lot! Which subject is difficult for you?","I understand. Do you like your school?","Good to know! What do you do at break time?","Sounds fun. Do you have homework today?"]
-  },
-  {
-    id:"hobbies", emoji:"🎸", ru:"Хобби", en:"Hobbies",
-    char:{ name:"Leo", role:"сосед по двору",
-           skin:"#C98A5E", hair:"#1F1B18", style:"curly", shirt:"#0FA678", extra:"headphones" },
-    scene:"hobbies",
-    role:"a friendly teenager named Leo who loves asking about hobbies",
-    goal:"говорить о свободном времени: I like + -ing",
-    start:"Hey! What do you like to do in your free time?",
-    words:["I like playing…","I love drawing.","I play football.","twice a week","with my friends"],
-    hints:["I like playing football.","I love drawing.","I play video games with my friends.","I listen to music every day.","I read books sometimes.","Twice a week."],
-    demo:["That's cool! How often do you do it?","Nice! Do you do it alone or with friends?","Great. When did you start?","Interesting! What music do you like?","Awesome. Do you want to try a new hobby?"]
-  },
-  {
-    id:"cafe", emoji:"☕", ru:"В кафе", en:"At the Café",
-    char:{ name:"Tom", role:"официант в кафе",
-           skin:"#E8B98D", hair:"#8A5A2B", style:"short", shirt:"#2B2F4A", extra:"apron" },
-    scene:"cafe",
-    role:"a polite waiter named Tom in a small café",
-    goal:"сделать заказ: I'd like / Can I have",
-    start:"Hello! What would you like to order?",
-    words:["I'd like…","Can I have…, please?","a cup of tea","How much is it?","Thank you!"],
-    hints:["I'd like a pizza, please.","Can I have a cup of tea?","Orange juice, please.","How much is it?","No, thank you.","That's all, thanks."],
-    demo:["Good choice! Would you like something to drink?","Sure. Anything else?","That's seven dollars. Do you want to eat here or take away?","Perfect. Is this your first time here?","Thanks! Enjoy your meal. Do you like sweet food?"]
-  },
-  {
-    id:"shopping", emoji:"🛍", ru:"В магазине", en:"Shopping",
-    char:{ name:"Sofia", role:"продавец-консультант",
-           skin:"#F0C6A0", hair:"#2B1D16", style:"bun", shirt:"#C43E86", extra:"scarf" },
-    scene:"shopping",
-    role:"a helpful shop assistant named Sofia in a clothes shop",
-    goal:"спросить о размере, цене и примерке",
-    start:"Hi there! Can I help you find something?",
-    words:["I'm looking for…","How much is it?","Have you got a bigger size?","Can I try it on?","I'll take it."],
-    hints:["I'm looking for a T-shirt.","How much is it?","Have you got a bigger size?","Can I try it on?","It's too expensive.","I'll take it, thanks."],
-    demo:["Of course! What colour do you want?","Nice choice. What size are you?","Here you are. Do you want to try it on?","It costs twenty dollars. Is that okay for you?","Great! Do you need anything else today?"]
-  },
-  {
-    id:"routine", emoji:"⏰", ru:"Распорядок дня", en:"Daily Routine",
-    char:{ name:"Ben", role:"друг по переписке",
-           skin:"#F2CDA7", hair:"#C9803A", style:"short", shirt:"#6B5BD6", extra:"none" },
-    scene:"routine",
-    role:"a friendly penfriend named Ben curious about daily life",
-    goal:"описать день в Present Simple и назвать время",
-    start:"Morning! What time do you usually get up?",
-    words:["I get up at…","I have breakfast.","then","after school","I go to bed at ten."],
-    hints:["I get up at seven o'clock.","I have breakfast at half past seven.","I go to school by bus.","I do my homework after school.","I go to bed at ten.","On Sunday I get up late."],
-    demo:["Quite early! What do you have for breakfast?","Sounds good. How do you go to school?","Okay! What do you do after school?","Nice. What time do you go to bed?","Do you have a different routine at the weekend?"]
-  },
-  {
-    id:"travel", emoji:"✈️", ru:"Путешествия", en:"Travel",
-    char:{ name:"Nina", role:"путешественница",
-           skin:"#D79C6E", hair:"#3A2A1F", style:"long", shirt:"#0E8FA8", extra:"hat" },
-    scene:"travel",
-    role:"a friendly young traveller named Nina planning trips",
-    goal:"говорить о планах: I want to / I'd like to",
-    start:"Hi! Where would you like to travel?",
-    words:["I'd like to go to…","by plane","next summer","with my family","because it's beautiful"],
-    hints:["I'd like to go to Italy.","I want to visit London.","By plane, I think.","Next summer with my family.","I want to see the sea.","I have never been abroad."],
-    demo:["Great choice! Why do you want to go there?","Nice! Who do you want to travel with?","Cool. How do you want to get there — by plane or by train?","Sounds fun. What do you want to see there?","Have you been to another country before?"]
-  },
-  {
-    id:"family", emoji:"🏡", ru:"Семья и друзья", en:"Family and Friends",
-    char:{ name:"Kate", role:"подруга из соседнего дома",
-           skin:"#EFC49F", hair:"#503A2B", style:"bun", shirt:"#B5562F", extra:"none" },
-    scene:"family",
-    role:"a friendly teenager named Kate talking about family and friends",
-    goal:"рассказать о семье: have got, простые описания",
-    start:"Hi! Have you got a big family?",
-    words:["I've got a sister.","My mum is a doctor.","He is funny.","We live together.","my best friend"],
-    hints:["I've got one sister.","No, my family is small.","My mum is a teacher.","My brother is ten years old.","My best friend is Kolya.","We play football together."],
-    demo:["Nice! Tell me about your sister or brother.","That's cool. What does your mum do?","Interesting! Do you spend a lot of time together?","Good. Who is your best friend?","Nice! What do you do together?"]
-  }
+{ id:"greeting", emoji:"👋", ru:"Знакомство", en:"Greeting", scene:"park",
+  char:{name:"Alex",role:"новый знакомый в парке",skin:"#F1C9A5",hair:"#3B2A21",style:"short",shirt:"#5B4BE0",extra:"none"},
+  role:"a friendly English-speaking teenager named Alex meeting someone new in a park",
+  goal:"представиться: имя, возраст, город, настроение",
+  start:"Hello! I'm Alex. What's your name?",
+  words:["My name is…","I'm 14.","I'm from Moscow.","Nice to meet you."],
+  slots:[
+    {id:"name",q:"What's your name?",ex:"My name is Ivan.",bare:true,
+     hints:["My name is Ivan.","I'm Anna.","You can call me Max."],
+     det:/(?:my name is|my name's|i'?m|i am|call me|it'?s)\s+([a-z][a-z'\-]{1,14})/i,
+     full:(v)=>"My name is "+cap(v)+".", react:(v)=>"Nice to meet you, "+cap(v)+"!"},
+    {id:"age",q:"How old are you?",ex:"I'm 14 years old.",bare:true,
+     hints:["I'm 13 years old.","I am 14.","I'm almost 15."],
+     det:/\b(\d{1,2})\b|\b(eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen)\b/i,
+     full:(v)=>"I am "+v+" years old.",
+     react:(v)=>(/^\d+$/.test(v)&&+v<=13)?("Wow, "+v+" and you already speak English."):"Cool, we are almost the same age."},
+    {id:"city",q:"Where are you from?",ex:"I am from Moscow.",bare:true,
+     hints:["I am from Moscow.","I live in Kazan.","I'm from a small town."],
+     det:/(?:i'?m from|i am from|i live in|i come from|from)\s+([a-z][a-z\- ]{2,18})/i,
+     full:(v)=>"I am from "+cap(clean1(v))+".", react:(v)=>cap(clean1(v))+" — I would like to visit it one day."},
+    {id:"mood",q:"How are you today?",ex:"I'm fine, thank you.",
+     hints:["I'm fine, thank you.","I'm a bit tired.","I'm great today!"],
+     words:MOOD_GOOD.concat(MOOD_BAD),
+     full:(v)=>"I am "+clean1(v)+", thank you.",
+     react:(v)=>MOOD_BAD.some(w=>String(v).toLowerCase().indexOf(w)>-1)?"Oh, I hope your day gets better.":"Good, I'm glad to hear that."},
+    {id:"free",q:"What do you like doing after school?",ex:"I like playing football.",
+     hints:["I like playing football.","I like drawing.","I watch videos with friends."],
+     det:/i\s+(?:like|love|enjoy|play|watch|read|draw|do)\s+([a-z][a-z' ]{2,24})/i,
+     full:(v)=>"I like "+clean1(v)+".", react:(v)=>cap(clean1(v))+" sounds like a good way to relax."}],
+  extra:[{q:"Do you like speaking English?",hints:["Yes, but it's difficult.","I like it a lot.","A little bit."]},
+         {q:"Have you got any pets?",hints:["Yes, I have a cat.","No, I haven't.","I want a dog."]},
+         {q:"What do you want to be when you grow up?",hints:["I want to be an engineer.","I don't know yet.","Maybe a doctor."]}]
+},
+{ id:"school", emoji:"🎒", ru:"Школа", en:"School", scene:"school",
+  char:{name:"Mia",role:"одноклассница",skin:"#EFC49F",hair:"#6B3B2A",style:"long",shirt:"#2E7BE0",extra:"glasses"},
+  role:"a friendly classmate named Mia talking about school life",
+  goal:"рассказать про предметы, расписание и учителей",
+  start:"Hi! What is your favourite subject at school?",
+  words:["My favourite subject is…","I have six lessons.","It's difficult."],
+  slots:[
+    {id:"subject",q:"What is your favourite subject?",ex:"My favourite subject is maths.",
+     hints:["My favourite subject is maths.","I like English and history.","I love PE."],
+     det:/\b(maths|math|english|russian|history|biology|chemistry|physics|geography|art|music|pe|it|literature|german|french)\b/i,
+     full:(v)=>"My favourite subject is "+clean1(v)+".", react:(v)=>cap(clean1(v))+" is a good one."},
+    {id:"lessons",q:"How many lessons do you have today?",ex:"I have six lessons today.",
+     hints:["I have six lessons today.","Five lessons.","Seven, it's a long day."],
+     det:/\b(\d{1,2}|one|two|three|four|five|six|seven|eight)\b/i,
+     full:(v)=>"I have "+v+" lessons today.",
+     react:(v)=>/^(7|8|9|seven|eight|nine)$/i.test(String(v))?"That's a really long day.":"Okay, a normal day then."},
+    {id:"hard",q:"Which subject is difficult for you?",ex:"Maths is difficult for me.",
+     hints:["Maths is difficult for me.","Physics is hard.","Nothing, everything is okay."],
+     det:/\b(maths|math|english|russian|history|biology|chemistry|physics|geography|art|music|pe|it|literature|nothing)\b/i,
+     full:(v)=>cap(clean1(v))+" is difficult for me.",
+     react:(v)=>/nothing/i.test(v)?"Lucky you!":(cap(clean1(v))+" is hard for me too sometimes.")},
+    {id:"teacher",q:"Do you like your teachers?",ex:"Yes, my teacher is very kind.",
+     hints:["Yes, my teacher is kind.","Some of them are strict.","My English teacher is the best."],
+     det:/\b(kind|strict|nice|funny|good|boring|friendly|best|angry)\b/i,
+     yes:"That's great, a good teacher helps a lot.", no:"I understand, that happens.",
+     full:(v)=>"My teacher is "+clean1(v)+".", react:(v)=>"A "+clean1(v)+" teacher makes a big difference."},
+    {id:"break",q:"What do you do at break time?",ex:"I talk with my friends.",
+     hints:["I talk with my friends.","I eat my sandwich.","I run in the corridor."],
+     det:/i\s+(?:talk|eat|play|run|read|walk|sit|chat|drink|study)\s*([a-z' ]{0,22})/i,
+     full:(v)=>"I "+clean1(v?("spend break time "+v):"talk with my friends")+".",
+     react:()=>"Break time is the best part of the day."}],
+  extra:[{q:"Do you have a lot of homework?",hints:["Yes, a lot.","Only in maths.","Not today."]},
+         {q:"What time do your lessons finish?",hints:["At two o'clock.","At half past one.","Very late, at four."]}]
+},
+{ id:"hobbies", emoji:"🎸", ru:"Хобби", en:"Hobbies", scene:"hobbies",
+  char:{name:"Leo",role:"сосед по двору",skin:"#C98A5E",hair:"#1F1B18",style:"curly",shirt:"#0FA678",extra:"headphones"},
+  role:"a friendly teenager named Leo who loves asking about hobbies",
+  goal:"говорить о свободном времени: I like + -ing",
+  start:"Hey! What do you like to do in your free time?",
+  words:["I like playing…","twice a week","with my friends"],
+  slots:[
+    {id:"what",q:"What do you like doing in your free time?",ex:"I like playing football.",
+     hints:["I like playing football.","I love drawing.","I play video games."],
+     det:/i\s+(?:like|love|enjoy|play|do|go)\s+([a-z][a-z' ]{2,24})/i,
+     full:(v)=>"I like "+clean1(v)+".", react:(v)=>cap(clean1(v))+" is cool."},
+    {id:"often",q:"How often do you do it?",ex:"Twice a week.",
+     hints:["Twice a week.","Every day after school.","Only at the weekend."],
+     det:/\b(every day|twice|once|three times|at the weekend|on weekends|sometimes|often|rarely|every evening)\b/i,
+     full:(v)=>"I do it "+clean1(v)+".",
+     react:(v)=>/every day|often/i.test(v)?"That's real practice.":"Okay, that's a nice rhythm."},
+    {id:"who",q:"Do you do it alone or with friends?",ex:"With my friends.",
+     hints:["With my friends.","Alone, it's quiet.","With my brother."],
+     det:/\b(alone|with my friends|with friends|with my brother|with my sister|with my dad|with my mum|in a team)\b/i,
+     full:(v)=>"I do it "+clean1(v)+".",
+     react:(v)=>/alone/i.test(v)?"Sometimes alone is better.":"Doing it together is more fun."},
+    {id:"music",q:"What music do you listen to?",ex:"I listen to rap and rock.",
+     hints:["I listen to rap.","Rock and pop.","I don't listen to music much."],
+     det:/\b(rap|rock|pop|jazz|metal|classical|hip hop|k-pop|electronic|phonk|indie)\b/i,
+     full:(v)=>"I listen to "+clean1(v)+".", react:(v)=>cap(clean1(v))+" is a good choice."},
+    {id:"new",q:"Would you like to try a new hobby?",ex:"I'd like to try skateboarding.",
+     hints:["I'd like to try boxing.","Maybe guitar.","No, I'm happy with mine."],
+     det:/\b(?:try|learn|start)\s+([a-z][a-z' ]{2,20})/i,
+     yes:"Trying something new is always interesting.", no:"Fair enough, you already have your thing.",
+     full:(v)=>"I'd like to try "+clean1(v)+".", react:(v)=>cap(clean1(v))+" would be fun to learn."}],
+  extra:[{q:"Who taught you that?",hints:["My dad taught me.","I learned on YouTube.","Nobody, I just tried."]},
+         {q:"Do you watch sport on TV?",hints:["Yes, football.","Sometimes.","No, I prefer playing."]}]
+},
+{ id:"cafe", emoji:"☕", ru:"В кафе", en:"At the Café", scene:"cafe",
+  char:{name:"Tom",role:"официант в кафе",skin:"#E8B98D",hair:"#8A5A2B",style:"short",shirt:"#2B2F4A",extra:"apron"},
+  role:"a polite waiter named Tom in a small café",
+  goal:"сделать заказ: I'd like / Can I have",
+  start:"Hello! What would you like to order?",
+  words:["I'd like…","Can I have…, please?","How much is it?"],
+  slots:[
+    {id:"food",q:"What would you like to order?",ex:"I'd like a pizza, please.",
+     hints:["I'd like a pizza, please.","Can I have a burger?","A salad, please."],
+     det:/\b(pizza|burger|salad|soup|pasta|sandwich|pancakes|cake|ice cream|fries|chicken|omelette|croissant)\b/i,
+     full:(v)=>"I'd like a "+clean1(v)+", please.", react:(v)=>"One "+clean1(v)+", good choice."},
+    {id:"drink",q:"Would you like something to drink?",ex:"Orange juice, please.",
+     hints:["Orange juice, please.","A cup of tea.","Just water, thanks."],
+     det:/\b(tea|coffee|juice|water|cola|lemonade|milkshake|cocoa|smoothie)\b/i,
+     yes:"Sure, I'll bring you the drinks menu.", no:"No drink, that's fine.",
+     full:(v)=>"Can I have "+clean1(v)+", please?", react:(v)=>cap(clean1(v))+" goes well with that."},
+    {id:"where",q:"Do you want to eat here or take away?",ex:"Here, please.",
+     hints:["Here, please.","Take away, please.","I'll eat here, thanks."],
+     det:/\b(here|take away|takeaway|to go|inside|outside|on the terrace)\b/i,
+     full:(v)=>"I'll eat "+clean1(v)+", please.",
+     react:(v)=>/away|to go/i.test(v)?"Take away, I'll pack it for you.":"Great, I'll bring it to your table."},
+    {id:"sweet",q:"Do you like sweet food?",ex:"Yes, I love cake.",
+     hints:["Yes, I love cake.","No, not really.","I prefer ice cream."],
+     det:/\b(cake|ice cream|chocolate|cookies|donut|candy|pie|honey)\b/i,
+     yes:"Then you should see our desserts.", no:"Okay, no dessert today.",
+     full:(v)=>"I love "+clean1(v)+".", react:(v)=>"Our "+clean1(v)+" is really good."},
+    {id:"price",q:"Your bill is seven dollars. Is that okay?",ex:"Yes, here you are.",
+     hints:["Yes, here you are.","Can I pay by card?","That's fine, thank you."],
+     det:/\b(card|cash|here you are|fine|okay|sure)\b/i,
+     yes:"Thank you very much!", no:"No problem, I'll check the bill again.",
+     full:()=>"Yes, here you are.",
+     react:(v)=>/card/i.test(v)?"Card is fine, no problem.":"Thank you, enjoy your meal."}],
+  extra:[{q:"Is this your first time here?",hints:["Yes, it is.","No, I come often.","My friend told me about it."]},
+         {q:"Would you like a table by the window?",hints:["Yes, please.","No, here is fine.","Anywhere is okay."]}]
+},
+{ id:"shopping", emoji:"🛍", ru:"В магазине", en:"Shopping", scene:"shopping",
+  char:{name:"Sofia",role:"продавец-консультант",skin:"#F0C6A0",hair:"#2B1D16",style:"bun",shirt:"#C43E86",extra:"scarf"},
+  role:"a helpful shop assistant named Sofia in a clothes shop",
+  goal:"спросить о размере, цене и примерке",
+  start:"Hi there! Can I help you find something?",
+  words:["I'm looking for…","How much is it?","Can I try it on?"],
+  slots:[
+    {id:"item",q:"What are you looking for?",ex:"I'm looking for a T-shirt.",
+     hints:["I'm looking for a T-shirt.","I need new jeans.","Have you got hoodies?"],
+     det:/\b(t-shirt|tshirt|shirt|jeans|hoodie|jacket|sneakers|shoes|trousers|dress|cap|sweater|coat|socks|bag)\b/i,
+     full:(v)=>"I'm looking for a "+clean1(v)+".", react:(v)=>"We have a lot of "+clean1(v)+"s."},
+    {id:"colour",q:"What colour would you like?",ex:"Black, please.",
+     hints:["Black, please.","Something blue.","White or grey."],
+     det:/\b(black|white|blue|red|green|grey|gray|yellow|pink|brown|orange|purple|beige)\b/i,
+     full:(v)=>"I'd like a "+clean1(v)+" one.", react:(v)=>cap(clean1(v))+" is very popular this season."},
+    {id:"size",q:"What size are you?",ex:"Medium, I think.",
+     hints:["Medium, I think.","Small, please.","I don't know my size."],
+     det:/\b(small|medium|large|extra large|xs|xl|\d{2})\b/i,
+     full:(v)=>"I think I'm "+clean1(v)+".", react:(v)=>"Size "+clean1(v)+", let me check."},
+    {id:"try",q:"Do you want to try it on?",ex:"Yes, can I try it on?",
+     hints:["Yes, can I try it on?","No, thank you.","Where is the fitting room?"],
+     det:/\b(try|fitting room|changing room|mirror)\b/i,
+     yes:"The fitting room is over there.", no:"Okay, no problem.",
+     full:()=>"Can I try it on, please?", react:()=>"The fitting room is on the right."},
+    {id:"buy",q:"It costs twenty dollars. Will you take it?",ex:"Yes, I'll take it.",
+     hints:["Yes, I'll take it.","It's too expensive.","Can I pay by card?"],
+     det:/\b(take it|buy|card|cash|expensive|cheap)\b/i,
+     yes:"Great, I'll take it to the cash desk.", no:"I understand, prices are high.",
+     full:()=>"Yes, I'll take it.",
+     react:(v)=>/expensive/i.test(v)?"I understand, we have cheaper ones too.":"Perfect, I'll pack it for you."}],
+  extra:[{q:"Do you need anything else today?",hints:["No, that's all.","Maybe socks.","Just this, thanks."]},
+         {q:"Do you shop online or in shops?",hints:["Usually online.","I prefer real shops.","Both, it depends."]}]
+},
+{ id:"routine", emoji:"⏰", ru:"Распорядок дня", en:"Daily Routine", scene:"routine",
+  char:{name:"Ben",role:"друг по переписке",skin:"#F2CDA7",hair:"#C9803A",style:"short",shirt:"#6B5BD6",extra:"none"},
+  role:"a friendly penfriend named Ben curious about daily life",
+  goal:"описать день в Present Simple и назвать время",
+  start:"Morning! What time do you usually get up?",
+  words:["I get up at…","after school","I go to bed at ten."],
+  slots:[
+    {id:"getup",q:"What time do you usually get up?",ex:"I get up at seven o'clock.",
+     hints:["I get up at seven o'clock.","At half past six.","Very late, at nine."],
+     det:/\b(?:at\s+)?(\d{1,2}(?::\d{2})?|six|seven|eight|nine|ten|five)\b/i,
+     full:(v)=>"I get up at "+clean1(String(v).replace(/^at\s+/i,""))+".",
+     react:(v)=>/\b(5|6|five|six)\b/i.test(String(v))?"That's really early!":"Okay, that sounds normal."},
+    {id:"breakfast",q:"What do you have for breakfast?",ex:"I have eggs and tea.",
+     hints:["I have eggs and tea.","Porridge and juice.","I don't eat in the morning."],
+     det:/\b(eggs|porridge|sandwich|cereal|toast|tea|coffee|milk|yoghurt|pancakes|nothing|bread)\b/i,
+     full:(v)=>"I have "+clean1(v)+" for breakfast.",
+     react:(v)=>/nothing/i.test(v)?"Breakfast is important, you know.":(cap(clean1(v))+" is a good start.")},
+    {id:"school",q:"How do you get to school?",ex:"I go to school by bus.",
+     hints:["I go by bus.","I walk, it's near.","My dad drives me."],
+     det:/\b(by bus|by car|by metro|by bike|by tram|on foot|walk|drives me|by train)\b/i,
+     full:(v)=>"I go to school "+clean1(v)+".",
+     react:(v)=>/walk|on foot/i.test(v)?"Nice, a walk wakes you up.":"That's a comfortable way."},
+    {id:"after",q:"What do you do after school?",ex:"I do my homework and rest.",
+     hints:["I do my homework.","I go to football practice.","I play games and rest."],
+     det:/i\s+(?:do|go|play|have|watch|read|help|study|rest|sleep)\s*([a-z' ]{0,24})/i,
+     full:(v)=>"After school I "+clean1(v||"do my homework")+".",
+     react:(v)=>/homework/i.test(String(v))?"Homework first, that's a good habit.":"Sounds like a busy afternoon."},
+    {id:"bed",q:"What time do you go to bed?",ex:"I go to bed at ten.",
+     hints:["I go to bed at ten.","Around eleven.","Too late, at midnight."],
+     det:/\b(?:at\s+)?(\d{1,2}(?::\d{2})?|nine|ten|eleven|twelve|midnight)\b/i,
+     full:(v)=>"I go to bed at "+clean1(String(v).replace(/^at\s+/i,""))+".",
+     react:(v)=>/midnight|twelve|\b12\b|\b1\b/i.test(String(v))?"That's late for a school night.":"That's a healthy time."}],
+  extra:[{q:"Is your weekend different?",hints:["Yes, I get up late.","Not really.","At the weekend I rest."]},
+         {q:"Do you help at home?",hints:["Yes, I wash the dishes.","Sometimes.","I walk the dog."]}]
+},
+{ id:"travel", emoji:"✈️", ru:"Путешествия", en:"Travel", scene:"travel",
+  char:{name:"Nina",role:"путешественница",skin:"#D79C6E",hair:"#3A2A1F",style:"long",shirt:"#0E8FA8",extra:"hat"},
+  role:"a friendly young traveller named Nina planning trips",
+  goal:"говорить о планах: I want to / I'd like to",
+  start:"Hi! Where would you like to travel?",
+  words:["I'd like to go to…","by plane","next summer"],
+  slots:[
+    {id:"where",q:"Where would you like to travel?",ex:"I'd like to go to Italy.",bare:true,
+     hints:["I'd like to go to Italy.","I want to visit Japan.","To the sea, anywhere warm."],
+     det:/(?:to|visit|see)\s+([a-z][a-z\- ]{2,18})/i,
+     full:(v)=>"I'd like to go to "+cap(clean1(v))+".", react:(v)=>cap(clean1(v))+" is on my list too."},
+    {id:"why",q:"Why do you want to go there?",ex:"Because it's beautiful.",
+     hints:["Because it's beautiful.","I want to see the sea.","The food is famous."],
+     det:/\b(beautiful|sea|mountains|food|history|warm|friends|family|museums|football|nature)\b/i,
+     full:(v)=>"Because of the "+clean1(v)+".",
+     react:(v)=>/sea|warm|beach/i.test(v)?"Warm water in summer, perfect.":"That's a good reason."},
+    {id:"who",q:"Who do you want to travel with?",ex:"With my family.",
+     hints:["With my family.","With my friends.","Alone, I think."],
+     det:/\b(family|friends|parents|mum|dad|brother|sister|alone|class|team)\b/i,
+     full:(v)=>"I want to travel with my "+clean1(v)+".",
+     react:(v)=>/alone/i.test(v)?"Travelling alone is brave.":"Travelling together is more fun."},
+    {id:"how",q:"How do you want to get there — by plane or by train?",ex:"By plane, it's faster.",
+     hints:["By plane, it's faster.","By train, I like windows.","By car with my parents."],
+     det:/\b(by plane|by train|by car|by bus|by ship|by bike|fly)\b/i,
+     full:(v)=>"I want to go "+clean1(v)+".",
+     react:(v)=>/train/i.test(v)?"Trains are slow but interesting.":"Fast and comfortable, good choice."},
+    {id:"see",q:"What do you want to see there?",ex:"I want to see the old city.",
+     hints:["I want to see the old city.","The mountains.","Famous museums."],
+     det:/\b(city|museum|mountains|sea|beach|castle|park|market|stadium|temple)\b/i,
+     full:(v)=>"I want to see the "+clean1(v)+".", react:(v)=>"The "+clean1(v)+" must be amazing."}],
+  extra:[{q:"Have you been abroad before?",hints:["Yes, to Turkey.","No, never.","Only in Russia."]},
+         {q:"Do you like planes or are you afraid of flying?",hints:["I like planes.","I'm a bit afraid.","I've never flown."]}]
+},
+{ id:"family", emoji:"🏡", ru:"Семья и друзья", en:"Family and Friends", scene:"family",
+  char:{name:"Kate",role:"подруга из соседнего дома",skin:"#EFC49F",hair:"#503A2B",style:"bun",shirt:"#B5562F",extra:"none"},
+  role:"a friendly teenager named Kate talking about family and friends",
+  goal:"рассказать о семье: have got, простые описания",
+  start:"Hi! Have you got a big family?",
+  words:["I've got a sister.","My mum is a doctor.","my best friend"],
+  slots:[
+    {id:"size",q:"Have you got a big family?",ex:"No, my family is small.",
+     hints:["No, my family is small.","Yes, we are five.","I've got one sister."],
+     det:/\b(big|small|large|four|five|three|six)\b/i,
+     yes:"Big families are never boring.", no:"Small families are calm, I like that.",
+     full:(v)=>"My family is "+clean1(v)+".",
+     react:(v)=>/big|large|five|six/i.test(v)?"A big family sounds fun.":"A small family is cosy."},
+    {id:"siblings",q:"Have you got brothers or sisters?",ex:"I've got one sister.",
+     hints:["I've got one sister.","Two brothers.","No, I'm the only child."],
+     det:/\b(sisters?|brothers?|only child)\b/i,
+     yes:"Nice, you always have company.", no:"Being the only child has its good sides.",
+     full:(v)=>"I've got a "+clean1(v)+".",
+     react:(v)=>/only child/i.test(v)?"So you get your own room, lucky!":("A "+clean1(v)+" — that's good.")},
+    {id:"job",q:"What does your mum or dad do?",ex:"My mum is a teacher.",
+     hints:["My mum is a teacher.","My dad is a driver.","They both work in IT."],
+     det:/\b(teacher|doctor|driver|engineer|nurse|cook|manager|programmer|police|builder|shop assistant)\b/i,
+     full:(v)=>"My mum is a "+clean1(v)+".", react:(v)=>"A "+clean1(v)+" — that's an important job."},
+    {id:"friend",q:"Who is your best friend?",ex:"My best friend is Kolya.",bare:true,
+     hints:["My best friend is Kolya.","Her name is Masha.","I have two close friends."],
+     det:/(?:friend is|friend'?s name is|name is)\s+([a-z][a-z'\-]{1,14})/i,
+     full:(v)=>"My best friend is "+cap(v)+".", react:(v)=>cap(clean1(v))+" is lucky to have you."},
+    {id:"together",q:"What do you do together?",ex:"We play football together.",
+     hints:["We play football together.","We walk and talk.","We play games online."],
+     det:/we\s+(?:play|walk|talk|go|watch|study|ride|chat|swim|draw)\s*([a-z' ]{0,22})/i,
+     full:(v)=>"We "+clean1(v?("spend time "+v):"play together")+".",
+     react:()=>"Friends like that are the best."}],
+  extra:[{q:"Have you got a pet at home?",hints:["Yes, a cat.","No, but I want one.","We have a dog."]},
+         {q:"Do you spend holidays with your family?",hints:["Yes, always.","Sometimes.","Usually with friends."]}]
+}
 ];
 
-/* ============================================================
-   2. РАЗБОР ФРАЗЫ УЧЕНИКА, ПРОВЕРКА ГРАММАТИКИ, ЛОКАЛЬНЫЙ СОБЕСЕДНИК
-   Здесь живёт «офлайн-мозг» приложения: он понимает, что именно сказал
-   ученик, реагирует на смысл (а не по скрипту) и ищет реальные ошибки.
-   ============================================================ */
-const cap = (s)=> s ? String(s).charAt(0).toUpperCase() + String(s).slice(1) : s;
+/* ===== 2. ПРОВЕРКА ГРАММАТИКИ (работает всегда, и без Gemini) =====
+   Правила применяются по очереди, исправления складываются в один
+   правильный вариант. level:"polish" — не ошибка, а «можно лучше». */
+const ADJ = "happy|sad|tired|fine|good|bad|ok|okay|hungry|thirsty|ready|busy|free|late|early|cold|hot|nice|new|young|old|sorry|glad|afraid|sure|bored|angry|excited|scared|strong|funny|kind|clever|shy|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen";
+const ROLE_N = "student|pupil|teacher|doctor|boy|girl|schoolboy|schoolgirl|driver|engineer|nurse|cook";
+const V_BASE = "like|live|play|go|have|do|want|watch|read|study|work|speak|love|get|make|take|eat|drink|help|need|think|know|walk|talk|swim|draw|sing|dance|run|cook|ride|travel|write|paint|sleep|listen";
+const V_DYN = "live|play|go|do|watch|read|study|work|speak|get|make|take|eat|drink|help|walk|talk|swim|draw|sing|dance|run|cook|ride|travel|write|paint|sleep|listen";
+const V_STATE = "like|love|want|need|know|think|have";
+const OWNER_N = "name|mum|mom|mother|dad|father|brother|sister|friend|teacher|family|school|city|town|dog|cat|hobby|birthday|favourite|favorite";
+const WEEKDAY = "monday|tuesday|wednesday|thursday|friday|saturday|sunday";
+const rx = (body, flags)=>new RegExp(body, flags || "i");
 
-/* --- словари для понимания смысла --- */
-const DICT = {
-  subjects:["maths","math","mathematics","english","russian","history","biology","physics","chemistry","geography","literature","art","music","informatics","computer science","technology","pe","sport","science"],
-  hobbies:["football","basketball","volleyball","tennis","hockey","chess","guitar","piano","drums","violin","drawing","painting","reading","swimming","running","dancing","singing","skating","skateboarding","cycling","video games","computer games","games","photography","cooking","boxing","judo","karate","gym","programming","coding","fishing","travelling","knitting","yoga"],
-  foods:["pizza","burger","hamburger","sandwich","salad","pasta","spaghetti","soup","cake","ice cream","chocolate","cookies","croissant","sushi","chicken","fish","rice","porridge","eggs","pancakes","fries","apple","banana","bread","cheese","yoghurt","dumplings","candy","sweets"],
-  drinks:["tea","coffee","juice","water","cola","lemonade","milk","milkshake","smoothie","hot chocolate","cocoa"],
-  clothes:["t-shirt","tshirt","shirt","jeans","trousers","shoes","sneakers","trainers","jacket","hoodie","dress","skirt","cap","hat","socks","coat","sweater","shorts","boots","scarf"],
-  colours:["red","blue","black","white","green","yellow","pink","grey","gray","orange","purple","brown","beige"],
-  places:["italy","spain","france","london","paris","japan","turkey","usa","america","germany","egypt","greece","china","korea","rome","new york","dubai","canada","australia","iceland","norway","thailand","cyprus","georgia","armenia","kazakhstan","altai","baikal","crimea","sochi","venice","barcelona","berlin","tokyo","amsterdam"],
-  family:["sister","brother","mum","mom","mother","dad","father","parents","grandma","grandmother","grandpa","grandfather","cousin","aunt","uncle","dog","cat","hamster","twin","brothers","sisters"],
-  jobs:["teacher","doctor","engineer","driver","nurse","cook","chef","programmer","manager","worker","builder","lawyer","designer","accountant","dentist","police officer","shop assistant","hairdresser","vet","pilot","scientist"],
-  cities:["moscow","saint petersburg","st petersburg","petersburg","kazan","novosibirsk","yekaterinburg","ekaterinburg","samara","rostov","krasnodar","perm","ufa","omsk","tomsk","tula","voronezh","volgograd","chelyabinsk","kerkrade","minsk","kyiv","astana","almaty"]
-};
-const NUMW = { one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,
-  thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19,twenty:20 };
+const RULES = [
+  {re:/\bi\s+(?:is|are)\b/i, why:"После I всегда am: I am.", fix:(s)=>s.replace(/\bi\s+(?:is|are)\b/ig,"I am")},
+  {re:/\b(he|she|it)\s+(?:am|are)\b/i, why:"С he, she, it — форма is.",
+   fix:(s)=>s.replace(/\b(he|she|it)\s+(?:am|are)\b/ig,(m,p)=>p+" is")},
+  {re:/\b(we|they|you)\s+(?:is|am)\b/i, why:"С we, you, they — форма are.",
+   fix:(s)=>s.replace(/\b(we|they|you)\s+(?:is|am)\b/ig,(m,p)=>p+" are")},
+  {re:/\bi\s+have\s+(\d{1,2})\s+years?(\s+old)?\b/i, why:"Возраст через be: I am 14 years old.",
+   fix:(s)=>s.replace(/\bi\s+have\s+(\d{1,2})\s+years?(\s+old)?\b/ig,"I am $1 years old")},
+  {re:/\bi\s+have\s+(\d{1,2})\s*[.!?]?\s*$/i, why:"О возрасте говорят через be: I am 14 years old.",
+   fix:(s)=>s.replace(/\bi\s+have\s+(\d{1,2})\s*[.!?]?\s*$/i,"I am $1 years old")},
+  {re:rx("\\bi\\s+("+ADJ+")\\b"), why:"Не хватает am: I am tired.",
+   fix:(s)=>s.replace(rx("\\bi\\s+("+ADJ+")\\b","ig"),"I am $1")},
+  {re:rx("\\b(he|she|it)\\s+("+ADJ+")\\b"), why:"Не хватает is: He is tired.",
+   fix:(s)=>s.replace(rx("\\b(he|she|it)\\s+("+ADJ+")\\b","ig"),(m,p,a)=>p+" is "+a)},
+  {re:rx("\\b(we|they|you)\\s+("+ADJ+")\\b"), why:"Не хватает are: They are tired.",
+   fix:(s)=>s.replace(rx("\\b(we|they|you)\\s+("+ADJ+")\\b","ig"),(m,p,a)=>p+" are "+a)},
+  {re:rx("\\bi\\s+("+ROLE_N+")\\b"), why:"Нужен глагол и артикль: I am a student.",
+   fix:(s)=>s.replace(rx("\\bi\\s+("+ROLE_N+")\\b","ig"),"I am a $1")},
+  {re:rx("\\b(he|she)\\s+("+ROLE_N+")\\b"), why:"Нужен глагол и артикль: He is a student.",
+   fix:(s)=>s.replace(rx("\\b(he|she)\\s+("+ROLE_N+")\\b","ig"),(m,p,n)=>p+" is a "+n)},
+  {re:/\bi\s+(\d{1,2})\b(?!\s*(?:years|:))/i, why:"О возрасте говорят через be: I am 14 years old.",
+   fix:(s)=>s.replace(/\bi\s+(\d{1,2})\b(?!\s*(?:years|:))/ig,"I am $1 years old")},
+  {re:/\bi\s+(from|in|at|on)\b/i, why:"После I нужен глагол am: I am from Moscow.",
+   fix:(s)=>s.replace(/\bi\s+(from|in|at|on)\b/ig,"I am $1")},
+  {re:rx("\\bi\\s+(a|an|the)\\s+("+ROLE_N+")\\b"), why:"Нужен am: I am a student.",
+   fix:(s)=>s.replace(rx("\\bi\\s+(a|an|the)\\s+("+ROLE_N+")\\b","ig"),"I am $1 $2")},
+  {re:rx("\\bi\\s+am\\s+("+ROLE_N+")\\b"), why:"Перед профессией нужен артикль a: I am a student.", level:"polish",
+   fix:(s)=>s.replace(rx("\\bi\\s+am\\s+("+ROLE_N+")\\b","ig"),"I am a $1")},
+  {re:rx("\\b(he|she|it)\\s+("+V_BASE+")\\b"), why:"С he, she, it глагол получает -s: He plays.",
+   fix:(s)=>s.replace(rx("\\b(he|she|it)\\s+("+V_BASE+")\\b","ig"),(m,p,v)=>p+" "+third(v))},
+  {re:/\b(he|she|it)\s+(?:don't|do\s+not)\b/i, why:"С he, she, it — doesn't.",
+   fix:(s)=>s.replace(/\b(he|she|it)\s+(?:don't|do\s+not)\b/ig,(m,p)=>p+" doesn't")},
+  {re:/\b(i|you|we|they)\s+doesn't\b/i, why:"С I, you, we, they — don't.",
+   fix:(s)=>s.replace(/\b(i|you|we|they)\s+doesn't\b/ig,(m,p)=>(p.toLowerCase()==="i"?"I":p)+" don't")},
+  {re:/\b(?:don't|doesn't|didn't|can't|won't|can|will|must)\s+(?:has|likes|goes|plays|wants|lives|does)\b/i,
+   why:"После don't, can и т.п. — начальная форма глагола.",
+   fix:(s)=>s.replace(/\b(don't|doesn't|didn't|can't|won't|can|will|must)\s+(has|likes|goes|plays|wants|lives|does)\b/ig,
+        (m,a,v)=>a+" "+({has:"have",likes:"like",goes:"go",plays:"play",wants:"want",lives:"live",does:"do"}[v.toLowerCase()]||v))},
+  {re:/\bi\s+no\s+([a-z]+)\b/i, why:"Отрицание строится с don't: I don't like.",
+   fix:(s)=>s.replace(/\bi\s+no\s+([a-z]+)\b/ig,"I don't $1")},
+  {re:rx("\\bi\\s+(?:like|love|enjoy)\\s+("+V_BASE+")\\b"), why:"После like обычно -ing: I like playing.",
+   fix:(s)=>s.replace(rx("\\bi\\s+(like|love|enjoy)\\s+("+V_BASE+")\\b","ig"),(m,a,v)=>"I "+a+" "+gerund(v))},
+  {re:rx("\\b(want|need|try)\\s+(?!to\\b)("+V_BASE+")\\b"), why:"После want, need нужна частица to: I want to go.",
+   fix:(s)=>s.replace(rx("\\b(want|need|try)\\s+("+V_BASE+")\\b","ig"),(m,a,v)=>a+" to "+v)},
+  {re:/\bgo\s+to\s+home\b/i, why:"Home без to: I go home.", fix:(s)=>s.replace(/\bgo\s+to\s+home\b/ig,"go home")},
+  {re:/\blisten\s+(?!to\b)(music|songs|the radio|podcasts)\b/i, why:"Listen требует to: listen to music.",
+   fix:(s)=>s.replace(/\blisten\s+(music|songs|the radio|podcasts)\b/ig,"listen to $1")},
+  {re:/\bplay\s+(?:the|a)\s+(football|basketball|tennis|volleyball|hockey|chess|badminton)\b/i,
+   why:"С играми артикль не нужен: play football.",
+   fix:(s)=>s.replace(/\bplay\s+(?:the|a)\s+(football|basketball|tennis|volleyball|hockey|chess|badminton)\b/ig,"play $1")},
+  {re:/\bplay\s+(?!the\b)(guitar|piano|violin|drums|flute)\b/i, why:"С инструментами нужен the: play the guitar.",
+   fix:(s)=>s.replace(/\bplay\s+(guitar|piano|violin|drums|flute)\b/ig,"play the $1")},
+  {re:/\bi\s+very\s+(like|love|want)\b/i, why:"Very так не ставят: I really like / I like it very much.",
+   fix:(s)=>s.replace(/\bi\s+very\s+(like|love|want)\b/ig,"I really $1")},
+  {re:/\bi\s+am\s+agree\b/i, why:"Agree — это глагол: I agree.", fix:(s)=>s.replace(/\bi\s+am\s+agree\b/ig,"I agree")},
+  {re:/\bmuch\s+(friends|people|books|things|lessons|subjects|pets|hobbies|cats|dogs|brothers|sisters)\b/i,
+   why:"С исчисляемыми — many: many friends.",
+   fix:(s)=>s.replace(/\bmuch\s+(friends|people|books|things|lessons|subjects|pets|hobbies|cats|dogs|brothers|sisters)\b/ig,"many $1")},
+  {re:/\bmany\s+(time|money|water|homework|music|food|milk|juice|snow|rain)\b/i, why:"С неисчисляемыми — much: much time.",
+   fix:(s)=>s.replace(/\bmany\s+(time|money|water|homework|music|food|milk|juice|snow|rain)\b/ig,"much $1")},
+  {re:/\b(two|three|four|five|six|seven|eight|nine|ten|\d+)\s+(lesson|book|friend|brother|sister|pet|cat|dog|year|hour|subject|apple|day|hobby)\b(?!s)/i,
+   why:"После числа больше одного — множественное число.",
+   fix:(s)=>s.replace(/\b(two|three|four|five|six|seven|eight|nine|ten|\d+)\s+(lesson|book|friend|brother|sister|pet|cat|dog|year|hour|subject|apple|day|hobby)\b(?!s)/ig,
+        (m,n,w)=>n+" "+(w.toLowerCase()==="hobby"?"hobbies":w+"s"))},
+  {re:/\bmy\s+(favourite|favorite)\s+(\w+)\s+are\b/i, why:"Подлежащее одно — нужен is.",
+   fix:(s)=>s.replace(/\bmy\s+(favourite|favorite)\s+(\w+)\s+are\b/ig,"my $1 $2 is")},
+  {re:/\bthere\s+is\s+(many|two|three|four|five|some|a lot of)\b/i, why:"С множественным — there are.",
+   fix:(s)=>s.replace(/\bthere\s+is\s+(many|two|three|four|five|some|a lot of)\b/ig,"there are $1")},
+  {re:/\bdidn'?t\s+(went|saw|ate|had|did|got|made|took|came|bought)\b/i, why:"После didn't — начальная форма: didn't go.",
+   fix:(s)=>s.replace(/\bdidn'?t\s+(\w+)\b/ig,(m,v)=>"didn't "+(BASE[v.toLowerCase()]||v))},
+  {re:rx("\\b(?:yesterday|last\\s+(?:week|year|summer|night))\\b[^.?!]{0,30}?\\bi\\s+("+V_BASE+")\\b"),
+   why:"О прошлом — прошедшее время: yesterday I went.",
+   fix:(s)=>s.replace(rx("(\\b(?:yesterday|last\\s+(?:week|year|summer|night))\\b[^.?!]{0,30}?\\bi\\s+)("+V_BASE+")\\b","ig"),
+        (m,a,v)=>a+(PAST[v.toLowerCase()]||v+"ed"))},
+  {re:rx("\\bi\\s+am\\s+("+V_STATE+")\\b"), why:"С like, want, know глагол be не нужен: I like football.",
+   fix:(s)=>s.replace(rx("\\bi\\s+am\\s+("+V_STATE+")\\b","ig"),(m,v)=>"I "+v)},
+  {re:rx("\\b(he|she|it)\\s+is\\s+("+V_BASE+")\\b"), why:"Здесь не нужен is: He plays football.",
+   fix:(s)=>s.replace(rx("\\b(he|she|it)\\s+is\\s+("+V_BASE+")\\b","ig"),(m,p,v)=>p+" "+third(v))},
+  {re:rx("\\bi\\s+am\\s+("+V_DYN+")\\b"), why:"Либо I go, либо I am going.",
+   fix:(s)=>s.replace(rx("\\bi\\s+am\\s+("+V_DYN+")\\b","ig"),(m,v)=>"I am "+gerund(v))},
+  {re:rx("^(?!.*\\b(is|are|am|was|were|has|have|had|do|does|did|can|will|would|like|likes|live|lives|play|plays|go|goes|work|works|study|studies|love|loves|want|wants)\\b).*\\bmy\\s+("+OWNER_N+")\\s+([a-z0-9]{2,})"),
+   why:"Не хватает глагола is: My name is Ivan.",
+   fix:(s)=>s.replace(rx("\\bmy\\s+("+OWNER_N+")\\s+([a-z0-9]{2,})","i"),
+        (m,a,c)=>"my "+a+" is "+(rx("^("+ROLE_N+")$").test(c) ? "a "+c : c))},
+  {re:/\b(i|you|we|they)\s+not\s+([a-z]+)\b/i, why:"Отрицание с don't: I don't like.",
+   fix:(s)=>s.replace(/\b(i|you|we|they)\s+not\s+([a-z]+)\b/ig,(m,p,v)=>(p.toLowerCase()==="i"?"I":p)+" don't "+v)},
+  {re:/\b(he|she|it)\s+not\s+([a-z]+)\b/i, why:"Отрицание с doesn't: He doesn't like.",
+   fix:(s)=>s.replace(/\b(he|she|it)\s+not\s+([a-z]+)\b/ig,(m,p,v)=>p+" doesn't "+v)},
+  {re:/\b(go|goes|went)\s+(school|work|university|bed)\b/i, why:"Нужен предлог to: I go to school.",
+   fix:(s)=>s.replace(/\b(go|goes|went)\s+(school|work|university|bed)\b/ig,"$1 to $2")},
+  {re:/\b(live|lives|study|studies)\s+(moscow|kazan|london|russia|paris|rome|spain|italy|japan|turkey|sochi)\b/i,
+   why:"Нужен предлог in: I live in Moscow.",
+   fix:(s)=>s.replace(/\b(live|lives|study|studies)\s+([a-z]+)\b/ig,"$1 in $2")},
+  {re:/\bhave\s+got\s+(\d{1,2})\s+years?(\s+old)?\b/i, why:"Возраст через be: I am 14 years old.",
+   fix:(s)=>s.replace(/\b(i|we|they|you)\s+have\s+got\s+(\d{1,2})\s+years?(\s+old)?\b/ig,
+        (m,p,n)=>(p.toLowerCase()==="i"?"I am ":p+" are ")+n+" years old")},
+  {re:/\b(\w+)\s+\1\b/i, why:"", level:"polish",
+   fix:(s)=>s.replace(/\b(\w+)\s+\1\b/ig,"$1")},
 
-function hasWord(low, w){
-  const esc = w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
-  return new RegExp("(^|[^a-z])" + esc + "([^a-z]|$)","i").test(low);
+  {re:/\bme\s+(like|want|have|play|go)\b/i, why:"Подлежащее — I, не me.",
+   fix:(s)=>s.replace(/\bme\s+(like|want|have|play|go)\b/ig,(m,v)=>"I "+v)},
+  {re:rx("\\b(?:in|at)\\s+("+WEEKDAY+")\\b"), why:"С днями недели — on Monday.",
+   fix:(s)=>s.replace(rx("\\b(?:in|at)\\s+("+WEEKDAY+")\\b","ig"),"on $1")},
+  {re:/\bin\s+(\d{1,2})\s+o'?clock\b/i, why:"Со временем — at seven o'clock.",
+   fix:(s)=>s.replace(/\bin\s+(\d{1,2})\s+o'?clock\b/ig,"at $1 o'clock")},
+  {re:/\bevery\s+days\b/i, why:"Every day — без -s.", fix:(s)=>s.replace(/\bevery\s+days\b/ig,"every day")},
+  {re:/\b(peoples|childrens|informations|advices|moneys)\b/i, why:"Это слово не бывает во множественном числе.",
+   fix:(s)=>s.replace(/\bpeoples\b/ig,"people").replace(/\bchildrens\b/ig,"children")
+             .replace(/\binformations\b/ig,"information").replace(/\badvices\b/ig,"advice").replace(/\bmoneys\b/ig,"money")},
+  {re:/\bi\s+have\s+(brother|sister|dog|cat|bike|phone|pet|friend)\b(?!s)/i, why:"Нужен артикль a: I have a sister.",
+   fix:(s)=>s.replace(/\bi\s+have\s+(brother|sister|dog|cat|bike|phone|pet|friend)\b(?!s)/ig,"I have a $1")},
+  {re:/\bhow\s+(?:much|many)\s+(?:is|are)\s+(?:you\s+)?old\b/i, why:"Правильный вопрос: How old are you?",
+   fix:(s)=>s.replace(/\bhow\s+(?:much|many)\s+(?:is|are)\s+(?:you\s+)?old\b/ig,"How old are you")},
+  {re:/\bi\s+am\s+(\d{1,2})\s*[.!?]?\s*$/i, why:"Можно полнее: I am 14 years old.", level:"polish",
+   fix:(s)=>s.replace(/\bi\s+am\s+(\d{1,2})\s*[.!?]?\s*$/i,"I am $1 years old")}
+];
+
+/* есть ли в фразе хоть какой-то глагол — без него это не предложение */
+const VERBISH = rx("\\b(am|is|are|was|were|be|been|do|does|did|have|has|had|can|could|will|would|should|must|let|"+
+  V_BASE+"|goes|likes|lives|plays|wants|watches|studies|works|speaks|loves|gets|makes|takes|eats|drinks|helps|needs|thinks|knows|"+
+  "went|saw|ate|got|made|took|came|bought|played|watched|liked|wanted|lived|worked|studied|"+
+  "going|playing|reading|watching|listening|drawing|eating|drinking|swimming|running|dancing|singing|studying|working|cooking|riding|travelling|sleeping)\\b");
+
+/* speech-to-text и быстрый набор часто теряют апостроф — правим молча */
+function normApostrophes(s){
+  return s
+    .replace(/\bdont\b/ig,"don't").replace(/\bdoesnt\b/ig,"doesn't").replace(/\bdidnt\b/ig,"didn't")
+    .replace(/\bcant\b/ig,"can't").replace(/\bwont\b/ig,"won't").replace(/\bisnt\b/ig,"isn't")
+    .replace(/\barent\b/ig,"aren't").replace(/\bhavent\b/ig,"haven't").replace(/\bhasnt\b/ig,"hasn't")
+    .replace(/\bim\b/ig,"I'm").replace(/\bive\b/ig,"I've").replace(/\bid like\b/ig,"I'd like")
+    .replace(/\bthats\b/ig,"that's").replace(/\bhes\b/ig,"he's").replace(/\bshes\b/ig,"she's");
 }
-function findIn(low, cat){
-  const list = DICT[cat];
-  for (const w of list) if (hasWord(low, w)) return w;
+const hasVerb = (t)=>VERBISH.test(t) || /'(m|s|re|ve|ll|d)\b/i.test(t);
+/* есть ли подлежащее: без него предложение неполное */
+const SUBJ = /\b(i|you|he|she|it|we|they|there|this|that|my|your|his|her|our|their|mr|mrs|name|mum|dad|everybody|nobody)\b|'(m|s|re|ve|ll|d)\b/i;
+/* словарь для отсечения набора букв: слова из всех тем + базовая лексика A1 */
+const VOCAB = (function(){
+  const set = new Set();
+  const add = (str)=>String(str||"").toLowerCase().replace(/[^a-z' ]/g," ").split(/\s+/)
+    .forEach(w=>{ if (w.length > 1) set.add(w); });
+  (ADJ+"|"+ROLE_N+"|"+V_BASE+"|"+V_DYN+"|"+V_STATE+"|"+OWNER_N+"|"+WEEKDAY).split("|").forEach(w=>set.add(w));
+  add("i you he she it we they am is are was were be do does did have has had got can could will would should must "+
+      "the a an and or but not no yes ok okay please thanks thank hello hi hey bye sorry very really too also "+
+      "always sometimes never often usually now today tomorrow yesterday morning evening night week month year years "+
+      "what where when who why which how many much old new little bit lot more most best better good bad nice cool great fine "+
+      "with without from about for of in on at to into by up down here there together alone after before during "+
+      "me my mine your his her its our their myself people friend friends family home house room school class lesson lessons "+
+      "time day days hour minutes food water think know like love want need play go come see eat drink read write listen watch "+
+      "speak study work live help make take get give sleep walk run swim draw sing dance cook ride travel visit buy pay try learn "+
+      "start finish call name age city town country language english russian mother father brother sister parents teacher pet dog cat");
+  TOPICS.forEach(t=>{
+    add(t.start); (t.words||[]).forEach(add);
+    t.slots.forEach(sl=>{ add(sl.q); add(sl.ex); (sl.hints||[]).forEach(add); (sl.words||[]).forEach(add); });
+    (t.extra||[]).forEach(e=>{ add(e.q); (e.hints||[]).forEach(add); });
+  });
+  return set;
+})();
+function knownRatio(words){
+  const w = words.filter(x=>x.length > 1);
+  if (!w.length) return 1;
+  let k = 0;
+  w.forEach(x=>{ if (VOCAB.has(x.toLowerCase())) k++; });
+  return k / w.length;
+}
+function checkGrammar(rawText, pending){
+  const original = normApostrophes(String(rawText||"").trim());
+  if (/[а-яё]/i.test(original)){
+    const ex = (pending && pending.ex) || "I don't know how to say it in English.";
+    return {status:"needs_improvement", original, improved:ex,
+      explanation_ru:"Это был русский. Скажи то же по-английски — можно повторить готовую фразу."};
+  }
+  let s = original, errors = 0, polish = 0;
+  const whys = [];
+  for (const r of RULES){
+    if (!r.re.test(s)) continue;
+    const out = r.fix(s).replace(/\s{2,}/g," ").trim();
+    if (out.toLowerCase() === s.toLowerCase()) continue;
+    s = out;
+    if (whys.length < 2) whys.push(r.why);
+    if (r.level === "polish") polish++; else errors++;
+  }
+  s = cap(s.replace(/\bi\b/g,"I"));            // маленькую i правим молча
+  if (!/[.!?]$/.test(s)) s += ".";
+
+  const same = (a,b)=>String(a).toLowerCase().replace(/[^a-z0-9']/g,"") === String(b).toLowerCase().replace(/[^a-z0-9']/g,"");
+  if (errors > 0 && !same(s, original))
+    return {status:"needs_improvement", original, improved:s, explanation_ru:whys.slice(0,2).join(" ")};
+
+  const words = original.replace(/[^a-z0-9' ]/ig," ").trim().split(/\s+/).filter(Boolean);
+  const ex = (pending && pending.ex) || "";
+  if (!words.length)
+    return {status:"needs_improvement", original, improved:ex || s,
+      explanation_ru:"Я не разобрал фразу. Скажи ещё раз" + (ex ? ", например так." : ".")};
+
+  // набор букв / не английские слова
+  const openBare = !!(pending && pending.bare);
+  const ratio = knownRatio(words);
+  if (ratio < 0.5 && !(openBare && words.length === 1))
+    return {status:"needs_improvement", original, improved:ex || s,
+      explanation_ru:"Таких слов я не знаю — похоже, распознавание ошиблось. Попробуй сказать ещё раз" + (ex ? " или повтори пример." : ".")};
+
+  // нет глагола: ответ неполный, даём целое предложение
+  if (!hasVerb(original)){
+    const full = (pending && pending.full) ? pending.full(clean1(original)) : null;
+    return {status:"needs_improvement", original, improved: full || ex || s,
+      explanation_ru:"Ответ неполный: нет глагола. По-английски отвечают целым предложением — скажи так."};
+  }
+  // нет подлежащего: "playing football", "am tired"
+  if (!SUBJ.test(original)){
+    const low = clean1(original).toLowerCase();
+    let fixed;
+    if (/^(am|are)\b/.test(low)) fixed = "I " + low.replace(/^(am|are)\b/,"am");
+    else if (/ing\b/.test(low.split(/\s+/)[0])) fixed = "I like " + low;
+    else fixed = "I " + low;
+    return {status:"needs_improvement", original, improved: cap(fixed) + ".",
+      explanation_ru:"Не хватает подлежащего. В английском предложении всегда есть кто: I, he, my friend…"};
+  }
+  if (polish > 0 && whys.filter(Boolean).length)
+    return {status:"better", original, improved:s, explanation_ru:whys.filter(Boolean).slice(0,2).join(" ")};
+  if (polish > 0) return {status:"correct", original, improved:s, explanation_ru:""};
+  return {status:"correct", original, improved:s, explanation_ru:""};
+}
+
+/* ===== 3. ЛОКАЛЬНЫЙ СОБЕСЕДНИК: реагирует на сказанное, а не по скрипту ===== */
+const KEYWORDS = [
+  {re:/\b(football|soccer)\b/i, say:"Football is the best game, I think."},
+  {re:/\b(basketball|volleyball|tennis|hockey)\b/i, say:"Team sports are great."},
+  {re:/\b(video games|games|playstation|xbox|minecraft|roblox|dota|cs)\b/i, say:"Games are fun, but don't play all night."},
+  {re:/\b(draw|drawing|paint|painting)\b/i, say:"Drawing is a real talent."},
+  {re:/\b(guitar|piano|drums|violin)\b/i, say:"Playing an instrument is cool."},
+  {re:/\b(music|songs|rap|rock|pop)\b/i, say:"Music makes everything better."},
+  {re:/\b(book|books|read|reading)\b/i, say:"Reading helps your English a lot."},
+  {re:/\b(maths|math|physics|chemistry)\b/i, say:"That's a serious subject."},
+  {re:/\b(english|history|biology|geography)\b/i, say:"That's an interesting subject."},
+  {re:/\b(dog|cat|hamster|parrot|pet)\b/i, say:"Pets are the best family members."},
+  {re:/\b(mum|mother|dad|father|sister|brother|grandma|grandpa)\b/i, say:"Family is important."},
+  {re:/\b(pizza|burger|pasta|sushi|soup|cake|ice cream)\b/i, say:"Now I'm hungry too."},
+  {re:/\b(tea|coffee|juice|water|cola)\b/i, say:"Good choice of drink."},
+  {re:/\b(moscow|petersburg|kazan|sochi|london|paris|rome|tokyo|italy|japan|turkey|spain)\b/i, say:"That place sounds interesting."},
+  {re:/\b(bus|metro|tram|train|bike|car)\b/i, say:"That's a practical way to travel."},
+  {re:/\b(school|lesson|homework|teacher|exam)\b/i, say:"School takes a lot of time, I know."},
+  {re:/\b(friend|friends)\b/i, say:"Friends make everything easier."},
+  {re:/\b(tired|sleep|sleepy)\b/i, say:"You should rest a little later."}
+];
+const HELP_RE = /\b(i don'?t know|i do not know|i dont know|no idea|i don'?t understand|i do not understand|i can'?t say|repeat|say again|sorry|help|again|what)\b/i;
+const YES_RE = /^\s*(yes|yeah|yep|yup|sure|of course|i do|i have|right|true)\b/i;
+const NO_RE  = /^\s*(no|nope|not really|i don'?t|i haven'?t|never|nothing)\b/i;
+const STOP = new Set(("i you he she it we they a an the is am are was were do does don't not and or but to of in on at "+
+  "my your his her our their very really like think know want have has had there here that this with for so too also yes no okay ok well").split(" "));
+
+function reflect(text){
+  const words = String(text).toLowerCase().replace(/[^a-z' ]/g," ").split(/\s+/).filter(w=>w.length>2 && !STOP.has(w));
+  const key = words.slice(-2).join(" ");
+  return key ? (cap(key)+" — okay, I see.") : "Okay, I see.";
+}
+function matchSlot(slot, text, isPending){
+  const t = String(text);
+  if (slot.det){
+    const m = t.match(slot.det);
+    if (m){
+      const v = m.slice(1).find(Boolean) || m[0];
+      if (v) return clean1(v);
+    }
+  }
+  if (slot.words){
+    const w = slot.words.find(x => rx("\\b"+x.replace(/[-/\\^$*+?.()|[\]{}]/g,"\\$&")+"\\b").test(t));
+    if (w) return w;
+  }
+  if (isPending && slot.bare){
+    const bare = clean1(t);
+    if (bare && bare.split(/\s+/).length <= 3 && /^[a-z0-9' -]+$/i.test(bare)) return bare;
+  }
   return null;
 }
-
-/* --- разбор реплики ученика --- */
-function analyze(text){
-  const raw = String(text || "").trim();
-  const low = " " + raw.toLowerCase().replace(/[^\p{L}\p{N}'\- :]/gu," ").replace(/\s+/g," ") + " ";
-  const words = low.trim().split(/\s+/).filter(Boolean);
-  const a = { raw, low, words, isRussian:/[а-яё]/i.test(raw), keywords:[] };
-
-  a.yesno = /^\s*(yes|yeah|yep|yup|sure|of course|absolutely)\b/i.test(raw) ? "yes"
-          : /^\s*(no|nope|not really|never|nothing)\b/i.test(raw) ? "no" : null;
-  a.asksBack = /\?\s*$/.test(raw) || /\b(and you|what about you|how about you|and your)\b/i.test(raw);
-  a.unclear = /^(what|hmm+|sorry|\?)[\s?!.]*$/i.test(raw) ||
-              (words.length <= 5 && /\b(i don'?t know|dont know|no idea|i can'?t|i cant|repeat|pardon|help me|i forgot)\b/i.test(low));
-
-  /* имя */
-  const NOTNAME = new Set(["fine","good","ok","okay","great","from","in","at","a","an","the","sorry","happy","sad",
-    "tired","hungry","thirsty","ready","late","bored","cold","hot","not","very","so","really","interested","glad",
-    "new","here","student","pupil","boy","girl","years","year","old","born","looking","just","sure","well"]);
-  let m = low.match(/\b(?:my name is|my name's|i am|i'm|im|name is|name's|call me|this is)\s+([a-z][a-z'\-]{1,15})\b/);
-  if (m && !NOTNAME.has(m[1]) && !Object.prototype.hasOwnProperty.call(NUMW, m[1])) a.name = cap(m[1]);
-  if (!a.name && words.length <= 2 && /^[a-z][a-z'\-]{1,15}$/.test(words[0] || "") &&
-      !NOTNAME.has(words[0]) && !Object.prototype.hasOwnProperty.call(NUMW, words[0]) &&
-      !Object.keys(DICT).some(c => hasWord(low, words[0]) && DICT[c].indexOf(words[0]) !== -1)) a.maybeName = cap(words[0]);
-
-  /* числа и возраст */
-  let num = null;
-  m = low.match(/\b(\d{1,2})\b/);
-  if (m) num = parseInt(m[1],10);
-  if (num === null){
-    for (const w in NUMW) if (hasWord(low, w)){ num = NUMW[w]; break; }
+function nextQuestion(){
+  const topic = state.topic;
+  const next = topic.slots.find(s => !state.answered.has(s.id));
+  state.asked++;
+  if (next){
+    state.pending = next.id;
+    let q = next.q;
+    if (state.facts.name && state.asked % 2 === 0) q = cap(state.facts.name) + ", " + lowerFirst(q);
+    state.lastAsk = {q:next.q, ex:next.ex, hints:next.hints};
+    return {q, hints:next.hints};
   }
-  if (num !== null) a.number = num;
-  if (num !== null && num >= 6 && num <= 19 && /\b(years?|old|i'?m|i am|am)\b/i.test(low)) a.age = num;
-  if (a.age == null && num !== null && num >= 6 && num <= 19 && words.length <= 3) a.age = num;
+  const ex = topic.extra[state.extraIdx % topic.extra.length];
+  state.extraIdx++; state.pending = null;
+  state.lastAsk = {q:ex.q, ex:ex.hints[0], hints:ex.hints};
+  return {q:ex.q, hints:ex.hints};
+}
+function localReply(text){
+  const topic = state.topic;
+  const t = " " + String(text).toLowerCase().replace(/\s+/g," ") + " ";
+  const pending = topic.slots.find(s => s.id === state.pending) || null;
+  const ref = pending ? {q:pending.q, ex:pending.ex, hints:pending.hints}
+            : (state.lastAsk || {q:topic.slots[0].q, ex:topic.slots[0].ex, hints:topic.slots[0].hints});
 
-  /* время */
-  m = low.match(/\b(half past|quarter past|quarter to)\s+(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b/);
-  if (m) a.time = m[0].trim();
-  if (!a.time){
-    m = low.match(/\b(\d{1,2}:\d{2})\b/) ||
-        low.match(/\b(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s*(o'?clock|am|pm)\b/);
-    if (m) a.time = m[0].trim();
+  if (/[а-яё]/i.test(text))
+    return {reply:"Let's try in English. Repeat after me: " + ref.ex, hints:ref.hints};
+  if (HELP_RE.test(t) && String(text).trim().split(/\s+/).length <= 6)
+    return {reply:"No problem. You can say: " + ref.ex, hints:ref.hints};
+
+  let react = "", handled = false;
+
+  if (pending){
+    const v = matchSlot(pending, text, true);
+    if (v){
+      react = pending.react ? pending.react(v, text) : "Okay!";
+      state.facts[pending.id] = v; state.answered.add(pending.id); handled = true;
+    } else if (YES_RE.test(text) && pending.yes){
+      react = pending.yes; state.answered.add(pending.id); handled = true;
+    } else if (NO_RE.test(text) && pending.no){
+      react = pending.no; state.answered.add(pending.id); handled = true;
+    }
   }
-  if (!a.time && /\b(late|early|midnight|noon|morning|evening|afternoon)\b/.test(low)) a.time = null;
-
-  /* город / страна из «from / live in» */
-  m = raw.match(/\b(?:from|live in|living in|i'm in|i am in)\s+([A-Za-z][A-Za-z\-]{2,18}(?:\s+[A-Z][a-z\-]{2,18})?)/);
-  if (m){
-    const cand = m[1].trim();
-    if (!/^(a|the|school|home|here|there|my|moscow city)$/i.test(cand)) a.city = cap(cand.toLowerCase());
+  if (!handled){                                  // ученик сказал про другое — реагируем на это
+    for (const s of topic.slots){
+      if (s.id === state.pending || state.answered.has(s.id)) continue;
+      const v = matchSlot(s, text, false);
+      if (v){
+        react = s.react ? s.react(v, text) : "Okay!";
+        state.facts[s.id] = v; state.answered.add(s.id); handled = true;
+        break;
+      }
+    }
   }
-  const cityDict = findIn(low,"cities");
-  if (cityDict) a.city = a.city || cap(cityDict);
+  if (!handled){
+    const kw = KEYWORDS.find(k => k.re.test(t));
+    if (kw){ react = kw.say; handled = true; }
+  }
+  if (!handled)                                   // не поняли — не идём дальше, а переспрашиваем
+    return {reply:"Sorry, I didn't catch that. " + ref.q, hints:ref.hints};
 
-  /* тематические слова */
-  [["subject","subjects"],["hobby","hobbies"],["food","foods"],["drink","drinks"],["clothes","clothes"],
-   ["colour","colours"],["place","places"],["family","family"],["job","jobs"]].forEach(([key,cat])=>{
-    const w = findIn(low, cat);
-    if (w){ a[key] = w; a.keywords.push({ cat, word:w }); }
-  });
-  if (a.city) a.keywords.push({ cat:"cities", word:a.city });
-  return a;
+  const nx = nextQuestion();
+  return {reply:(react + " " + nx.q).replace(/\s{2,}/g," ").trim(), hints:nx.hints};
 }
 
-/* ============================================================
-   ПРОВЕРКА ГРАММАТИКИ (работает без интернета и без ключа)
-   ============================================================ */
-const PAST = { go:"went", see:"saw", eat:"ate", have:"had", do:"did", get:"got", make:"made", write:"wrote",
-  read:"read", take:"took", come:"came", buy:"bought", meet:"met", drink:"drank", run:"ran", swim:"swam",
-  sing:"sang", sleep:"slept", give:"gave", find:"found", think:"thought", say:"said", speak:"spoke",
-  tell:"told", put:"put", sit:"sat", win:"won", wear:"wore", ride:"rode", draw:"drew", teach:"taught", feel:"felt" };
-function toPast(v){
-  const lv = v.toLowerCase();
-  if (PAST[lv]) return PAST[lv];
-  if (/e$/.test(lv)) return lv + "d";
-  if (/[^aeiou]y$/.test(lv)) return lv.slice(0,-1) + "ied";
-  if (/^(stop|plan|shop|chat|jog)$/.test(lv)) return lv + lv.slice(-1) + "ed";
-  return lv + "ed";
-}
-function toS3(v){
-  const lv = v.toLowerCase();
-  if (lv === "have") return "has";
-  if (lv === "be") return "is";
-  if (lv === "do") return "does";
-  if (lv === "go") return "goes";
-  if (/(ch|sh|ss|x|z|o)$/.test(lv)) return lv + "es";
-  if (/[^aeiou]y$/.test(lv)) return lv.slice(0,-1) + "ies";
-  return lv + "s";
-}
-function toIng(v){
-  const lv = v.toLowerCase();
-  if (/^(swim|run|sit|get|put|shop|stop|plan|begin|jog|chat|cut|win)$/.test(lv)) return lv + lv.slice(-1) + "ing";
-  if (/ie$/.test(lv)) return lv.slice(0,-2) + "ying";
-  if (/e$/.test(lv) && !/(ee|oe)$/.test(lv)) return lv.slice(0,-1) + "ing";
-  return lv + "ing";
-}
-const VB = "like|love|hate|play|go|have|do|live|want|need|get|study|watch|read|make|eat|work|speak|know|think|help|cook|draw|run|swim|sing|dance|sleep|start|finish|come|take|give|look|listen|learn|teach|walk|talk|visit|travel|enjoy|prefer|wear|buy|clean|wash|try|ride|drive|open|close|meet|call|write|paint|skate|collect|feel|drink";
-const ADJ = "happy|sad|tired|fine|good|bad|ok|okay|hungry|thirsty|ready|late|early|nice|angry|bored|cold|hot|sure|sorry|busy|free|glad|afraid|kind|funny|strict|clever|shy|strong|new|young|interested|excited|lucky|ill|sick";
-const SING = "mum|mom|mother|dad|father|brother|sister|friend|teacher|dog|cat|family|granny|grandma|grandpa|cousin|name|hobby|school|town|city|room|phone";
-
-/* Каждое правило: что ищем, как исправляем, как объяснить по-русски */
-const GRAMMAR = [
-  /* be: пропущенный или неверный */
-  { re:new RegExp("\\bi\\s+(is|are)\\b","i"), fix:s=>s.replace(new RegExp("\\bi\\s+(is|are)\\b","ig"),"I am"),
-    why:"После I всегда am." },
-  { re:new RegExp("\\b(he|she|it)\\s+(am|are)\\b","i"), fix:s=>s.replace(new RegExp("\\b(he|she|it)\\s+(am|are)\\b","ig"),(m,p)=>cap(p)+" is"),
-    why:"С he, she, it — is." },
-  { re:new RegExp("\\b(we|they|you)\\s+(is|am)\\b","i"), fix:s=>s.replace(new RegExp("\\b(we|they|you)\\s+(is|am)\\b","ig"),(m,p)=>cap(p)+" are"),
-    why:"С we, they, you — are." },
-  { re:new RegExp("\\bi\\s+(from|in|"+ADJ+")\\b","i"), fix:s=>s.replace(new RegExp("\\bi\\s+(from|in|"+ADJ+")\\b","ig"),(m,w)=>"I am "+w),
-    why:"Нужен глагол am: I am …" },
-  { re:new RegExp("\\b(he|she)\\s+(from|"+ADJ+")\\b","i"), fix:s=>s.replace(new RegExp("\\b(he|she)\\s+(from|"+ADJ+")\\b","ig"),(m,p,w)=>cap(p)+" is "+w),
-    why:"Нужен глагол is: He is …" },
-  { re:new RegExp("\\b(we|they)\\s+(from|"+ADJ+")\\b","i"), fix:s=>s.replace(new RegExp("\\b(we|they)\\s+(from|"+ADJ+")\\b","ig"),(m,p,w)=>cap(p)+" are "+w),
-    why:"Нужен глагол are: We are …" },
-  { re:new RegExp("\\bi\\s+(a|an)\\s+","i"), fix:s=>s.replace(new RegExp("\\bi\\s+(a|an)\\s+","i"),(m,ar)=>"I am "+ar+" "),
-    why:"Между I и профессией нужен am: I am a student." },
-  { re:new RegExp("\\b(he|she)\\s+(a|an)\\s+","i"), fix:s=>s.replace(new RegExp("\\b(he|she)\\s+(a|an)\\s+","i"),(m,p,ar)=>cap(p)+" is "+ar+" "),
-    why:"Нужен is: He is a driver." },
-  { re:new RegExp("\\bmy\\s+("+SING+")\\s+("+ADJ+")\\b","i"), fix:s=>s.replace(new RegExp("\\bmy\\s+("+SING+")\\s+("+ADJ+")\\b","ig"),(m,n,adj)=>"my "+n+" is "+adj),
-    why:"Перед прилагательным нужен is: My sister is kind." },
-  { re:new RegExp("\\b(i am|i'm)\\s+(\\d{1,2})\\s+years?\\b(?!\\s+old)","i"), fix:s=>s.replace(new RegExp("\\b(i am|i'm)\\s+(\\d{1,2})\\s+years?\\b(?!\\s+old)","i"),(m,p,n)=>p+" "+n+" years old"),
-    why:"О возрасте говорят полностью: I am 14 years old." },
-
-  /* возраст через have */
-  { re:new RegExp("\\bi\\s+have\\s+(\\d{1,2})\\s+years?(\\s+old)?\\b","i"), fix:s=>s.replace(new RegExp("\\bi\\s+have\\s+(\\d{1,2})\\s+years?(\\s+old)?\\b","ig"),"I am $1 years old"),
-    why:"Возраст с глаголом be: I am 14 years old." },
-  { re:new RegExp("\\bi\\s+have\\s+(\\d{1,2})\\s*$","i"), fix:s=>s.replace(new RegExp("\\bi\\s+have\\s+(\\d{1,2})\\s*$","i"),"I am $1 years old"),
-    why:"О возрасте говорят через be: I am 14 years old." },
-
-  /* -s в третьем лице */
-  { re:new RegExp("\\b(he|she|it)\\s+("+VB+")\\b(?!\\s*(ing|ed)\\b)","i"),
-    fix:s=>s.replace(new RegExp("\\b(he|she|it)\\s+("+VB+")\\b","ig"),(m,p,v)=>cap(p)+" "+toS3(v)),
-    why:"С he, she, it глагол получает -s: He likes, She has." },
-  { re:new RegExp("\\bmy\\s+("+SING+")\\s+("+VB+")\\b","i"),
-    fix:s=>s.replace(new RegExp("\\bmy\\s+("+SING+")\\s+("+VB+")\\b","ig"),(m,n,v)=>"my "+n+" "+toS3(v)),
-    why:"Один человек — глагол с -s: My mum works." },
-  { re:new RegExp("\\b(i|we|they|you)\\s+has\\b","i"), fix:s=>s.replace(new RegExp("\\b(i|we|they|you)\\s+has\\b","ig"),(m,p)=>cap(p)+" have"),
-    why:"Has только с he, she, it. Иначе have." },
-
-  /* отрицания и вспомогательные */
-  { re:new RegExp("\\b(i|we|they|you)\\s+no\\s+("+VB+")\\b","i"),
-    fix:s=>s.replace(new RegExp("\\b(i|we|they|you)\\s+no\\s+("+VB+")\\b","ig"),(m,p,v)=>cap(p)+" don't "+v),
-    why:"Отрицание строится с don't: I don't like." },
-  { re:new RegExp("\\b(he|she|it)\\s+no\\s+("+VB+")\\b","i"),
-    fix:s=>s.replace(new RegExp("\\b(he|she|it)\\s+no\\s+("+VB+")\\b","ig"),(m,p,v)=>cap(p)+" doesn't "+v),
-    why:"С he, she, it отрицание с doesn't." },
-  { re:new RegExp("\\b(he|she|it)\\s+don'?t\\b","i"), fix:s=>s.replace(new RegExp("\\b(he|she|it)\\s+don'?t\\b","ig"),(m,p)=>cap(p)+" doesn't"),
-    why:"С he, she, it — doesn't." },
-  { re:new RegExp("\\b(don'?t|doesn'?t|didn'?t)\\s+(has|likes|goes|does|plays|wants|lives|knows)\\b","i"),
-    fix:s=>s.replace(new RegExp("\\b(don'?t|doesn'?t|didn'?t)\\s+(has|likes|goes|does|plays|wants|lives|knows)\\b","ig"),
-      (m,d,v)=>d+" "+({has:"have",likes:"like",goes:"go",does:"do",plays:"play",wants:"want",lives:"live",knows:"know"}[v.toLowerCase()])),
-    why:"После don't / doesn't глагол без -s." },
-  { re:new RegExp("\\bdidn'?t\\s+(went|saw|ate|had|did|got|made|took|came|drank|read)\\b","i"),
-    fix:s=>s.replace(new RegExp("\\bdidn'?t\\s+(went|saw|ate|had|did|got|made|took|came|drank|read)\\b","ig"),
-      (m,v)=>{ const back={went:"go",saw:"see",ate:"eat",had:"have",did:"do",got:"get",made:"make",took:"take",came:"come",drank:"drink",read:"read"}; return "didn't "+back[v.toLowerCase()]; }),
-    why:"После didn't — начальная форма глагола." },
-  { re:new RegExp("\\b(i|we|they|you|he|she)\\s+not\\s+("+VB+")\\b","i"),
-    fix:s=>s.replace(new RegExp("\\b(i|we|they|you|he|she)\\s+not\\s+("+VB+")\\b","ig"),
-      (m,p,v)=>/^(he|she)$/i.test(p) ? cap(p)+" doesn't "+v : cap(p)+" don't "+v),
-    why:"Нужен don't / doesn't, а не одно not." },
-
-  /* формы после like / want / модальных */
-  { re:new RegExp("\\b(like|love|hate|enjoy|start|finish|stop)\\s+("+VB+")\\b","i"),
-    fix:s=>s.replace(new RegExp("\\b(like|love|hate|enjoy|start|finish|stop)\\s+("+VB+")\\b","ig"),(m,v1,v2)=>v1+" "+toIng(v2)),
-    why:"После like / love обычно -ing: I like playing." },
-  { re:new RegExp("\\b(want|need|hope|plan|try|would like|'d like|decide)\\s+("+VB+")\\b","i"),
-    fix:s=>s.replace(new RegExp("\\b(want|need|hope|plan|try|would like|'d like|decide)\\s+("+VB+")\\b","ig"),(m,v1,v2)=>v1+" to "+v2),
-    why:"После want / need нужна частица to: I want to go." },
-  { re:new RegExp("\\b(can|must|should|will|may|could|would)\\s+to\\s+("+VB+")\\b","i"),
-    fix:s=>s.replace(new RegExp("\\b(can|must|should|will|may|could|would)\\s+to\\s+("+VB+")\\b","ig"),(m,mo,v)=>mo+" "+v),
-    why:"После can / must частица to не нужна." },
-  { re:new RegExp("\\b(can|must|should|will|may|could|would)\\s+(likes|plays|goes|does|has|swims|reads|writes|eats|makes|takes|speaks|sings|wants)\\b","i"),
-    fix:s=>s.replace(new RegExp("\\b(can|must|should|will|may|could|would)\\s+(\\w+)s\\b","ig"),(m,mo,v)=>mo+" "+(v==="ha"?"have":v)),
-    why:"После can / will глагол без -s." },
-  { re:new RegExp("\\bi\\s+am\\s+agree\\b","i"), fix:s=>s.replace(new RegExp("\\bi\\s+am\\s+agree\\b","ig"),"I agree"),
-    why:"Agree — глагол, am не нужен." },
-  { re:new RegExp("\\b(i am|i'm)\\s+("+VB+")\\b(?!\\s*ing)","i"),
-    fix:s=>s.replace(new RegExp("\\b(i am|i'm)\\s+("+VB+")\\b","i"),(m,p,v)=>"I "+v),
-    why:"Либо I like, либо I am liking — вместе не ставят." },
-
-  /* артикли */
-  { re:new RegExp("\\b(i am|i'm|he is|she is|he's|she's)\\s+(student|pupil|teacher|doctor|driver|programmer|nurse|cook|dentist|engineer|schoolboy|schoolgirl|boy|girl)\\b","i"),
-    fix:s=>s.replace(new RegExp("\\b(i am|i'm|he is|she is|he's|she's)\\s+(student|pupil|teacher|doctor|driver|programmer|nurse|cook|dentist|engineer|schoolboy|schoolgirl|boy|girl)\\b","ig"),
-      (m,p,n)=>p+" a "+n),
-    why:"Перед профессией нужен артикль a: I am a student." },
-  { re:new RegExp("\\b(have|has|want|need|see|buy|got)\\s+(dog|cat|car|bike|phone|computer|pizza|burger|book|pen|ball|guitar|brother|sister|question)\\b","i"),
-    fix:s=>s.replace(new RegExp("\\b(have|has|want|need|see|buy|got)\\s+(dog|cat|car|bike|phone|computer|pizza|burger|book|pen|ball|guitar|brother|sister|question)\\b","ig"),
-      (m,v,n)=>v+" a "+n),
-    why:"Перед одним предметом нужен a: I have a dog." },
-  { re:new RegExp("\\bplay\\s+the\\s+(football|basketball|tennis|hockey|volleyball|chess|games|video games)\\b","i"),
-    fix:s=>s.replace(new RegExp("\\bplay\\s+the\\s+(football|basketball|tennis|hockey|volleyball|chess|games|video games)\\b","ig"),"play $1"),
-    why:"В названиях игр артикль не нужен: play football." },
-  { re:new RegExp("\\bplay\\s+(guitar|piano|violin|drums)\\b","i"),
-    fix:s=>s.replace(new RegExp("\\bplay\\s+(guitar|piano|violin|drums)\\b","ig"),"play the $1"),
-    why:"С музыкальными инструментами нужен the: play the guitar." },
-  { re:new RegExp("\\bgo\\s+to\\s+the\\s+(school|bed|work|university)\\b","i"),
-    fix:s=>s.replace(new RegExp("\\bgo\\s+to\\s+the\\s+(school|bed|work|university)\\b","ig"),"go to $1"),
-    why:"go to school, go to bed — без the." },
-  { re:new RegExp("\\bgo\\s+to\\s+home\\b","i"), fix:s=>s.replace(new RegExp("\\bgo\\s+to\\s+home\\b","ig"),"go home"),
-    why:"Домой — go home, без to." },
-
-  /* предлоги */
-  { re:new RegExp("\\blisten\\s+(?!to\\b)(music|songs|the radio|podcasts)\\b","i"),
-    fix:s=>s.replace(new RegExp("\\blisten\\s+(?!to\\b)(music|songs|the radio|podcasts)\\b","ig"),"listen to $1"),
-    why:"Всегда listen to music." },
-  { re:new RegExp("\\b(i am|i'm|he is|she is)\\s+interesting\\s+in\\b","i"),
-    fix:s=>s.replace(new RegExp("\\binteresting\\s+in\\b","ig"),"interested in"),
-    why:"Человек interested in — интересуется; interesting — сам интересный." },
-  { re:new RegExp("\\b(in|at)\\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\b","i"),
-    fix:s=>s.replace(new RegExp("\\b(in|at)\\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\b","ig"),(m,p,d)=>"on "+d),
-    why:"С днями недели — on Monday." },
-  { re:new RegExp("\\bin\\s+(\\d{1,2})\\s*o'?clock\\b","i"), fix:s=>s.replace(new RegExp("\\bin\\s+(\\d{1,2})\\s*o'?clock\\b","ig"),"at $1 o'clock"),
-    why:"Со временем — at seven o'clock." },
-  { re:new RegExp("\\bon\\s+the\\s+(morning|evening|afternoon)\\b","i"), fix:s=>s.replace(new RegExp("\\bon\\s+the\\s+(morning|evening|afternoon)\\b","ig"),"in the $1"),
-    why:"in the morning, in the evening." },
-  { re:new RegExp("\\bgo\\s+in\\s+(school|the park|bed|the shop)\\b","i"), fix:s=>s.replace(new RegExp("\\bgo\\s+in\\s+(school|the park|bed|the shop)\\b","ig"),"go to $1"),
-    why:"Идти куда-то — go to." },
-  { re:new RegExp("\\bdepends\\s+of\\b","i"), fix:s=>s.replace(new RegExp("\\bdepends\\s+of\\b","ig"),"depends on"),
-    why:"Depends on — зависит от." },
-
-  /* порядок слов и вопросы */
-  { re:new RegExp("^(what|where|when|how|who|why)\\s+(you|we|they)\\s+("+VB+")\\b","i"),
-    fix:s=>s.replace(new RegExp("^(what|where|when|how|who|why)\\s+(you|we|they)\\s+("+VB+")\\b","i"),(m,q,p,v)=>cap(q)+" do "+p+" "+v),
-    why:"В вопросе нужен do: Where do you live?" },
-  { re:new RegExp("^(what|where|when|how|why)\\s+(he|she|it)\\s+("+VB+")\\b","i"),
-    fix:s=>s.replace(new RegExp("^(what|where|when|how|why)\\s+(he|she|it)\\s+("+VB+")\\b","i"),(m,q,p,v)=>cap(q)+" does "+p+" "+v),
-    why:"В вопросе про he / she нужен does." },
-  { re:new RegExp("\\bhow\\s+you\\s+are\\b","i"), fix:s=>s.replace(new RegExp("\\bhow\\s+you\\s+are\\b","ig"),"how are you"),
-    why:"В вопросе глагол идёт перед подлежащим: How are you?" },
-  { re:new RegExp("^(you|they|we)\\s+("+VB+")\\b[^?]*\\?\\s*$","i"),
-    fix:s=>s.replace(new RegExp("^(you|they|we)\\s+("+VB+")\\b","i"),(m,p,v)=>"Do "+p.toLowerCase()+" "+v),
-    why:"Вопрос начинается с Do: Do you like football?" },
-  { re:new RegExp("^(he|she)\\s+("+VB+")\\b[^?]*\\?\\s*$","i"),
-    fix:s=>s.replace(new RegExp("^(he|she)\\s+("+VB+")\\b","i"),(m,p,v)=>"Does "+p.toLowerCase()+" "+v),
-    why:"Вопрос про he / she начинается с Does." },
-  { re:new RegExp("\\bi\\s+very\\s+(like|love)\\s+","i"), fix:s=>s.replace(new RegExp("\\bi\\s+very\\s+(like|love)\\s+(.+?)([.!?]*)$","i"),(m,v,rest,p)=>"I "+v+" "+rest+" very much"+p),
-    why:"Very much ставится в конце: I like it very much." },
-  { re:new RegExp("\\b(like|love)\\s+very\\s+much\\s+(\\w+)","i"), fix:s=>s.replace(new RegExp("\\b(like|love)\\s+very\\s+much\\s+(\\w+)","ig"),(m,v,n)=>v+" "+n+" very much"),
-    why:"Сначала предмет, потом very much." },
-  { re:new RegExp("\\bmy\\s+("+SING+")\\s+(he|she|it|they)\\s+(is|are|has|have|was|likes|works|lives)\\b","i"),
-    fix:s=>s.replace(new RegExp("\\bmy\\s+("+SING+")\\s+(he|she|it|they)\\s+","ig"),(m,n)=>"my "+n+" "),
-    why:"Подлежащее одно: My brother is ten (без he)." },
-  { re:new RegExp("\\bfor\\s+me\\s+(is|it's|its)\\s+(\\w+)","i"), fix:s=>s.replace(new RegExp("\\bfor\\s+me\\s+(is|it's|its)\\s+(\\w+)","i"),(m,b,adj)=>"it is "+adj+" for me"),
-    why:"Порядок слов: It is difficult for me." },
-
-  /* число и количество */
-  { re:new RegExp("\\bmany\\s+(money|time|water|homework|music|information|food|milk|tea|sugar|bread|snow|rain|work)\\b","i"),
-    fix:s=>s.replace(new RegExp("\\bmany\\s+(money|time|water|homework|music|information|food|milk|tea|sugar|bread|snow|rain|work)\\b","ig"),"much $1"),
-    why:"С неисчисляемыми — much: much money." },
-  { re:new RegExp("\\bmuch\\s+(friends|people|books|lessons|things|apples|cars|hours|days|students|subjects|photos)\\b","i"),
-    fix:s=>s.replace(new RegExp("\\bmuch\\s+(friends|people|books|lessons|things|apples|cars|hours|days|students|subjects|photos)\\b","ig"),"many $1"),
-    why:"С исчисляемыми — many: many friends." },
-  { re:new RegExp("\\bthere\\s+is\\s+(many|a lot of|two|three|four|five|some)\\b","i"),
-    fix:s=>s.replace(new RegExp("\\bthere\\s+is\\s+(many|a lot of|two|three|four|five|some)\\b","ig"),"there are $1"),
-    why:"Много предметов — there are." },
-  { re:new RegExp("\\b(two|three|four|five|six|seven|eight|nine|ten|\\d+)\\s+(book|lesson|sister|brother|friend|cat|dog|year|hour|apple|day|minute|subject|room|car|photo|cup)\\b","i"),
-    fix:s=>s.replace(new RegExp("\\b(two|three|four|five|six|seven|eight|nine|ten|\\d+)\\s+(book|lesson|sister|brother|friend|cat|dog|year|hour|apple|day|minute|subject|room|car|photo|cup)\\b","ig"),(m,n,w)=>n+" "+w+"s"),
-    why:"После числа больше одного — множественное число: two books." },
-  { re:new RegExp("\\b(mans|womans|childs|childrens|peoples|foots|mouses|sheeps|informations|advices|moneys|homeworks)\\b","i"),
-    fix:s=>s.replace(new RegExp("\\b(mans|womans|childs|childrens|peoples|foots|mouses|sheeps|informations|advices|moneys|homeworks)\\b","ig"),
-      (m,w)=>({mans:"men",womans:"women",childs:"children",childrens:"children",peoples:"people",foots:"feet",mouses:"mice",sheeps:"sheep",informations:"information",advices:"advice",moneys:"money",homeworks:"homework"}[w.toLowerCase()])),
-    why:"Особая форма множественного числа." },
-  { re:new RegExp("\\bmy\\s+((?:favourite|favorite)\\s+)?(subject|hobby|colour|color|food|sport|book|film|song|teacher|dream|city|animal|number|"+SING+")\\s+are\\b","i"),
-    fix:s=>s.replace(new RegExp("\\bmy\\s+((?:favourite|favorite)\\s+)?(subject|hobby|colour|color|food|sport|book|film|song|teacher|dream|city|animal|number|"+SING+")\\s+are\\b","ig"),(m,f,n)=>"my "+(f||"")+n+" is"),
-    why:"Подлежащее одно — нужен is: My favourite subject is maths." },
-  { re:new RegExp("\\b(people|parents|friends|children)\\s+is\\b","i"),
-    fix:s=>s.replace(new RegExp("\\b(people|parents|friends|children)\\s+is\\b","ig"),(m,w)=>w+" are"),
-    why:"Это множественное число — нужен are." },
-  { re:new RegExp("\\bmore\\s+(better|worse)\\b","i"), fix:s=>s.replace(new RegExp("\\bmore\\s+(better|worse)\\b","ig"),"$1"),
-    why:"Better уже сравнительная форма, more не нужно." },
-
-  /* прошедшее время при маркере времени */
-  { re:new RegExp("\\b(yesterday|last\\s+(week|year|month|summer|night|monday)|\\d+\\s+days?\\s+ago)\\b[^.!?]*\\b(i|we|they|he|she|you)\\s+("+VB+")\\b","i"),
-    fix:s=>s.replace(new RegExp("\\b(i|we|they|he|she|you)\\s+("+VB+")\\b","i"),(m,p,v)=>cap(p)+" "+toPast(v)),
-    why:"Со словом yesterday нужно прошедшее время: I went." }
-];
-
-function checkGrammar(text){
-  const original = String(text || "").trim();
-  if (!original) return { status:"correct", original, improved:original, explanation_ru:"" };
-  if (/[а-яё]/i.test(original)){
-    return { status:"needs_improvement", original, improved:"Let's try it in English.",
-             explanation_ru:"Это по-русски. Скажи английскую фразу — можно взять подсказку ниже.", russian:true };
-  }
-  let cur = original;
-  const whys = [];
-  let changes = 0;
-  for (const r of GRAMMAR){
-    if (!r.re.test(cur)) continue;
-    let next;
-    try{ next = r.fix(cur); }catch(e){ continue; }
-    next = String(next).replace(/\s{2,}/g," ").trim();
-    if (!next || next.toLowerCase() === cur.toLowerCase()) continue;
-    cur = next;
-    if (whys.length < 2 && whys.indexOf(r.why) === -1) whys.push(r.why);
-    if (++changes >= 4) break;
-  }
-  const norm = (x)=>x.toLowerCase().replace(/[.,!?;:]/g,"").replace(/\s+/g," ").trim();
-  if (norm(cur) !== norm(original)){
-    let improved = cap(cur);
-    if (!/[.!?]$/.test(improved)) improved += /^(do|does|can|are|is|what|where|when|who|why|how|have|has)\b/i.test(improved) ? "?" : ".";
-    return { status:"needs_improvement", original, improved,
-             explanation_ru: whys.join(" ") || "Так фраза звучит естественнее." };
-  }
-  /* ошибок нет — но короткий ответ стоит развернуть (это не ошибка, а совет) */
-  const words = original.split(/\s+/).filter(Boolean);
-  let note = "";
-  if (words.length <= 2 && !/^(yes|no|ok|okay|thanks|thank you|hello|hi|bye|please|sorry|sure)\b/i.test(original))
-    note = "Понятно! Попробуй сказать это полным предложением — так речь тренируется лучше.";
-  return { status:"correct", original, improved:original, explanation_ru:"", note };
-}
-
-/* ============================================================
-   ЛОКАЛЬНЫЙ СОБЕСЕДНИК: реагирует на смысл, а не по скрипту
-   Для каждой темы: факты о себе (чтобы отвечать на вопросы ученика)
-   и слоты — что персонажу интересно узнать.
-   ============================================================ */
-const ENGINES = {
-  greeting:{
-    facts:{ name:"I'm Alex.", age:"I'm fifteen.", city:"I'm from Brighton, in England.",
-            hobby:"I play football after school.", friend:"My best friend is Sam.",
-            family:"I've got one brother.", mood:"I'm great today, thanks!" },
-    slots:[
-      { id:"name", want:"name", q:"What's your name?", react:v=>"Nice to meet you, "+v+"!",
-        hints:["My name is Ivan.","I'm Anna.","My name is Dima."] },
-      { id:"age", want:"age", q:"How old are you?", react:v=>v+"? I'm fifteen, so we are almost the same age.",
-        hints:["I'm 14 years old.","I am thirteen.","I'm fifteen."] },
-      { id:"city", want:"city", q:"Where are you from?", react:v=>v+" — I have never been there!",
-        hints:["I'm from Moscow.","I live in Kazan.","I am from a small town."] },
-      { id:"mood", want:"any", q:"How are you today?", react:()=>"Good to hear!",
-        hints:["I'm fine, thanks.","I'm a bit tired.","I am very happy today."] },
-      { id:"hobby", want:"hobby", q:"What do you like doing after school?", react:v=>cap(v)+" is fun!",
-        hints:["I like playing football.","I like drawing.","I play video games."] },
-      { id:"friend", want:"any", q:"Who is your best friend?", react:()=>"Friends make everything better.",
-        hints:["My best friend is Kolya.","Her name is Masha.","I have two best friends."] }
-    ],
-    extra:["Tell me one more thing about yourself!","What do you want to do at the weekend?","Do you like meeting new people?"]
-  },
-  school:{
-    facts:{ name:"I'm Mia.", subject:"My favourite subject is art.", lessons:"I have five lessons today.",
-            hard:"Physics is hard for me.", teacher:"My teacher is Mr Brown, he is funny.",
-            breaktime:"At break I talk with my friends.", homework:"Yes, I have maths homework.",
-            mood:"I'm okay, just a bit sleepy." },
-    slots:[
-      { id:"subject", want:"subject", q:"What is your favourite subject at school?", react:v=>cap(v)+" is a great subject!",
-        hints:["My favourite subject is maths.","I like English.","I like history and art."] },
-      { id:"lessons", want:"number", q:"How many lessons do you have today?", react:v=>v+" lessons — that is a long day!",
-        hints:["I have six lessons.","Five lessons today.","Only four lessons."] },
-      { id:"hard", want:"subject", q:"Which subject is difficult for you?", react:v=>cap(v)+" is not easy, I agree.",
-        hints:["Physics is difficult for me.","Maths is hard.","Nothing is difficult."] },
-      { id:"teacher", want:"any", q:"What is your favourite teacher like?", react:()=>"A good teacher changes everything.",
-        hints:["My teacher is kind.","She is very funny.","He is strict but fair."] },
-      { id:"breaktime", want:"any", q:"What do you do at break time?", react:()=>"Sounds like a nice break!",
-        hints:["I talk with my friends.","I eat a sandwich.","I play games on my phone."] },
-      { id:"homework", want:"yesno", q:"Do you have a lot of homework today?",
-        reactYes:"Oh, good luck with it!", reactNo:"Lucky you!",
-        hints:["Yes, a lot.","No, only maths.","Just a little."] }
-    ],
-    extra:["Do you go to school on Saturday?","What time do your lessons start?","Do you like your classmates?"]
-  },
-  hobbies:{
-    facts:{ name:"I'm Leo.", hobby:"I play the guitar.", often:"I practise three times a week.",
-            company:"Usually with my brother.", start:"I started two years ago.",
-            music:"I like rock music.", newone:"I want to try skateboarding.", mood:"I'm good!" },
-    slots:[
-      { id:"hobby", want:"hobby", q:"What do you like to do in your free time?", react:v=>cap(v)+" — that's cool!",
-        hints:["I like playing football.","I love drawing.","I play video games."] },
-      { id:"often", want:"any", q:"How often do you do it?", react:()=>"Nice, that's good practice.",
-        hints:["Twice a week.","Every day.","Only at the weekend."] },
-      { id:"company", want:"any", q:"Do you do it alone or with friends?", react:()=>"Both ways are fun.",
-        hints:["With my friends.","Usually alone.","With my brother."] },
-      { id:"start", want:"any", q:"When did you start?", react:()=>"That's a good start!",
-        hints:["Two years ago.","Last summer.","When I was ten."] },
-      { id:"music", want:"any", q:"What music do you like?", react:()=>"Good taste!",
-        hints:["I like rap.","I love rock music.","I listen to pop music."] },
-      { id:"newone", want:"yesno", q:"Is there a new hobby you want to try?",
-        reactYes:"Go for it!", reactNo:"Your hobby is great already.",
-        hints:["Yes, boxing.","I want to try skating.","No, I like my hobby."] }
-    ],
-    extra:["Who is your favourite player or artist?","Do your friends have the same hobby?","Do you watch videos about it?"]
-  },
-  cafe:{
-    facts:{ name:"I'm Tom, the waiter.", order:"Our pizza is the best here.", drink:"I like orange juice.",
-            price:"That's seven dollars.", sweet:"I love chocolate cake.", eatin:"Most people eat here.",
-            mood:"Busy day, but I'm fine!" },
-    slots:[
-      { id:"order", want:"food", q:"What would you like to order?", react:v=>"One "+v+" — good choice!",
-        hints:["I'd like a pizza, please.","Can I have a burger?","A sandwich, please."] },
-      { id:"drink", want:"drink", q:"Would you like something to drink?", react:v=>cap(v)+", coming up.",
-        hints:["A cup of tea, please.","Orange juice, please.","Just water, thanks."] },
-      { id:"more", want:"yesno", q:"Anything else?", reactYes:"Sure, no problem.", reactNo:"Okay, that's all then.",
-        hints:["No, thank you.","Yes, a cake, please.","That's all, thanks."] },
-      { id:"eatin", want:"any", q:"Do you want to eat here or take away?", react:()=>"Perfect.",
-        hints:["I'll eat here.","Take away, please.","Here, please."] },
-      { id:"price", want:"yesno", q:"It's seven dollars. Is that okay?",
-        reactYes:"Great, thank you!", reactNo:"I know, it's not cheap.",
-        hints:["Yes, that's fine.","Here you are.","That's expensive!"] },
-      { id:"sweet", want:"food", q:"Do you like sweet food?", react:v=>cap(v)+" is delicious!",
-        reactYes:"Me too!", reactNo:"Okay, no dessert today.",
-        hints:["Yes, I love cake.","No, thanks.","I like ice cream."] }
-    ],
-    extra:["Is this your first time here?","Do you often eat in cafés?","How is your food?"]
-  },
-  shopping:{
-    facts:{ name:"I'm Sofia.", item:"We have new T-shirts today.", colour:"Blue is very popular.",
-            size:"We have all sizes.", price:"It costs twenty dollars.", tryon:"The fitting room is over there.",
-            mood:"I'm fine, thank you!" },
-    slots:[
-      { id:"item", want:"clothes", q:"Can I help you find something?", react:v=>"We have nice "+v+"s here.",
-        hints:["I'm looking for a T-shirt.","I need new jeans.","I want a jacket."] },
-      { id:"colour", want:"colour", q:"What colour would you like?", react:v=>cap(v)+" is a good choice.",
-        hints:["Blue, please.","I like black.","Something bright."] },
-      { id:"size", want:"any", q:"What size are you?", react:()=>"Okay, I'll find it for you.",
-        hints:["Medium, please.","Size small.","I don't know my size."] },
-      { id:"tryon", want:"yesno", q:"Do you want to try it on?",
-        reactYes:"The fitting room is over there.", reactNo:"No problem.",
-        hints:["Yes, please.","Where is the fitting room?","No, thank you."] },
-      { id:"price", want:"yesno", q:"It costs twenty dollars. Is that okay for you?",
-        reactYes:"Great!", reactNo:"We have cheaper ones too.",
-        hints:["Yes, I'll take it.","That's too expensive.","How much is the other one?"] },
-      { id:"more", want:"yesno", q:"Do you need anything else today?",
-        reactYes:"Sure, let's have a look.", reactNo:"Thank you, have a nice day!",
-        hints:["No, that's all.","Yes, I need shoes.","Just this, thanks."] }
-    ],
-    extra:["Do you like shopping?","Do you buy clothes online or in shops?","Who do you go shopping with?"]
-  },
-  routine:{
-    facts:{ name:"I'm Ben.", up:"I get up at half past seven.", breakfast:"I eat porridge and eggs.",
-            school:"I go to school by bike.", after:"After school I play basketball.",
-            bed:"I go to bed at ten.", weekend:"At the weekend I get up late.", mood:"I'm good, thanks!" },
-    slots:[
-      { id:"up", want:"time", q:"What time do you usually get up?", react:v=>cap(v)+" — that's quite early!",
-        hints:["I get up at seven o'clock.","At half past six.","I get up late."] },
-      { id:"breakfast", want:"food", q:"What do you have for breakfast?", react:v=>cap(v)+" sounds tasty.",
-        hints:["I have porridge.","Eggs and tea.","I don't eat breakfast."] },
-      { id:"school", want:"any", q:"How do you go to school?", react:()=>"Okay, I see.",
-        hints:["I go by bus.","On foot, it's near.","My dad drives me."] },
-      { id:"after", want:"any", q:"What do you do after school?", react:()=>"Sounds like a good day.",
-        hints:["I do my homework.","I play football.","I rest and watch videos."] },
-      { id:"bed", want:"time", q:"What time do you go to bed?", react:v=>cap(v)+" — sleep is important!",
-        hints:["At ten o'clock.","At half past nine.","Very late, about twelve."] },
-      { id:"weekend", want:"yesno", q:"Is your weekend different?",
-        reactYes:"Weekends are the best.", reactNo:"Okay, the same every day.",
-        hints:["Yes, I get up late.","No, it's the same.","At the weekend I rest."] }
-    ],
-    extra:["Do you help at home?","When do you do your homework?","How much free time do you have?"]
-  },
-  travel:{
-    facts:{ name:"I'm Nina.", place:"I want to go to Japan.", why:"Because I love the food there.",
-            who:"I travel with my sister.", how:"I prefer travelling by train.",
-            see:"I want to see the mountains.", been:"I have been to Italy once.", mood:"Excited, as always!" },
-    slots:[
-      { id:"place", want:"place", q:"Where would you like to travel?", react:v=>cap(v)+" — great choice!",
-        hints:["I'd like to go to Italy.","I want to visit London.","I want to see Japan."] },
-      { id:"why", want:"any", q:"Why do you want to go there?", react:()=>"That's a good reason.",
-        hints:["Because it is beautiful.","I want to see the sea.","The food is delicious."] },
-      { id:"who", want:"family", q:"Who do you want to travel with?", react:v=>"Travelling with your "+v+" sounds nice.",
-        hints:["With my family.","With my best friend.","Alone, I think."] },
-      { id:"how", want:"any", q:"How do you want to get there — by plane or by train?", react:()=>"Good plan.",
-        hints:["By plane.","By train, it's fun.","By car with my parents."] },
-      { id:"see", want:"any", q:"What do you want to see there?", react:()=>"That sounds exciting!",
-        hints:["I want to see old streets.","The sea and the beach.","Museums and parks."] },
-      { id:"been", want:"yesno", q:"Have you been to another country before?",
-        reactYes:"Lucky you!", reactNo:"Then your first trip will be special.",
-        hints:["Yes, I've been to Turkey.","No, never.","Only once."] }
-    ],
-    extra:["What food do you want to try there?","How long do you want to stay?","Do you like long trips?"]
-  },
-  family:{
-    facts:{ name:"I'm Kate.", size:"My family is small.", sibling:"I've got a little brother.",
-            job:"My mum is a nurse.", together:"We watch films together on Friday.",
-            friend:"My best friend is Dasha.", withfriends:"We ride bikes together.", mood:"I'm happy today!" },
-    slots:[
-      { id:"size", want:"yesno", q:"Have you got a big family?",
-        reactYes:"Big families are fun!", reactNo:"Small families are cosy too.",
-        hints:["Yes, we are five.","No, my family is small.","I have a big family."] },
-      { id:"sibling", want:"family", q:"Have you got a brother or a sister?", react:v=>"A "+v+" — that's nice!",
-        hints:["I've got one sister.","I have two brothers.","No, I'm the only child."] },
-      { id:"job", want:"job", q:"What does your mum or dad do?", react:v=>"A "+v+" — that's an important job.",
-        hints:["My mum is a teacher.","My dad is a driver.","My mum works in a shop."] },
-      { id:"together", want:"any", q:"What do you do together at the weekend?", react:()=>"That's good family time.",
-        hints:["We watch films.","We visit my grandma.","We walk in the park."] },
-      { id:"friend", want:"any", q:"Who is your best friend?", react:()=>"Good friends are like family.",
-        hints:["My best friend is Kolya.","Her name is Masha.","I have two close friends."] },
-      { id:"withfriends", want:"any", q:"What do you like doing with your friends?", react:()=>"Sounds fun!",
-        hints:["We play football.","We play video games.","We just talk a lot."] }
-    ],
-    extra:["Have you got a pet?","Do you look like your mum or your dad?","Who helps you with homework?"]
-  }
-};
-
-const GENERIC = ["Oh, I see!","That's interesting!","Nice!","Cool!","Okay, got it!","Really? Nice."];
-const REACT_CAT = {
-  hobbies:w=>cap(w)+" sounds fun!",
-  foods:w=>"I love "+w+" too!",
-  drinks:w=>cap(w)+" is a good choice.",
-  subjects:w=>cap(w)+" is interesting.",
-  family:w=>"A "+w+" — that's nice.",
-  places:w=>cap(w)+" is a beautiful place!",
-  jobs:w=>"A "+w+" — that's a good job.",
-  clothes:w=>cap(w)+" — nice choice.",
-  colours:w=>cap(w)+" is a nice colour.",
-  cities:w=>cap(w)+"! I would like to visit it."
-};
-
-/* вопрос ученика уже закрыл будущий вопрос персонажа? тогда его пропускаем */
-const QSTOP = new Set(["the","and","are","you","your","what","how","much","would","like","for","that","okay","does","this","with","want","have","here"]);
-function sameQuestion(lead, q){
-  const tok = (x)=>String(x).toLowerCase().replace(/[^a-z0-9' ]/g," ").split(/\s+/).filter(w => w.length > 2 && !QSTOP.has(w));
-  const set = new Set(tok(lead));
-  let hits = 0;
-  tok(q).forEach(w => { if (set.has(w)) hits++; });
-  return hits >= 2;
-}
-function pickFact(a, want){
-  switch(want){
-    case "name": return a.name || a.maybeName || null;
-    case "age": return a.age != null ? a.age : null;
-    case "number": return a.number != null ? a.number : null;
-    case "time": return a.time || null;
-    case "city": return a.city || null;
-    case "yesno": return a.yesno;
-    case "any": return null;
-    default: return a[want] || null;
-  }
-}
-/* если ученик сам рассказал больше — не спрашиваем это снова */
-function harvest(a, facts, slots, fromIdx){
-  const SAFE = { subject:1, hobby:1, food:1, drink:1, clothes:1, colour:1, place:1, family:1, job:1, city:1, time:1, age:1 };
-  const taken = Object.keys(facts).map(k => String(facts[k]).toLowerCase());
-  for (let i = fromIdx + 1; i < slots.length; i++){
-    const sl = slots[i];
-    if (facts[sl.id] != null || !SAFE[sl.want]) continue;
-    const v = pickFact(a, sl.want);
-    if (v == null) continue;
-    if (taken.indexOf(String(v).toLowerCase()) !== -1) continue;
-    facts[sl.id] = v;
-    taken.push(String(v).toLowerCase());
-  }
-}
-function reactGeneric(a, st){
-  if (a.keywords.length){
-    const k = a.keywords[0];
-    if (REACT_CAT[k.cat]) return REACT_CAT[k.cat](k.word);
-  }
-  if (a.yesno === "yes") return "Great!";
-  if (a.yesno === "no") return "That's okay.";
-  return GENERIC[(st.gen++) % GENERIC.length];
-}
-/* ученик задал встречный вопрос — персонаж отвечает о себе */
-function answerBack(a, eng, slot){
-  const f = eng.facts, q = a.low;
-  if (/\bname\b/.test(q) && f.name) return f.name;
-  if (/\b(old|age)\b/.test(q) && f.age) return f.age;
-  if (/\b(from|live|city|country)\b/.test(q) && f.city) return f.city;
-  if (/\b(hobby|free time|like doing|play)\b/.test(q) && f.hobby) return f.hobby;
-  if (/\b(family|brother|sister|mum|mom|dad)\b/.test(q)) return f.sibling || f.family || f.size || "My family is small.";
-  if (/\b(get up|time|wake)\b/.test(q) && f.up) return f.up;
-  if (/\bhow are you\b/.test(q)) return f.mood || "I'm good, thanks!";
-  if (/\b(much|price|cost|dollars)\b/.test(q) && f.price) return f.price;
-  if (slot && f[slot.id]) return f[slot.id];
-  return f.mood || "Me too!";
-}
-
-/* ============================================================
-   3. СОСТОЯНИЕ
-   ============================================================ */
+/* ===== 4. состояние ===== */
 const LS_KEY = "englishPractice.geminiKey";
 const LS_VOICE = "englishPractice.voice";
+const LS_THEME = "englishPractice.theme";
+const LS_PHOTOS = "englishPractice.photos";
 const state = {
-  apiKey:"", topic:TOPICS[0], history:[], demoStep:0,
+  apiKey:"", topic:TOPICS[0],
+  history:[], answered:new Set(), facts:{}, pending:null, extraIdx:0, asked:0, lastAsk:null,
   isRecording:false, recognition:null, recTimer:null,
-  soundOn:true, rate:1, autoMic:false,
+  soundOn:true, rate:1, autoMic:false, themeMode:"auto", photosOn:true,
   lastTutorLine:"", audioUnlocked:false, pendingSpeech:null,
-  busy:false, micBlocked:false, exchanges:0, theme:"auto",
-  slot:{ idx:0, tries:0, facts:{}, gen:0, extra:0 }
+  busy:false, micBlocked:false, exchanges:0
 };
 
-/* ============================================================
-   4. ХЕЛПЕРЫ DOM (пользовательский текст — только через textContent)
-   ============================================================ */
+/* ===== 5. DOM (текст ученика — только через textContent) ===== */
 const $ = (id)=>document.getElementById(id);
 function el(tag, cls, text){
   const n = document.createElement(tag);
@@ -1108,16 +983,15 @@ const scrollChat = ()=>{ chat.scrollTop = chat.scrollHeight; };
 const announce = (m)=>{ $("srStatus").textContent = m; };
 
 function addTutor(text){
+  setCloud(text);                                     // живая реплика — в облаке у персонажа
   const wrap = el("div","msg tutor");
   wrap.appendChild(el("div","who-label", state.topic.char.name));
   const row = el("div","bubble-row");
   row.appendChild(el("div","bubble",text));
   const say = el("button","mini","🔊");
-  say.type = "button";
-  say.setAttribute("aria-label","Озвучить реплику тьютора");
+  say.type = "button"; say.setAttribute("aria-label","Озвучить реплику собеседника");
   say.addEventListener("click",()=>speak(text));
-  row.appendChild(say);
-  wrap.appendChild(row);
+  row.appendChild(say); wrap.appendChild(row);
   chat.appendChild(wrap); scrollChat();
 }
 function addLearner(text){
@@ -1133,6 +1007,7 @@ function addSystem(text, bad){
   return wrap;
 }
 function addTyping(){
+  setCloudThinking();
   const wrap = el("div","msg tutor");
   wrap.appendChild(el("div","who-label", state.topic.char.name + " думает…"));
   const b = el("div","bubble"), t = el("span","typing");
@@ -1143,28 +1018,33 @@ function addTyping(){
 }
 function addFeedback(corr, tip){
   if (!corr) return;
-  const needs = corr.status === "needs_improvement" && corr.improved;
-  const card = el("div","feedback" + (needs ? " fix" : ""));
-  if (!needs){
-    card.appendChild(el("div","head","Отлично! Фраза понятна и звучит естественно."));
+  const st = corr.status || "correct";
+  const card = el("div","feedback" + (st === "needs_improvement" ? " fix" : st === "better" ? " polish" : ""));
+  if (st === "correct"){
+    card.appendChild(el("div","head","Отлично! Фраза правильная."));
     if (corr.original) card.appendChild(el("div","good",corr.original));
-    if (corr.note) card.appendChild(el("div","why",corr.note));
+  } else if (st === "better"){
+    card.appendChild(el("div","head","Хорошо! Можно сказать чуть лучше:"));
+    card.appendChild(el("div","good",corr.improved));
+    if (corr.explanation_ru) card.appendChild(el("div","why",corr.explanation_ru));
   } else {
-    card.appendChild(el("div","head","Почти! Смотри, как лучше:"));
+    card.appendChild(el("div","head","Так не годится — вот правильный вариант:"));
     if (corr.original) card.appendChild(el("div","orig",corr.original));
     card.appendChild(el("div","good",corr.improved));
     if (corr.explanation_ru) card.appendChild(el("div","why",corr.explanation_ru));
   }
   if (tip && tip.tip_ru) card.appendChild(el("div","tip",(tip.word ? tip.word + " — " : "") + tip.tip_ru));
   const acts = el("div","acts");
-  const phrase = needs ? corr.improved : (corr.original || "");
+  const phrase = st === "correct" ? (corr.original || "") : (corr.improved || "");
   if (phrase){
     const b = el("button","mini","🔊 Повторить правильный вариант");
     b.type = "button"; b.setAttribute("aria-label","Озвучить правильный вариант фразы");
     b.addEventListener("click",()=>speak(phrase)); acts.appendChild(b);
-    const use = el("button","mini","✍️ В поле");
-    use.type = "button"; use.setAttribute("aria-label","Подставить правильный вариант в поле ввода");
-    use.addEventListener("click",()=>fillInput(phrase)); acts.appendChild(use);
+    if (st !== "correct"){
+      const use = el("button","mini","✍️ В поле");
+      use.type = "button"; use.setAttribute("aria-label","Подставить правильный вариант в поле ввода");
+      use.addEventListener("click",()=>fillInput(phrase)); acts.appendChild(use);
+    }
   }
   if (tip && tip.word){
     const w = el("button","mini","🔊 " + tip.word);
@@ -1175,9 +1055,7 @@ function addFeedback(corr, tip){
   chat.appendChild(card); scrollChat();
 }
 
-/* ============================================================
-   5. ПЕРСОНАЖ И СЦЕНА (статичный SVG, собирается из параметров темы)
-   ============================================================ */
+/* ===== 6. персонаж и сцена ===== */
 function hairPath(style, color){
   if (style === "long")  return '<path d="M22 46c-2-20 8-32 28-32s30 12 28 32c-3-4-5-16-8-18-6 6-34 6-40 0-3 2-5 14-8 18z" fill="'+color+'"/><path d="M20 46c0 16 2 26 5 30-8-6-11-20-9-34zM80 46c0 16-2 26-5 30 8-6 11-20 9-34z" fill="'+color+'"/>';
   if (style === "bun")   return '<circle cx="50" cy="12" r="9" fill="'+color+'"/><path d="M23 44c0-18 12-28 27-28s27 10 27 28c-4-6-8-14-12-15-8 5-22 5-30 0-4 1-8 9-12 15z" fill="'+color+'"/>';
@@ -1194,19 +1072,17 @@ function extraPath(kind){
 }
 function renderCharacter(topic){
   const c = topic.char;
-  const svg =
+  $("avatar").innerHTML =
   '<svg viewBox="0 0 100 104" xmlns="http://www.w3.org/2000/svg" role="img">'+
-    '<ellipse cx="50" cy="99" rx="30" ry="5" fill="rgba(27,31,59,.10)"/>'+
+    '<ellipse cx="50" cy="99" rx="30" ry="5" fill="rgba(0,0,0,.14)"/>'+
     '<path d="M50 74c-16 0-26 9-28 26h56c-2-17-12-26-28-26z" fill="'+c.shirt+'"/>'+
     '<rect x="44" y="66" width="12" height="12" rx="5" fill="'+c.skin+'"/>'+
     '<ellipse cx="50" cy="46" rx="26" ry="27" fill="'+c.skin+'"/>'+
     '<ellipse cx="24" cy="48" rx="4" ry="6" fill="'+c.skin+'"/>'+
     '<ellipse cx="76" cy="48" rx="4" ry="6" fill="'+c.skin+'"/>'+
     hairPath(c.style, c.hair)+
-    '<circle cx="39" cy="50" r="3.1" fill="#26223A"/>'+
-    '<circle cx="61" cy="50" r="3.1" fill="#26223A"/>'+
-    '<circle cx="40.2" cy="48.8" r="1" fill="#fff"/>'+
-    '<circle cx="62.2" cy="48.8" r="1" fill="#fff"/>'+
+    '<circle cx="39" cy="50" r="3.1" fill="#26223A"/><circle cx="61" cy="50" r="3.1" fill="#26223A"/>'+
+    '<circle cx="40.2" cy="48.8" r="1" fill="#fff"/><circle cx="62.2" cy="48.8" r="1" fill="#fff"/>'+
     '<rect class="lid" x="35.5" y="46" width="7.5" height="5" rx="2" fill="'+c.skin+'"/>'+
     '<rect class="lid" x="57.5" y="46" width="7.5" height="5" rx="2" fill="'+c.skin+'"/>'+
     '<ellipse cx="32" cy="57" rx="4.5" ry="2.6" fill="#F2A08A" opacity=".45"/>'+
@@ -1217,93 +1093,157 @@ function renderCharacter(topic){
       '<path class="wave" d="M84 40a10 10 0 0 1 0 14"/>'+
       '<path class="wave" d="M89 35a17 17 0 0 1 0 24"/>'+
       '<path class="wave" d="M94 30a24 24 0 0 1 0 34"/>'+
-    '</g>'+
-  '</svg>';
-  $("avatar").innerHTML = svg;                     // только авторская статичная графика
+    '</g></svg>';
   $("charName").textContent = c.name;
   $("charRole").textContent = c.role;
+  tryPersonPhoto(topic);
 }
-
-const SCENES = {
-  park:'<circle cx="330" cy="34" r="20" fill="#FFE08A"/><path d="M0 108h400v40H0z" fill="var(--ground)"/><g fill="#2F8F62"><circle cx="58" cy="76" r="24"/><circle cx="92" cy="86" r="17"/></g><rect x="54" y="92" width="8" height="24" fill="#8A5A2B"/><rect x="89" y="100" width="6" height="16" fill="#8A5A2B"/><path d="M150 118h120v6H150z" fill="#E4D7C3"/><g fill="#fff" opacity=".7"><ellipse cx="120" cy="30" rx="30" ry="12"/><ellipse cx="240" cy="22" rx="24" ry="10"/></g>',
-  school:'<path d="M0 112h400v36H0z" fill="var(--ground)"/><rect x="240" y="44" width="130" height="70" fill="#F3F5FF"/><path d="M235 46l70-26 70 26z" fill="#D14B4B"/><g fill="#8FB8E8"><rect x="256" y="62" width="20" height="18"/><rect x="288" y="62" width="20" height="18"/><rect x="320" y="62" width="20" height="18"/><rect x="288" y="90" width="22" height="24" fill="#8A5A2B"/></g><rect x="303" y="8" width="3" height="14" fill="#6B7390"/><path d="M306 9h18l-6 6 6 6h-18z" fill="#D14B4B"/><g fill="#fff" opacity=".75"><ellipse cx="110" cy="26" rx="28" ry="11"/><ellipse cx="180" cy="40" rx="20" ry="8"/></g>',
-  hobbies:'<path d="M0 116h400v32H0z" fill="var(--ground)"/><g fill="#0FA678" opacity=".25"><circle cx="300" cy="46" r="38"/></g><g fill="#1B1F3B" opacity=".55"><path d="M286 36v34a9 9 0 1 1-6-8V42l22-6v22a9 9 0 1 1-6-8V30z"/></g><circle cx="352" cy="100" r="16" fill="#fff" stroke="#1B1F3B" stroke-width="2"/><path d="M352 88l6 8-6 6-6-6z" fill="#1B1F3B"/><g stroke="#0FA678" stroke-width="3" fill="none" opacity=".6"><path d="M120 60c14-10 28 10 42 0"/><path d="M120 76c14-10 28 10 42 0"/></g>',
-  cafe:'<path d="M0 116h400v32H0z" fill="var(--ground)"/><g><path d="M210 18h180v20H210z" fill="#C0562F"/><g fill="#FFF3E6"><path d="M225 18h20v20h-20zM265 18h20v20h-20zM305 18h20v20h-20zM345 18h20v20h-20z"/></g></g><rect x="230" y="70" width="150" height="8" rx="4" fill="#8A5A2B"/><g><path d="M300 42h34v22a17 11 0 0 1-34 0z" fill="#fff" stroke="#C0562F" stroke-width="2"/><path d="M334 46h8a6 6 0 0 1 0 12h-8" fill="none" stroke="#C0562F" stroke-width="2"/><path d="M310 34c0-4 4-4 4-8M320 34c0-4 4-4 4-8" stroke="#E3C5B0" stroke-width="2" fill="none"/></g><path d="M244 58c8-8 22-8 30 0-4 6-26 6-30 0z" fill="#E8B96B"/>',
-  shopping:'<path d="M0 114h400v34H0z" fill="var(--ground)"/><rect x="236" y="26" width="150" height="88" rx="6" fill="#FFF4FA" stroke="#E7B9D3" stroke-width="2"/><path d="M248 50h126" stroke="#C43E86" stroke-width="2"/><g fill="none" stroke="#C43E86" stroke-width="2"><path d="M268 50v8m0 0l-10 24h20z"/><path d="M306 50v8m0 0l-10 24h20z"/><path d="M344 50v8m0 0l-10 24h20z"/></g><g><path d="M120 84h44l-5 32h-34z" fill="#F3A8CE"/><path d="M130 84c0-10 4-14 12-14s12 4 12 14" fill="none" stroke="#C43E86" stroke-width="3"/></g>',
-  routine:'<path d="M0 112h400v36H0z" fill="var(--ground)"/><circle cx="318" cy="50" r="30" fill="#FFF8E6" stroke="#6B5BD6" stroke-width="3"/><path d="M318 50V32M318 50l14 8" stroke="#6B5BD6" stroke-width="3" stroke-linecap="round"/><circle cx="318" cy="50" r="3" fill="#6B5BD6"/><g fill="#FFE08A"><circle cx="120" cy="40" r="16"/></g><g stroke="#FFE08A" stroke-width="3" stroke-linecap="round"><path d="M120 16v-8M120 72v-8M96 40h-8M152 40h-8"/></g><path d="M240 92h60v22h-60z" fill="#EDEAFB"/><path d="M234 100h20v14h-20z" fill="#fff"/>',
-  travel:'<path d="M0 104h400v44H0z" fill="var(--ground)"/><path d="M180 104l60-58 40 38 24-22 60 42z" fill="#7FB8A8"/><path d="M240 46l22 22h-44z" fill="#F4FBFA"/><g fill="#fff" opacity=".85"><ellipse cx="90" cy="34" rx="30" ry="12"/><ellipse cx="150" cy="24" rx="20" ry="8"/></g><g fill="#2B2F4A"><path d="M300 20l30 10-8 6-14-3-6 10-6-2 4-14z"/></g><path d="M262 34c14-6 30-6 44 0" stroke="#fff" stroke-width="2" fill="none" stroke-dasharray="5 5"/>',
-  family:'<path d="M0 112h400v36H0z" fill="var(--ground)"/><rect x="250" y="56" width="110" height="58" fill="#FFF3EC"/><path d="M244 58l61-30 61 30z" fill="#B5562F"/><rect x="286" y="80" width="26" height="34" fill="#8A5A2B"/><rect x="326" y="74" width="22" height="20" fill="#8FC7E8"/><g fill="#E2708F" opacity=".8"><path d="M200 46c4-8 16-4 16 6 0 8-16 16-16 16s-16-8-16-16c0-10 12-14 16-6z"/><path d="M158 74c2-5 10-2 10 4 0 5-10 10-10 10s-10-5-10-10c0-6 8-9 10-4z"/></g><g fill="#2F8F62"><circle cx="96" cy="80" r="22"/></g><rect x="92" y="96" width="8" height="20" fill="#8A5A2B"/>'
+/* если рядом с index.html лежит photos/<тема>-person.png (или .jpg) — показываем его */
+function tryPersonPhoto(topic){
+  const urls = ["photos/" + topic.id + "-person.png", "photos/" + topic.id + "-person.jpg"];
+  let i = 0;
+  const next = ()=>{
+    if (i >= urls.length) return;
+    const url = urls[i++], img = new Image();
+    img.onload = ()=>{
+      if (state.topic.id !== topic.id) return;
+      const box = $("avatar");
+      box.textContent = "";
+      const node = document.createElement("img");
+      node.src = url; node.alt = "";
+      box.appendChild(node);
+    };
+    img.onerror = next;
+    img.src = url;
+  };
+  next();
+}
+const PHOTOS = {
+  greeting:"photo-1781254622402-95d2ca7f6469",   /* парк со скамейкой */
+  school:"photo-1644997933069-f5ede7b207ac",     /* класс с доской */
+  hobbies:"photo-1448542146881-1d78dfb2f674",    /* площадка на закате */
+  cafe:"photo-1742893368447-2ab12c174440",       /* кафе внутри */
+  shopping:"photo-1772570824145-e996a55204fb",   /* магазин одежды */
+  routine:"photo-1613940512699-fc9150817bb2",    /* утро, спальня */
+  travel:"photo-1770126548552-c35de444a1c5",     /* горы из окна самолёта */
+  family:"photo-1763827657709-b1bbc3c4945b"      /* гостиная */
 };
-function renderScene(topic){
-  const svg = '<svg viewBox="0 0 400 140" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'+
-              (SCENES[topic.scene] || "") + '</svg>';
-  const scene = $("scene");
-  const old = scene.querySelector("svg");
-  if (old) old.remove();
-  scene.insertAdjacentHTML("afterbegin", svg);      // авторская статичная графика
+/* Фото Unsplash (свободная лицензия). Порядок попыток:
+   1) свой файл рядом с index.html: photos/<тема>.jpg — работает офлайн и быстрее;
+   2) CDN Unsplash;
+   3) если оба недоступны — остаётся градиент темы. */
+function photoCandidates(topic){
+  const id = PHOTOS[topic.id];
+  const w = Math.min(1600, Math.max(760, Math.round(window.innerWidth * (window.devicePixelRatio || 1))));
+  const list = ["photos/" + topic.id + ".jpg"];
+  if (id) list.push("https://images.unsplash.com/" + id + "?auto=format&fit=crop&w=" + w + "&q=72");
+  return list;
+}
+const photoCache = {};
+function setPhoto(topic){
+  const el2 = $("photo");
+  if (!state.photosOn){ el2.classList.remove("on"); el2.style.backgroundImage = "none"; return; }
+  const cached = photoCache[topic.id];
+  if (cached){ el2.style.backgroundImage = 'url("' + cached + '")'; el2.classList.add("on"); return; }
+  el2.classList.remove("on");
+  const urls = photoCandidates(topic);
+  let i = 0;
+  const tryNext = ()=>{
+    if (i >= urls.length) return;                     // фото нет — под интерфейсом останется градиент
+    const url = urls[i++], img = new Image();
+    img.onload = ()=>{
+      photoCache[topic.id] = url;
+      if (state.topic.id !== topic.id || !state.photosOn) return;
+      el2.style.backgroundImage = 'url("' + url + '")';
+      el2.classList.add("on");
+    };
+    img.onerror = tryNext;
+    img.src = url;
+  };
+  tryNext();
 }
 
-/* ============================================================
-   6. ГОЛОС: выбираем самый «живой» из доступных
-   ============================================================ */
+/* ===== облако с репликой рядом с персонажем ===== */
+function setCloud(text){
+  const line = $("cloudLine");
+  line.textContent = text || "";
+  line.scrollTop = 0;
+}
+function setCloudThinking(){
+  const line = $("cloudLine");
+  line.textContent = "";
+  const t = el("span","typing");
+  t.appendChild(el("i")); t.appendChild(el("i")); t.appendChild(el("i"));
+  line.appendChild(t);
+}
+
+/* ===== 7. тема оформления ===== */
+const mq = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+function effectiveTheme(){
+  if (state.themeMode === "dark") return "dark";
+  if (state.themeMode === "light") return "light";
+  return (mq && mq.matches) ? "dark" : "light";
+}
+function applyTheme(){
+  const t = effectiveTheme();
+  document.documentElement.setAttribute("data-theme", t);
+  document.documentElement.style.colorScheme = t;
+  const b = $("themeBtn");
+  b.textContent = state.themeMode === "auto" ? "🌗" : state.themeMode === "dark" ? "🌙" : "☀️";
+  b.setAttribute("aria-label","Тема оформления: " + (state.themeMode === "auto" ? "авто" : state.themeMode === "dark" ? "тёмная" : "светлая"));
+  [["themeAuto","auto"],["themeLight","light"],["themeDark","dark"]].forEach(function(pair){
+    const node = $(pair[0]);
+    if (node) node.setAttribute("aria-pressed", String(state.themeMode === pair[1]));
+  });
+}
+function setTheme(mode){
+  state.themeMode = mode;
+  try{ localStorage.setItem(LS_THEME, mode); }catch(e){}
+  applyTheme();
+}
+try{ const savedTheme = localStorage.getItem(LS_THEME); if (savedTheme) state.themeMode = savedTheme; }catch(e){}
+if (mq && mq.addEventListener) mq.addEventListener("change",()=>{ if (state.themeMode === "auto") applyTheme(); });
+
+/* ===== 8. голос ===== */
 const synth = window.speechSynthesis || null;
 let voices = [], chosenVoice = null;
-
 const NICE = [/natural/i,/neural/i,/premium/i,/enhanced/i,/siri/i,/google us english/i,/google uk english/i,
-              /samantha/i,/ava/i,/allison/i,/susan/i,/nicky/i,/aaron/i,/evan/i,/zoe/i,
-              /jenny/i,/aria/i,/guy/i,/michelle/i,/sonia/i,/libby/i,/ryan/i];
+  /samantha/i,/ava/i,/allison/i,/susan/i,/nicky/i,/aaron/i,/evan/i,/zoe/i,/jenny/i,/aria/i,/guy/i,/michelle/i,/sonia/i,/libby/i,/ryan/i];
 const ROBOTIC = [/espeak/i,/compact/i,/eloquence/i,/microsoft (david|zira|mark|hazel)/i,/fred/i,/albert/i,
-                 /bad news/i,/good news/i,/whisper/i,/organ/i,/bells/i,/bubbles/i,/cellos/i,/trinoids/i,
-                 /zarvox/i,/junior/i,/ralph/i,/boing/i,/jester/i,/superstar/i,/wobble/i,/rocko/i,/shelley/i,/grandma/i,/grandpa/i,/flo/i,/eddy/i,/reed/i,/sandy/i];
-
+  /bad news/i,/good news/i,/whisper/i,/organ/i,/bells/i,/bubbles/i,/cellos/i,/trinoids/i,/zarvox/i,/junior/i,
+  /ralph/i,/boing/i,/jester/i,/superstar/i,/wobble/i,/rocko/i,/shelley/i,/grandma/i,/grandpa/i,/flo/i,/eddy/i,/reed/i,/sandy/i];
 function voiceScore(v){
-  let s = 0;
   if (!/^en(-|_)/i.test(v.lang)) return -100;
-  if (/^en(-|_)US/i.test(v.lang)) s += 8;
-  else if (/^en(-|_)GB/i.test(v.lang)) s += 5;
-  else s += 2;
-  if (NICE.some(r => r.test(v.name))) s += 10;
-  if (ROBOTIC.some(r => r.test(v.name))) s -= 25;
+  let s = /^en(-|_)US/i.test(v.lang) ? 8 : /^en(-|_)GB/i.test(v.lang) ? 5 : 2;
+  if (NICE.some(r=>r.test(v.name))) s += 10;
+  if (ROBOTIC.some(r=>r.test(v.name))) s -= 25;
   if (/premium|enhanced|natural|neural/i.test(v.name)) s += 6;
   if (v.default) s += 1;
   return s;
 }
 function loadVoices(){
   if (!synth) return;
-  voices = (synth.getVoices() || []).filter(v => /^en(-|_)/i.test(v.lang));
-  voices.sort((a,b)=>voiceScore(b) - voiceScore(a));
+  voices = (synth.getVoices() || []).filter(v=>/^en(-|_)/i.test(v.lang));
+  voices.sort((a,b)=>voiceScore(b)-voiceScore(a));
   let saved = null;
   try{ saved = localStorage.getItem(LS_VOICE); }catch(e){}
-  chosenVoice = (saved && voices.find(v => v.name === saved)) || voices[0] || null;
+  chosenVoice = (saved && voices.find(v=>v.name === saved)) || voices[0] || null;
   fillVoiceSelect();
 }
 function fillVoiceSelect(){
   const sel = $("voiceSel");
   if (!sel) return;
   sel.textContent = "";
-  if (!voices.length){
-    sel.appendChild(el("option",null,"Голоса ещё не загрузились"));
-    return;
-  }
-  voices.forEach(v => {
+  if (!voices.length){ sel.appendChild(el("option",null,"Голоса ещё не загрузились")); return; }
+  voices.forEach(v=>{
     const o = document.createElement("option");
-    o.value = v.name;
-    o.textContent = v.name + " · " + v.lang;
+    o.value = v.name; o.textContent = v.name + " · " + v.lang;
     if (chosenVoice && v.name === chosenVoice.name) o.selected = true;
     sel.appendChild(o);
   });
 }
-if (synth){
-  loadVoices();
-  synth.onvoiceschanged = loadVoices;               // голоса приходят асинхронно
-  setTimeout(loadVoices, 400);
-  setTimeout(loadVoices, 1600);
-}
-
-function setSpeaking(on){
-  $("avatar").classList.toggle("speaking", !!on);
-}
-/* Речь по предложениям: короткие паузы звучат естественнее одной длинной фразы */
+if (synth){ loadVoices(); synth.onvoiceschanged = loadVoices; setTimeout(loadVoices,400); setTimeout(loadVoices,1600); }
+const setSpeaking = (on)=>{ $("avatar").classList.toggle("speaking", !!on); };
 function speak(text){
   if (!text || !state.soundOn || !synth) return;
   if (!state.audioUnlocked){ state.pendingSpeech = text; return; }
@@ -1312,15 +1252,13 @@ function speak(text){
     synth.cancel();
     const parts = String(text).match(/[^.!?…]+[.!?…]*/g) || [String(text)];
     let left = parts.length;
-    parts.forEach((raw, i)=>{
+    parts.forEach((raw,i)=>{
       const piece = raw.trim();
       if (!piece){ left--; return; }
       const u = new SpeechSynthesisUtterance(piece);
-      if (chosenVoice){ u.voice = chosenVoice; u.lang = chosenVoice.lang; }
-      else u.lang = "en-US";
+      if (chosenVoice){ u.voice = chosenVoice; u.lang = chosenVoice.lang; } else u.lang = "en-US";
       u.rate = state.rate;
-      u.pitch = /\?\s*$/.test(piece) ? 1.06 : 1.0;   // вопрос звучит с подъёмом
-      u.volume = 1;
+      u.pitch = /\?\s*$/.test(piece) ? 1.06 : 1;
       if (i === 0) u.onstart = ()=>setSpeaking(true);
       u.onend = ()=>{ if (--left <= 0) setSpeaking(false); };
       u.onerror = ()=>{ if (--left <= 0) setSpeaking(false); };
@@ -1333,29 +1271,24 @@ function unlockAudio(){
   try{
     const u = new SpeechSynthesisUtterance(" ");
     u.volume = 0; synth.speak(u);
-    state.audioUnlocked = true;
-    loadVoices();
+    state.audioUnlocked = true; loadVoices();
     if (state.pendingSpeech){
       const t = state.pendingSpeech; state.pendingSpeech = null;
-      setTimeout(()=>speak(t), 150);
+      setTimeout(()=>speak(t),150);
     }
   }catch(e){ state.audioUnlocked = true; }
 }
 document.addEventListener("pointerdown", unlockAudio);
 document.addEventListener("keydown", unlockAudio);
 
-/* ============================================================
-   7. РАСПОЗНАВАНИЕ РЕЧИ — новый объект на каждое нажатие
-   ============================================================ */
+/* ===== 9. распознавание речи: новый объект на каждое нажатие ===== */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
 const micBtn = $("micBtn"), micIcon = $("micIcon"), micLabel = $("micLabel"), micState = $("micState");
-
 function setMicUI(mode){
   if (mode === "rec"){
     micBtn.classList.add("rec"); micBtn.disabled = false;
     micIcon.textContent = "⏹"; micLabel.textContent = "Остановить запись";
-    micBtn.setAttribute("aria-label","Остановить запись");
-    micState.textContent = "слушаю…";
+    micBtn.setAttribute("aria-label","Остановить запись"); micState.textContent = "слушаю…";
   } else if (mode === "blocked"){
     micBtn.classList.remove("rec"); micBtn.disabled = true;
     micIcon.textContent = "🚫"; micLabel.textContent = "Микрофон недоступен";
@@ -1376,7 +1309,7 @@ function cleanupRecognition(){
       state.recognition.onresult = null; state.recognition.onerror = null;
       state.recognition.onend = null; state.recognition.onstart = null;
     }catch(e){}
-    state.recognition = null;                        // ссылку обязательно отпускаем
+    state.recognition = null;
   }
   setMicUI(state.micBlocked ? "blocked" : "idle");
 }
@@ -1389,50 +1322,39 @@ const REC_ERRORS = {
   "aborted":"Запись остановлена."
 };
 function startRecording(){
-  if (state.isRecording){ stopRecording(); return; }  // повторное нажатие = стоп
+  if (state.isRecording){ stopRecording(); return; }
   if (!SR){ addSystem("Этот браузер не умеет распознавать речь. Пиши ответ в поле ниже.", true); return; }
-  if (state.busy){ addSystem("Секунду: тьютор ещё готовит ответ."); return; }
+  if (state.busy){ addSystem("Секунду: собеседник ещё готовит ответ."); return; }
   if (synth){ try{ synth.cancel(); setSpeaking(false); }catch(e){} }
 
   let rec;
-  try{ rec = new SR(); }                              // НОВЫЙ объект каждый раз
+  try{ rec = new SR(); }
   catch(e){ addSystem("Не удалось запустить распознавание. Отвечай текстом.", true); return; }
-  rec.lang = "en-US";
-  rec.continuous = false;                             // одна фраза за раз — надёжно и на iOS
-  rec.interimResults = true;
-  rec.maxAlternatives = 1;
+  rec.lang = "en-US"; rec.continuous = false; rec.interimResults = true; rec.maxAlternatives = 1;
 
   let finalText = "";
-  rec.onstart = ()=>{
-    state.isRecording = true; setMicUI("rec");
-    announce("Микрофон слушает. Скажи фразу по-английски.");
-  };
+  rec.onstart = ()=>{ state.isRecording = true; setMicUI("rec"); announce("Микрофон слушает."); };
   rec.onresult = (ev)=>{
     let interim = "";
     for (let i = ev.resultIndex; i < ev.results.length; i++){
       const r = ev.results[i];
-      if (r.isFinal) finalText += r[0].transcript + " ";
-      else interim += r[0].transcript;
+      if (r.isFinal) finalText += r[0].transcript + " "; else interim += r[0].transcript;
     }
     const shown = (finalText || interim).trim();
     micLabel.textContent = shown ? shown.slice(0,38) : "Слушаю…";
   };
   rec.onerror = (ev)=>{
     const code = (ev && ev.error) || "unknown";
-    if (code === "not-allowed" || code === "service-not-allowed" || code === "audio-capture"){
-      state.micBlocked = true;
-    }
-    if (code !== "aborted" || !finalText.trim()){
+    if (code === "not-allowed" || code === "service-not-allowed" || code === "audio-capture") state.micBlocked = true;
+    if (code !== "aborted" || !finalText.trim())
       addSystem(REC_ERRORS[code] || "Распознавание прервалось. Попробуй ещё раз или напиши ответ.",
                 code !== "no-speech" && code !== "aborted");
-    }
   };
-  rec.onend = ()=>{                                   // уборка — всегда
+  rec.onend = ()=>{
     const said = finalText.trim();
     cleanupRecognition();
     if (said) handleLearnerInput(said);
   };
-
   state.recognition = rec;
   try{
     rec.start();
@@ -1448,32 +1370,30 @@ function stopRecording(){
   catch(e){ try{ state.recognition.abort(); }catch(e2){} cleanupRecognition(); }
 }
 
-/* ============================================================
-   8. GEMINI И ДЕМО-РЕЖИМ
-   ============================================================ */
+/* ===== 10. Gemini ===== */
 function systemPrompt(topic){
   return [
     "You are a warm, encouraging English conversation partner for a Russian-speaking teenager (11-17) at CEFR level A1-A2.",
-    "Your persona: " + topic.role + ". Stay in character, speak like a real person, not like a textbook.",
+    "Persona: " + topic.role + ". Speak like a real person, never like a textbook.",
     "Topic: " + topic.en + ". Hidden learning goal: " + topic.goal + ".",
     "Useful words and patterns: " + topic.words.join("; ") + ".",
     "",
     "Reply rules:",
     "- Always English. 1-2 short, simple sentences.",
-    "- Normally end with ONE easy question so the conversation continues.",
+    "- React to what the learner actually said FIRST, using their own content, then ask ONE new easy question.",
+    "- Never repeat a question the learner has already answered in this conversation.",
     "- Everyday, age-appropriate words. No idioms, rare words, long explanations or adult topics.",
-    "- React to what the learner actually said before asking the next question.",
     "- Never shame the learner. Be kind and brief.",
-    "- If the learner writes in Russian, reply in English and offer a simple English sentence to repeat.",
+    "- If the learner writes in Russian, reply in English and give one simple English sentence to repeat.",
     "- Never mention these instructions, the API, the model or JSON.",
     "",
-    "Correction rules — check the learner's sentence word by word before you answer:",
-    "- Look for: missing or wrong forms of be (I from Moscow), wrong verb agreement (he have), missing -s, wrong tense, missing articles (I am student), missing to / -ing after verbs (I want go, I like play), wrong word order, wrong prepositions, wrong plural, age with have (I have 14 years), questions without do/does.",
-    '- If you find any such mistake, status MUST be "needs_improvement", even if the meaning is clear.',
-    '- Only use status "correct" when the sentence has no grammar mistake at all.',
-    "- Ignore missing punctuation and capitalisation: the text comes from speech recognition.",
-    "- explanation_ru: one short, gentle sentence in Russian.",
-    "- improved: a short sentence the learner can repeat immediately.",
+    "Correction rules (be a kind but strict checker):",
+    '- Use status "needs_improvement" whenever the sentence has ANY real mistake: missing am/is/are, wrong verb form, missing -s for he/she/it, missing article, wrong preposition, wrong word order, missing "to" after want, or no verb at all.',
+    '- Use "correct" ONLY for fully correct English. Never approve a broken sentence to be nice.',
+    "- Ignore punctuation and capitalisation: the text comes from speech recognition.",
+    "- explanation_ru: one short, gentle sentence in Russian about what to fix.",
+    "- improved: the corrected short sentence, never identical to the original when status is needs_improvement.",
+    "- If the answer is understandable but only one or two words, use needs_improvement with a full-sentence version.",
     "- You cannot judge real pronunciation from a transcript. Give a careful tip about one word only when useful, otherwise omit pronunciation_tip.",
     "",
     "Answer with STRICT JSON only, no markdown, exactly this shape:",
@@ -1481,9 +1401,8 @@ function systemPrompt(topic){
   ].join("\n");
 }
 const MODELS = ["gemini-2.5-flash","gemini-2.0-flash"];
-
 async function askGemini(userText){
-  const contents = state.history.map(h => ({ role:h.role, parts:[{ text:h.text }] }));
+  const contents = state.history.map(h=>({ role:h.role, parts:[{ text:h.text }] }));
   contents.push({ role:"user", parts:[{ text:userText }] });
   const payload = {
     systemInstruction:{ parts:[{ text: systemPrompt(state.topic) }] },
@@ -1504,7 +1423,7 @@ async function askGemini(userText){
       }
       const data = await res.json();
       const parts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
-      const raw = parts.map(p => p.text || "").join("").trim();
+      const raw = parts.map(p=>p.text || "").join("").trim();
       if (!raw){ lastErr = "пустой ответ модели"; continue; }
       return { ok:true, raw };
     }catch(err){
@@ -1524,164 +1443,101 @@ function parseModelJSON(raw){
   }catch(e){}
   return null;
 }
-function localCheck(text){ return checkGrammar(text); }
 
-/* Локальный собеседник: реакция на смысл сказанного + следующий вопрос по теме */
-function demoAnswer(text){
-  const eng = ENGINES[state.topic.id] || ENGINES.greeting;
-  const st = state.slot;
-  const slots = eng.slots;
-  const a = analyze(text);
-  const slot = slots[st.idx] || null;
-  const check = checkGrammar(text);
-
-  if (a.isRussian){
-    const hints = (slot || slots[0]).hints;
-    return { reply:"Let's try it in English. You can say: " + hints[0],
-             correction:{ status:"needs_improvement", original:a.raw, improved:hints[0],
-                          explanation_ru:"Это было по-русски. Повтори английский вариант — кнопка 🔊 рядом произнесёт его." },
-             next_hints:hints, pronunciation_tip:null };
-  }
-
-  /* 1. реакция именно на то, что сказал ученик */
-  let lead = "";
-  const val = slot ? pickFact(a, slot.want) : null;
-  if (a.asksBack && !a.unclear){
-    lead = answerBack(a, eng, slot);
-  } else if (a.unclear && slot){
-    lead = "No problem! You can say: " + slot.hints[0];
-  } else if (slot && slot.want === "yesno" && a.yesno){
-    lead = a.yesno === "yes" ? (slot.reactYes || "Great!") : (slot.reactNo || "That's okay.");
-  } else if (slot && val != null && slot.react){
-    lead = slot.react(val, a);
-  } else if (slot && a.yesno && (slot.reactYes || slot.reactNo)){
-    lead = a.yesno === "yes" ? (slot.reactYes || "Great!") : (slot.reactNo || "That's okay.");
-  } else {
-    lead = reactGeneric(a, st);
-  }
-
-  /* 2. запоминаем, что уже рассказано (встречный вопрос без ответа — не ответ) */
-  if (slot && !a.unclear){
-    if (val != null || a.yesno || !a.asksBack) st.facts[slot.id] = (val != null) ? val : (a.yesno || a.raw);
-    harvest(a, st.facts, slots, st.idx);
-  }
-
-  if (a.asksBack && lead){
-    for (let i = st.idx + 1; i < slots.length; i++)
-      if (st.facts[slots[i].id] == null && sameQuestion(lead, slots[i].q)) st.facts[slots[i].id] = lead;
-  }
-
-  /* 3. следующий вопрос — только тот, на который ответа ещё нет */
-  let next = "", nextHints = null;
-  if (a.unclear && slot && st.tries < 1){
-    st.tries++; next = slot.q; nextHints = slot.hints;
-  } else if (slot && st.facts[slot.id] == null){
-    st.tries = 0; next = slot.q; nextHints = slot.hints;   // ученик спросил в ответ — свой вопрос повторяем
-  } else {
-    st.tries = 0;
-    let i = st.idx + 1;
-    while (i < slots.length && st.facts[slots[i].id] != null) i++;
-    st.idx = i;
-    if (i < slots.length){ next = slots[i].q; nextHints = slots[i].hints; }
-    else {
-      next = eng.extra[(st.extra++) % eng.extra.length];
-      nextHints = state.topic.hints.slice(0,3);
-    }
-  }
-
-  const reply = (lead ? lead.replace(/\s+$/,"") + " " : "") + next;
-  return { reply:reply.trim(), correction:check, next_hints:nextHints, pronunciation_tip:null };
-}
-
-/* ============================================================
-   9. ЦИКЛ ДИАЛОГА
-   ============================================================ */
+/* ===== 11. цикл диалога ===== */
 function pushHistory(role, text){
   state.history.push({ role, text });
-  while (state.history.length > 10) state.history.shift();   // последние 10 реплик
+  while (state.history.length > 10) state.history.shift();
+}
+/* модель + локальная проверка: одобрить кривую фразу нельзя */
+function mergeCorrection(fromModel, local){
+  const m = fromModel && typeof fromModel === "object" ? fromModel : null;
+  const modelFound = m && m.status === "needs_improvement" && m.improved &&
+    clean1(m.improved).toLowerCase() !== clean1(local.original).toLowerCase();
+  if (modelFound)
+    return { status:"needs_improvement", original:local.original, improved:m.improved,
+             explanation_ru: m.explanation_ru || local.explanation_ru || "" };
+  if (local.status !== "correct") return local;
+  return { status:"correct", original:local.original, improved:local.improved, explanation_ru:"" };
 }
 async function handleLearnerInput(text){
   const clean = String(text || "").replace(/\s+/g," ").trim().slice(0,250);
   if (!clean || state.busy) return;
 
   state.busy = true; setSendEnabled(false);
-  addLearner(clean); clearInput(); pushHistory("user", clean);
+  addLearner(clean); clearInput();
   state.exchanges++;
-  if (state.exchanges === 1) app.classList.add("min");        // освобождаем место для чата
+  if (state.exchanges === 1) app.classList.add("min");
+
+  const pendingSlot = state.topic.slots.find(s=>s.id === state.pending) || null;
+  const local = checkGrammar(clean, pendingSlot);
+  pushHistory("user", clean);
 
   const typing = addTyping();
-  let result = null, note = "";
+  let reply = "", hints = null, corr = null, tip = null, note = "";
 
   if (state.apiKey){
     const r = await askGemini(clean);
     if (r.ok){
       const parsed = parseModelJSON(r.raw);
       if (parsed){
-        result = parsed;
-        // страховка: если модель пропустила явную ошибку, показываем свою проверку
-        const local = checkGrammar(clean);
-        const gStatus = result.correction && result.correction.status;
-        if (local.status === "needs_improvement" && gStatus !== "needs_improvement") result.correction = local;
-      }
-      else {
-        result = { reply:r.raw.slice(0,300), correction:localCheck(clean),
-                   next_hints:state.topic.hints.slice(0,3), pronunciation_tip:null };
+        reply = (parsed.reply || "").trim();
+        hints = Array.isArray(parsed.next_hints) ? parsed.next_hints : null;
+        corr = mergeCorrection(parsed.correction, local);
+        tip = parsed.pronunciation_tip || null;
+      } else {
+        reply = r.raw.slice(0,300); corr = local;
         note = "Ответ пришёл не в формате JSON — показываю как обычную реплику.";
       }
     } else {
-      result = demoAnswer(clean);
-      note = r.reason + " Отвечаю подготовленной фразой.";
+      const lr = localReply(clean);
+      reply = lr.reply; hints = lr.hints; corr = local;
+      note = r.reason + " Отвечаю локально.";
     }
   } else {
-    result = demoAnswer(clean);
+    const lr = localReply(clean);
+    reply = lr.reply; hints = lr.hints; corr = local;
   }
 
   typing.remove();
   if (note) addSystem(note, true);
+  if (!reply) reply = "Okay! Tell me more.";
 
-  const reply = (result.reply || "").trim() || "Okay! Tell me more.";
   state.lastTutorLine = reply;
   pushHistory("model", reply);
   addTutor(reply);
-  addFeedback(result.correction, result.pronunciation_tip);
-  renderHints(Array.isArray(result.next_hints) && result.next_hints.length
-              ? result.next_hints : state.topic.hints.slice(0,3));
+  addFeedback(corr, tip);
+  const nowPending = state.topic.slots.find(s=>s.id === state.pending) || null;
+  renderHints(hints && hints.length ? hints
+              : (nowPending ? nowPending.hints : (state.lastAsk ? state.lastAsk.hints : state.topic.slots[0].hints)));
   speak(reply);
 
   state.busy = false; setSendEnabled(true);
 
-  if (state.autoMic && !state.micBlocked && SR){       // только если режим включён вручную
+  if (state.autoMic && !state.micBlocked && SR){
     const wait = state.soundOn ? Math.min(9000, 1400 + reply.length * 65) : 400;
     setTimeout(()=>{ if (!state.isRecording && !state.busy) startRecording(); }, wait);
   }
 }
 
-/* ============================================================
-   10. ПОДСКАЗКИ
-   ============================================================ */
+/* ===== 12. подсказки и ввод ===== */
 function renderHints(list){
   const box = $("chips");
   box.textContent = "";
-  (list || []).slice(0,5).forEach(h => {
+  (list || []).slice(0,5).forEach(h=>{
     const text = String(h || "").trim();
     if (!text) return;
     const chip = el("div","chip");
     const t = el("button","txt",text);
-    t.type = "button";
-    t.setAttribute("aria-label","Подставить в поле ввода: " + text);
-    t.addEventListener("click",()=>fillInput(text));     // подставляем, но не отправляем
+    t.type = "button"; t.setAttribute("aria-label","Подставить в поле ввода: " + text);
+    t.addEventListener("click",()=>fillInput(text));
     const s = el("button","say","🔊");
-    s.type = "button";
-    s.setAttribute("aria-label","Озвучить подсказку: " + text);
+    s.type = "button"; s.setAttribute("aria-label","Озвучить подсказку: " + text);
     s.addEventListener("click",()=>speak(text));
     chip.appendChild(t); chip.appendChild(s);
     box.appendChild(chip);
   });
 }
-
-/* ============================================================
-   11. ВВОД ТЕКСТОМ
-   ============================================================ */
 const input = $("textInput"), counter = $("counter"), sendBtn = $("sendBtn");
 function fillInput(text){ input.value = String(text).slice(0,250); updateCounter(); autoGrow(); input.focus(); }
 function clearInput(){ input.value = ""; updateCounter(); autoGrow(); }
@@ -1692,7 +1548,7 @@ input.addEventListener("input",()=>{ updateCounter(); autoGrow(); });
 input.addEventListener("keydown",(e)=>{ if (e.key === "Enter" && !e.shiftKey){ e.preventDefault(); submitText(); } });
 let sending = false;
 function submitText(){
-  if (sending) return;                                  // защита от двойной отправки
+  if (sending) return;
   const v = input.value.trim();
   if (!v){ input.focus(); return; }
   sending = true;
@@ -1701,9 +1557,7 @@ function submitText(){
 sendBtn.addEventListener("click", submitText);
 micBtn.addEventListener("click", startRecording);
 
-/* ============================================================
-   12. УПРАВЛЕНИЕ: звук, повтор, сброс, сцена, лист настроек
-   ============================================================ */
+/* ===== 13. управление ===== */
 $("repeatBtn").addEventListener("click",()=>{ if (state.lastTutorLine) speak(state.lastTutorLine); });
 const soundBtn = $("soundBtn");
 soundBtn.addEventListener("click",()=>{
@@ -1713,10 +1567,20 @@ soundBtn.addEventListener("click",()=>{
   soundBtn.setAttribute("aria-label", state.soundOn ? "Выключить звук" : "Включить звук");
 });
 $("resetBtn").addEventListener("click",()=>startTopic(state.topic, true));
-$("scene").addEventListener("click",(e)=>{
-  if (e.target.closest("button")) return;
-  app.classList.toggle("min");                          // тап по сцене — свернуть/развернуть
+$("avatar").addEventListener("click",()=>app.classList.toggle("min"));
+$("themeBtn").addEventListener("click",()=>{
+  setTheme(state.themeMode === "auto" ? "light" : state.themeMode === "light" ? "dark" : "auto");
 });
+try{ if (localStorage.getItem(LS_PHOTOS) === "0") state.photosOn = false; }catch(e){}
+$("photosOn").checked = state.photosOn;
+$("photosOn").addEventListener("change",(e)=>{
+  state.photosOn = !!e.target.checked;
+  try{ localStorage.setItem(LS_PHOTOS, state.photosOn ? "1" : "0"); }catch(err){}
+  setPhoto(state.topic);
+});
+$("themeAuto").addEventListener("click",()=>setTheme("auto"));
+$("themeLight").addEventListener("click",()=>setTheme("light"));
+$("themeDark").addEventListener("click",()=>setTheme("dark"));
 
 const veil = $("veil"), sheet = $("sheet");
 function openSheet(){ veil.hidden = false; sheet.hidden = false; $("sheetClose").focus(); }
@@ -1728,59 +1592,16 @@ document.addEventListener("keydown",(e)=>{ if (e.key === "Escape" && !sheet.hidd
 
 $("rate").addEventListener("change",(e)=>{ state.rate = parseFloat(e.target.value) || 1; });
 $("voiceSel").addEventListener("change",(e)=>{
-  const v = voices.find(x => x.name === e.target.value);
-  if (v){
-    chosenVoice = v;
-    try{ localStorage.setItem(LS_VOICE, v.name); }catch(err){}
-  }
+  const v = voices.find(x=>x.name === e.target.value);
+  if (v){ chosenVoice = v; try{ localStorage.setItem(LS_VOICE, v.name); }catch(err){} }
 });
 $("testVoice").addEventListener("click",()=>speak("Hi! I'm your English speaking partner. Let's talk!"));
 $("autoMic").addEventListener("change",(e)=>{
   state.autoMic = !!e.target.checked;
-  if (state.autoMic) addSystem("Авто-микрофон включён: запись начнётся сама после реплики тьютора.");
+  if (state.autoMic) addSystem("Авто-микрофон включён: запись начнётся сама после реплики собеседника.");
 });
 
-/* ============================================================
-   12b. ТЕМА ОФОРМЛЕНИЯ: как в системе / светлая / тёмная
-   ============================================================ */
-const LS_THEME = "englishPractice.theme";
-const THEME_ORDER = ["auto","light","dark"];
-const THEME_UI = {
-  auto:{ icon:"🌓", label:"Тема: как в системе. Нажми, чтобы включить светлую" },
-  light:{ icon:"☀️", label:"Тема: светлая. Нажми, чтобы включить тёмную" },
-  dark:{ icon:"🌙", label:"Тема: тёмная. Нажми, чтобы вернуть системную" }
-};
-const darkQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
-function applyTheme(){
-  const isDark = state.theme === "dark" || (state.theme === "auto" && darkQuery && darkQuery.matches);
-  document.documentElement.classList.toggle("dark", isDark);
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", isDark ? "#0D0F19" : "#F2F4FF");
-  const b = $("themeBtn");
-  b.textContent = THEME_UI[state.theme].icon;
-  b.setAttribute("aria-label", THEME_UI[state.theme].label);
-  const sel = $("themeSel");
-  if (sel && sel.value !== state.theme) sel.value = state.theme;
-}
-function setTheme(next){
-  state.theme = THEME_ORDER.indexOf(next) === -1 ? "auto" : next;
-  try{ localStorage.setItem(LS_THEME, state.theme); }catch(e){}
-  applyTheme();
-}
-try{
-  const t = localStorage.getItem(LS_THEME);
-  if (t) state.theme = t;
-}catch(e){}
-$("themeBtn").addEventListener("click",()=>{
-  setTheme(THEME_ORDER[(THEME_ORDER.indexOf(state.theme) + 1) % THEME_ORDER.length]);
-});
-$("themeSel").addEventListener("change",(e)=>setTheme(e.target.value));
-if (darkQuery && darkQuery.addEventListener) darkQuery.addEventListener("change", applyTheme);
-applyTheme();
-
-/* ============================================================
-   13. КЛЮЧ API
-   ============================================================ */
+/* ===== 14. ключ API ===== */
 const keyInput = $("apiKey");
 try{
   const saved = localStorage.getItem(LS_KEY);
@@ -1788,14 +1609,14 @@ try{
 }catch(e){}
 function refreshModePill(){
   const p = $("pillMode");
-  p.textContent = state.apiKey ? "Gemini" : "демо";
+  p.textContent = state.apiKey ? "Gemini" : "локальный";
   p.className = "mode" + (state.apiKey ? " live" : "");
-  p.title = state.apiKey ? "Gemini подключён: AI-диалог активен" : "Демо-режим: подготовленные ответы";
+  p.title = state.apiKey ? "Gemini подключён: свободный диалог" : "Локальный собеседник + локальная проверка грамматики";
 }
 $("saveKey").addEventListener("click",()=>{
   state.apiKey = keyInput.value.trim();
   refreshModePill();
-  addSystem(state.apiKey ? "Gemini подключён: тьютор отвечает живым AI." : "Поле пустое — работает демо-режим.");
+  addSystem(state.apiKey ? "Gemini подключён: диалог стал свободным." : "Поле пустое — работает локальный собеседник.");
   closeSheet();
 });
 $("rememberKey").addEventListener("click",()=>{
@@ -1810,16 +1631,14 @@ $("rememberKey").addEventListener("click",()=>{
 $("forgetKey").addEventListener("click",()=>{
   try{ localStorage.removeItem(LS_KEY); }catch(e){}
   state.apiKey = ""; keyInput.value = ""; refreshModePill();
-  addSystem("Ключ удалён. Приложение вернулось в демо-режим.");
+  addSystem("Ключ удалён. Работает локальный собеседник.");
 });
 
-/* ============================================================
-   14. ПОЛОСА ТЕМ
-   ============================================================ */
+/* ===== 15. темы разговора ===== */
 const topicsBox = $("topics");
 function renderTopics(){
   topicsBox.textContent = "";
-  TOPICS.forEach(t => {
+  TOPICS.forEach(t=>{
     const b = el("button","tchip", t.emoji + " " + t.ru);
     b.type = "button";
     b.setAttribute("role","tab");
@@ -1832,32 +1651,29 @@ function renderTopics(){
 function startTopic(topic, isReset){
   if (state.isRecording) stopRecording();
   if (synth){ try{ synth.cancel(); }catch(e){} setSpeaking(false); }
-
-  state.topic = topic; state.history = []; state.demoStep = 0;
-  state.busy = false; state.exchanges = 0;
-  state.slot = { idx:0, tries:0, facts:{}, gen:0, extra:0 };
+  state.topic = topic;
+  state.history = []; state.answered = new Set(); state.facts = {};
+  state.extraIdx = 0; state.asked = 1; state.exchanges = 0; state.busy = false;
+  state.pending = topic.slots[0].id;
+  state.lastAsk = {q:topic.slots[0].q, ex:topic.slots[0].ex, hints:topic.slots[0].hints};
   setSendEnabled(true);
   app.dataset.topic = topic.id;
   app.classList.remove("min");
   chat.textContent = ""; clearInput();
 
-  renderScene(topic);
-  renderCharacter(topic);
-  renderTopics();
-
+  setPhoto(topic); renderCharacter(topic); renderTopics();
   addSystem((isReset ? "Заново. " : "") + topic.ru + " / " + topic.en + " — " + topic.goal + ".");
+
   const line = topic.start;
   state.lastTutorLine = line;
   pushHistory("model", line);
   addTutor(line);
-  renderHints(topic.hints.slice(0,4));
-  speak(line);                                          // первая реплика озвучивается
+  renderHints(topic.slots[0].hints);
+  speak(line);
   if (!state.audioUnlocked) addSystem("Коснись экрана — браузер разрешит звук, и собеседник заговорит.");
 }
 
-/* ============================================================
-   15. ДИАГНОСТИКА
-   ============================================================ */
+/* ===== 16. диагностика ===== */
 function diagLine(ok, text){
   const row = el("div");
   row.appendChild(el("span","mark", ok === true ? "✅" : ok === false ? "❌" : "⚠️"));
@@ -1877,7 +1693,7 @@ function runDiagnostics(){
   else { state.micBlocked = false; setMicUI("idle"); }
   if (navigator.permissions && navigator.permissions.query){
     navigator.permissions.query({ name:"microphone" })
-      .then(p => diagLine(p.state === "granted" ? true : p.state === "denied" ? false : null, "Разрешение на микрофон: " + p.state))
+      .then(p=>diagLine(p.state === "granted" ? true : p.state === "denied" ? false : null, "Разрешение на микрофон: " + p.state))
       .catch(()=>{});
   }
 }
@@ -1887,20 +1703,17 @@ $("micTest").addEventListener("click", async ()=>{
   }
   try{
     const s = await navigator.mediaDevices.getUserMedia({ audio:true });
-    s.getTracks().forEach(t => t.stop());
+    s.getTracks().forEach(t=>t.stop());
     state.micBlocked = false; setMicUI("idle");
-    addSystem("Микрофон работает. Можно нажимать «Начать говорить».");
-    closeSheet();
+    addSystem("Микрофон работает. Можно нажимать «Начать говорить»."); closeSheet();
   }catch(e){
     state.micBlocked = true; setMicUI("blocked");
     addSystem("Доступ к микрофону не дали. Разреши его в настройках сайта или отвечай текстом.", true);
   }
 });
 
-/* ============================================================
-   16. СТАРТ
-   ============================================================ */
-updateCounter(); autoGrow(); refreshModePill(); runDiagnostics();
+/* ===== 17. старт ===== */
+applyTheme(); updateCounter(); autoGrow(); refreshModePill(); runDiagnostics();
 startTopic(TOPICS[0], false);
 </script>
 </body>

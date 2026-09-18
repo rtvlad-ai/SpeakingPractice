@@ -66,7 +66,7 @@ body{font-family:var(--ui);color:var(--ink);background:var(--page);-webkit-text-
 .ico{width:30px;height:30px;min-height:30px;padding:0;font-size:13px;border-radius:10px;border:none;
   background:var(--ico);color:var(--ink);display:grid;place-items:center}
 
-.stage{display:flex;align-items:flex-end;gap:7px;padding:2px 10px 6px;flex:none;max-height:30vh;overflow:hidden}
+.stage{display:flex;align-items:flex-end;gap:7px;padding:0 10px 6px;flex:none;max-height:30vh;overflow:hidden}
 .avatar{width:72px;height:72px;flex:none;filter:drop-shadow(0 6px 14px rgba(0,0,0,.28));transition:width .3s ease,height .3s ease}
 .app.min .avatar{width:54px;height:54px}
 .avatar svg,.avatar img{width:100%;height:100%;overflow:visible}
@@ -97,7 +97,7 @@ body{font-family:var(--ui);color:var(--ink);background:var(--page);-webkit-text-
 .avatar .lid{transform-box:fill-box;transform-origin:center;animation:blink 6.5s infinite}
 @keyframes blink{0%,96%,100%{transform:scaleY(0)}98%{transform:scaleY(1)}}
 
-.topics{position:relative;z-index:2;display:flex;gap:5px;overflow-x:auto;padding:0 10px 2px;scrollbar-width:none;flex:none}
+.topics{position:relative;z-index:2;display:flex;gap:5px;overflow-x:auto;padding:0 10px 5px;scrollbar-width:none;flex:none}
 .topics::-webkit-scrollbar{display:none}
 .tchip{flex:none;border:none;min-height:27px;padding:4px 9px;font-size:11.5px;font-weight:600;border-radius:999px;background:var(--ico);color:var(--ink-soft)}
 .tchip[aria-selected="true"]{background:var(--accent);color:#fff}
@@ -188,7 +188,7 @@ body{font-family:var(--ui);color:var(--ink);background:var(--page);-webkit-text-
 .diag .mark{flex:none;width:18px;text-align:center}
 
 /* панель прогресса сессии */
-.rail{position:relative;z-index:2;display:flex;gap:5px;overflow-x:auto;padding:1px 10px 4px;scrollbar-width:none;flex:none;align-items:center}
+.rail{position:relative;z-index:2;display:flex;gap:5px;overflow-x:auto;padding:0 10px 5px;scrollbar-width:none;flex:none;align-items:center}
 .rail::-webkit-scrollbar{display:none}
 .rail .pill,.rail .seg{flex:none;font-size:10.5px;padding:3px 8px;border-radius:999px;white-space:nowrap;
   background:var(--glass);border:1px solid var(--glass-line);color:var(--ink-soft);
@@ -317,6 +317,9 @@ button[disabled]{opacity:.5;cursor:not-allowed}
     </div>
   </div>
 
+
+  <div class="rail" id="rail" aria-label="Прогресс сессии"></div>
+  <div class="topics" id="topics" role="tablist" aria-label="Тема разговора"></div>
   <section class="stage">
     <div class="avatar" id="avatar" aria-hidden="true"></div>
     <div class="cloud" id="cloud">
@@ -329,9 +332,6 @@ button[disabled]{opacity:.5;cursor:not-allowed}
       <div class="line" id="cloudLine"></div>
     </div>
   </section>
-  <div class="topics" id="topics" role="tablist" aria-label="Тема разговора"></div>
-  <div class="rail" id="rail" aria-label="Прогресс сессии"></div>
-
   <main class="chat" id="chat" role="log" aria-live="polite" aria-label="Диалог с собеседником"></main>
   <div class="starters" id="starters" aria-label="Начала фраз: нажми и договори голосом"></div>
   <div class="chips" id="chips" aria-label="Варианты ответа"></div>

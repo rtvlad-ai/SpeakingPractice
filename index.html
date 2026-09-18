@@ -405,6 +405,7 @@ button[disabled]{opacity:.5;cursor:not-allowed}
   <h3>Микрофон</h3>
   <label class="check" for="autoMic"><input type="checkbox" id="autoMic"> Hands-free: слушать сразу после реплики (на iPhone Safari всё равно требует одно касание)</label>
   <div class="diag" id="diag"></div>
+  <label class="check" for="holdStream"><input type="checkbox" id="holdStream"> Режим совместимости микрофона (держать аудиопоток открытым — лечит «микрофон открылся, но тишина» в Safari)</label>
   <div class="row">
     <button id="micTest" aria-label="Проверить доступ к микрофону">Проверить микрофон</button>
     <button id="logBtn" aria-label="Показать лог микрофона">Лог микрофона</button>
@@ -1156,7 +1157,7 @@ const state = {
   history:[], answered:new Set(), facts:{}, pending:null, extraIdx:0, asked:0, lastAsk:null,
   isRecording:false, recognition:null, recTimer:null,
   soundOn:true, rate:1.08, autoMic:false, themeMode:"auto", photosOn:true,
-  lastTutorLine:"", audioUnlocked:false, pendingSpeech:null, expect:null, prefix:"", quest:null, stopRequested:false, recFinish:null, micFails:0, micEverStarted:false, lastRecError:"", startWatch:null, endWatch:null, busyWatch:null,
+  lastTutorLine:"", audioUnlocked:false, pendingSpeech:null, expect:null, prefix:"", quest:null, stopRequested:false, recFinish:null, micFails:0, micEverStarted:false, holdStream:false, micStream:null, silentRetry:false, lastRecError:"", startWatch:null, endWatch:null, busyWatch:null,
   busy:false, micBlocked:false, exchanges:0
 };
 
@@ -2960,6 +2961,25 @@ function envReport(){
          ", webkit: " + (window.webkitSpeechRecognition ? "есть" : "нет"));
   logMic("https: " + (!!window.isSecureContext) + ", standalone: " + IS_STANDALONE + ", iOS: " + IS_IOS);
 }
+/* Обход бага WebKit: после первой сессии распознавание получает тишину.
+   Помогает держать собственный getUserMedia-поток открытым всё время записи. */
+function grabStream(cb){
+  if (!state.holdStream || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ cb(); return; }
+  if (state.micStream){ logMic("поток уже удержан"); cb(); return; }
+  try{
+    navigator.mediaDevices.getUserMedia({ audio:true }).then(st=>{
+      state.micStream = st;
+      logMic("поток микрофона удержан (дорожек " + st.getTracks().length + ")");
+      cb();
+    }).catch(err=>{ logMic("поток не получен: " + ((err && err.name) || err)); cb(); });
+  }catch(e){ logMic("getUserMedia бросил " + ((e && e.name) || e)); cb(); }
+}
+function releaseStream(){
+  if (!state.micStream) return;
+  try{ state.micStream.getTracks().forEach(t=>t.stop()); }catch(e){}
+  state.micStream = null;
+  logMic("поток микрофона отпущен");
+}
 function offerReload(){
   if (document.getElementById("reloadCard")) return;
   const card = el("div","choice");
@@ -2987,15 +3007,11 @@ function startRecording(){
   if (state.busy) releaseBusy();                       /* зависший запрос не глушит микрофон */
   if (synth){ try{ synth.cancel(); setSpeaking(false); }catch(e){} }
 
-  logMic("тап: запускаю запись");
-  if (IS_IOS && !state.micEverStarted && navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
-    try{                                               /* просим доступ в том же касании, поток сразу отпускаем */
-      navigator.mediaDevices.getUserMedia({ audio:true }).then(st=>{
-        st.getTracks().forEach(t=>t.stop());
-        logMic("getUserMedia: доступ подтверждён");
-      }).catch(err=>logMic("getUserMedia отказ: " + ((err && err.name) || err)));
-    }catch(e){ logMic("getUserMedia бросил " + ((e && e.name) || e)); }
-  }
+  logMic("тап: запускаю запись" + (state.holdStream ? " (режим совместимости)" : ""));
+  grabStream(()=>openRecognition());
+}
+/* сам запуск распознавания, вызывается сразу или после получения потока */
+function openRecognition(){
   let rec;
   try{ rec = new SR(); logMic("объект создан"); }
   catch(e){ logMic("объект НЕ создан: " + ((e && e.name) || e)); micHelp("не создаётся"); return; }
@@ -3004,7 +3020,7 @@ function startRecording(){
   rec.interimResults = true;
   rec.maxAlternatives = 1;
 
-  let finalText = "", bestConf = 0, t0 = Date.now(), started = false, done = false;
+  let finalText = "", bestConf = 0, t0 = Date.now(), started = false, done = false, gotSound = false;
 
   const finish = ()=>{
     if (done) return;
@@ -3013,6 +3029,7 @@ function startRecording(){
     const said = finalText.trim();
     const secs = (Date.now() - t0) / 1000;
     cleanupRecognition();
+    releaseStream();
 
     if (state.expect){ handleSpoken(said, secs, bestConf); return; }
     if (!said){ micState.textContent = "не услышал — нажми и скажи ещё раз"; return; }
@@ -3026,8 +3043,8 @@ function startRecording(){
   };
 
   rec.onaudiostart = ()=>{ logMic("audiostart: микрофон открыт"); micState.textContent = "микрофон открыт, говори"; };
-  rec.onsoundstart = ()=>logMic("soundstart: слышу звук");
-  rec.onspeechstart = ()=>{ logMic("speechstart: пошла речь"); micState.textContent = "слышу тебя"; };
+  rec.onsoundstart = ()=>{ gotSound = true; logMic("soundstart: слышу звук"); };
+  rec.onspeechstart = ()=>{ gotSound = true; logMic("speechstart: пошла речь"); micState.textContent = "слышу тебя"; };
   rec.onspeechend = ()=>logMic("speechend: речь закончилась");
   rec.onaudioend = ()=>logMic("audioend: микрофон закрыт");
   rec.onnomatch = ()=>logMic("nomatch: не разобрал");
@@ -3035,6 +3052,7 @@ function startRecording(){
     logMic("onstart");
     started = true;
     state.micEverStarted = true;
+    state.silentRetry = false;
     state.micFails = 0;
     clearTimeout(state.startWatch);
     state.isRecording = true; t0 = Date.now();
@@ -3065,6 +3083,27 @@ function startRecording(){
       micLogCard();
       if (state.micFails >= 2) offerReload();
       finish();
+      return;
+    }
+    if ((code === "aborted" || code === "no-speech") && started && !gotSound && !finalText.trim()){
+      /* микрофон открылся, но звука не было — типичный баг iOS: пробуем ещё раз другим способом */
+      done = true;
+      clearTimeout(state.startWatch);
+      cleanupRecognition();
+      releaseStream();
+      if (!state.silentRetry){
+        state.silentRetry = true;
+        state.holdStream = !state.holdStream;
+        logMic("тишина в потоке — повтор " + (state.holdStream ? "с удержанием потока" : "без удержания"));
+        micState.textContent = "перезапускаю микрофон…";
+        setTimeout(()=>{ if (!state.isRecording) startRecording(); }, 700);
+      } else {
+        state.silentRetry = false;
+        logMic("тишина и на повторе");
+        micState.textContent = "микрофон молчит — надиктуй в поле или перезагрузи";
+        addSystem("Микрофон открылся, но звук не дошёл. Это баг Safari с аудиосессией: помогает перезагрузка страницы, а быстрый путь — надиктовать фразу значком микрофона на клавиатуре в поле ввода.", true);
+        micLogCard(); offerReload();
+      }
       return;
     }
     if (code !== "aborted" && code !== "no-speech")
@@ -3585,7 +3624,18 @@ $("micTest").addEventListener("click", async ()=>{
 });
 
 /* ===== 17. старт ===== */
+state.holdStream = IS_IOS;                            /* на iPhone сразу включаем режим совместимости */
+try{ const hs = localStorage.getItem("englishPractice.holdStream"); if (hs !== null) state.holdStream = hs === "1"; }catch(e){}
 applyTheme(); updateCounter(); autoGrow(); refreshModePill(); runDiagnostics(); envReport();
+const hsBox = $("holdStream");
+if (hsBox){
+  hsBox.checked = state.holdStream;
+  hsBox.addEventListener("change",(e)=>{
+    state.holdStream = !!e.target.checked;
+    try{ localStorage.setItem("englishPractice.holdStream", state.holdStream ? "1" : "0"); }catch(err){}
+    logMic("режим совместимости: " + state.holdStream);
+  });
+}
 loadProgress();
 renderStats();
 $("showFixes").checked = !!profile.showFixes;

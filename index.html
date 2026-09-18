@@ -256,6 +256,25 @@ body{font-family:var(--ui);color:var(--ink);background:var(--page);-webkit-text-
   box-shadow:var(--shadow);animation:pop .3s ease}
 @keyframes pop{from{transform:translateY(-8px);opacity:0}to{transform:translateY(0);opacity:1}}
 
+/* начала фраз (spoken scaffolding) */
+.starters{position:relative;z-index:2;display:flex;gap:7px;overflow-x:auto;padding:2px 14px 4px;scrollbar-width:none;flex:none}
+.starters::-webkit-scrollbar{display:none}
+.starter{flex:none;display:flex;border:1px dashed var(--accent);border-radius:999px;background:var(--glass);overflow:hidden;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.starter button{border:none;background:transparent;color:var(--ink);min-height:34px;font-weight:500}
+.starter .stxt{font-family:var(--en);font-size:15px;white-space:nowrap;padding:5px 11px}
+.starter .smic{padding:5px 9px;border-left:1px dashed var(--accent);font-size:13px}
+/* скрытое караоке */
+.karaoke{align-self:stretch;max-width:100%;border-radius:16px;padding:12px 13px;display:flex;flex-direction:column;gap:8px;
+  background:var(--glass);border:1px solid var(--glass-line);box-shadow:var(--shadow);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.kline{display:flex;flex-wrap:wrap;gap:6px}
+.kw{font-family:var(--en);font-size:19px;padding:4px 8px;border-radius:9px;border:none;color:#fff}
+.kw.good{background:#0FA678}
+.kw.soso{background:#E0A32E}
+.kw.bad{background:#D6455B}
+.kmeta{font-size:12px;color:var(--ink-soft)}
+
 button{font:inherit;cursor:pointer}
 button:active{transform:translateY(1px)}
 button[disabled]{opacity:.5;cursor:not-allowed}
@@ -296,6 +315,7 @@ button[disabled]{opacity:.5;cursor:not-allowed}
   <div class="rail" id="rail" aria-label="Прогресс сессии"></div>
 
   <main class="chat" id="chat" role="log" aria-live="polite" aria-label="Диалог с собеседником"></main>
+  <div class="starters" id="starters" aria-label="Начала фраз: нажми и договори голосом"></div>
   <div class="chips" id="chips" aria-label="Варианты ответа"></div>
 
   <section class="composer">
@@ -335,16 +355,16 @@ button[disabled]{opacity:.5;cursor:not-allowed}
   <label class="check" for="photosOn"><input type="checkbox" id="photosOn" checked> Фоновые фотографии темы</label>
   <p class="note">Фото берутся с Unsplash по сети. Хочешь офлайн или свои картинки — положи рядом с index.html папку <b>photos</b> с файлами greeting.jpg, school.jpg, hobbies.jpg, cafe.jpg, shopping.jpg, routine.jpg, travel.jpg, family.jpg: они используются первыми. Если фото недоступно, остаётся цветной фон темы.</p>
 
-  <h3>Gemini API</h3>
+  <h3>DeepSeek API</h3>
   <label class="field" for="apiKey">API key (необязательно)
-    <input type="password" id="apiKey" autocomplete="off" spellcheck="false" placeholder="AIza…">
+    <input type="password" id="apiKey" autocomplete="off" spellcheck="false" placeholder="sk-…">
   </label>
   <div class="row">
-    <button id="saveKey" class="solid" aria-label="Подключить Gemini с введённым ключом">Подключить</button>
+    <button id="saveKey" class="solid" aria-label="Подключить DeepSeek с введённым ключом">Подключить</button>
     <button id="rememberKey" aria-label="Сохранить ключ в этом браузере">Запомнить</button>
     <button id="forgetKey" class="danger" aria-label="Удалить сохранённый ключ из браузера">Удалить ключ</button>
   </div>
-  <p class="note">Без ключа работает локальный собеседник: он разбирает твой ответ, реагирует на него и ведёт свою линию вопросов. Проверка грамматики работает всегда, в том числе без ключа. С ключом диалог становится полностью свободным. Ключ в localStorage — только для личного теста; для публичной страницы нужен backend-прокси.</p>
+  <p class="note">Без ключа работает локальный собеседник: он разбирает ответ, реагирует на него и ведёт свою линию вопросов. Произношение, фразы и очки считаются локально и без ключа. С ключом DeepSeek (api.deepseek.com, модель deepseek-chat) разговор становится свободным. Ключ в localStorage — только для личного теста; для публичной страницы нужен backend-прокси.</p>
 
   <h3>Голос собеседника</h3>
   <label class="field" for="voiceSel">Голос (лучше выбрать Natural / Enhanced / Siri, если есть)
@@ -368,8 +388,8 @@ button[disabled]{opacity:.5;cursor:not-allowed}
   <div class="note"><ul>
     <li>Микрофон включается только после нажатия кнопки и выключается сам после фразы.</li>
     <li>Распознавание речи делает браузер; качество зависит от устройства.</li>
-    <li>Текст уходит в Gemini только если ты сам ввёл ключ.</li>
-    <li>Проверка грамматики выполняется локально в браузере.</li>
+    <li>Текст уходит в DeepSeek только если ты сам ввёл ключ.</li>
+    <li>Проверка грамматики и оценка произношения выполняются локально в браузере.</li>
     <li>Для публичного запуска нужен backend endpoint, который хранит ключ на сервере.</li>
     <li>Трекеров и аналитики на странице нет.</li>
   </ul></div>
@@ -726,7 +746,7 @@ const TOPICS = [
 }
 ];
 
-/* ===== 2. ПРОВЕРКА ГРАММАТИКИ (работает всегда, и без Gemini) =====
+/* ===== 2. ПРОВЕРКА ГРАММАТИКИ (работает всегда, и без AI) =====
    Правила применяются по очереди, исправления складываются в один
    правильный вариант. level:"polish" — не ошибка, а «можно лучше». */
 const ADJ = "happy|sad|tired|fine|good|bad|ok|okay|hungry|thirsty|ready|busy|free|late|early|cold|hot|nice|new|young|old|sorry|glad|afraid|sure|bored|angry|excited|scared|strong|funny|kind|clever|shy|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen";
@@ -1077,7 +1097,7 @@ function localReply(text){
 }
 
 /* ===== 4. состояние ===== */
-const LS_KEY = "englishPractice.geminiKey";
+const LS_KEY = "englishPractice.deepseekKey";
 const LS_VOICE = "englishPractice.voice";
 const LS_THEME = "englishPractice.theme";
 const LS_PHOTOS = "englishPractice.photos";
@@ -1086,7 +1106,7 @@ const state = {
   history:[], answered:new Set(), facts:{}, pending:null, extraIdx:0, asked:0, lastAsk:null,
   isRecording:false, recognition:null, recTimer:null,
   soundOn:true, rate:1, autoMic:false, themeMode:"auto", photosOn:true,
-  lastTutorLine:"", audioUnlocked:false, pendingSpeech:null,
+  lastTutorLine:"", audioUnlocked:false, pendingSpeech:null, expect:null, prefix:"",
   busy:false, micBlocked:false, exchanges:0
 };
 
@@ -1181,11 +1201,8 @@ function addFeedback(corr, tip){
    живёт коэффициентами, ошибки исправляются рекастом, сессия — 3 минуты.
    ============================================================ */
 
-const TIERS = [
-  { n:1, ru:"Новичок",   worlds:["greeting","cafe","hobbies"] },
-  { n:2, ru:"Бывалый",   worlds:["greeting","cafe","hobbies","school","routine","series"] },
-  { n:3, ru:"Уверенный", worlds:"all" }
-];
+/* тир влияет только на сложность фраз и подсказок, не на доступ к темам */
+const TIERS = [{ n:1, ru:"Новичок" }, { n:2, ru:"Бывалый" }, { n:3, ru:"Уверенный" }];
 
 /* интересы для онбординга — от них зависят миры, фразы и «слухи» */
 const INTERESTS = [
@@ -1284,13 +1301,14 @@ const LS_KG   = "englishPractice.v6.chunks";
 let profile = {
   tier:1, interests:[], xp:0, streak:0, lastDay:"", sessions:0,
   mastered:[], struggling:{}, showFixes:false, onboarded:false,
-  boss:null, dayCount:0
+  boss:null, dayCount:0, pronounce:[]
 };
 let kg = {};                                        // прогресс по фразовым блокам
 function loadProgress(){
   try{ const p = JSON.parse(localStorage.getItem(LS_PROF) || "null"); if (p) profile = Object.assign(profile, p); }catch(e){}
   try{ const k = JSON.parse(localStorage.getItem(LS_KG) || "null"); if (k) kg = k; }catch(e){}
   TAGS.forEach(t => { if (typeof profile.struggling[t] !== "number") profile.struggling[t] = 0.5; });
+  if (!Array.isArray(profile.pronounce)) profile.pronounce = [];
   const today = new Date().toISOString().slice(0,10);
   if (profile.lastDay !== today){
     const y = new Date(Date.now() - 864e5).toISOString().slice(0,10);
@@ -1355,9 +1373,7 @@ function bumpTag(tag, good){
 }
 const weakTags = ()=>TAGS.filter(t => profile.struggling[t] < 0.5).sort((a,b)=>profile.struggling[a] - profile.struggling[b]);
 function tierChunks(){
-  const t = profile.tier;
-  const worldOk = (c)=>!c.world || topicAllowedId(c.world);
-  return CHUNKS.filter(c => c.tier <= t && worldOk(c));
+  return CHUNKS.filter(c => c.tier <= profile.tier);
 }
 function pickChunks(n){
   const pool = tierChunks();
@@ -1376,15 +1392,10 @@ function pickChunks(n){
 }
 
 /* ---------- миры ---------- */
-function topicAllowedId(id){
-  const w = tierNow().worlds;
-  return w === "all" ? true : w.indexOf(id) !== -1;
-}
-function allowedTopics(){
-  const list = TOPICS.filter(t => topicAllowedId(t.id));
-  return list.length ? list : [TOPICS[0]];
-}
-const topicAllowed = (t)=>topicAllowedId(t.id);
+/* миры открыты всегда: выбор темы — за пользователем */
+const topicAllowedId = ()=>true;
+const allowedTopics = ()=>TOPICS;
+const topicAllowed = ()=>true;
 
 /* ---------- всплывающая плашка (награды, без нотаций) ---------- */
 function flash(text){
@@ -1410,6 +1421,7 @@ function planSession(){
 function startSession(){
   planSession();
   session.chunks.forEach((c,i)=>setTimeout(()=>chunkCard(c), i * 120));
+  if (profile.pronounce.length) setTimeout(pronounceCard, 400);
   if (profile.interests.length && profile.sessions % 2 === 0) gossipCard();
   addSystem("3 минуты: разогрев → болтаем → быстрый тест.");
 }
@@ -1449,7 +1461,11 @@ function chunkCard(c){
   row.appendChild(say); row.appendChild(txt);
   card.appendChild(row);
   const acts = el("div","cacts");
-  const know = el("button","cbtn ok","Знаю 👍");
+  const mic = el("button","cbtn ok","🎤 Сказать");
+  mic.type = "button";
+  mic.addEventListener("click",()=>sayThis(c.t, c));
+  acts.appendChild(mic);
+  const know = el("button","cbtn","Знаю 👍");
   const soso = el("button","cbtn","Напомни 🤔");
   know.type = soso.type = "button";
   const answer = (good)=>{
@@ -1677,7 +1693,7 @@ const BOSS = {
 };
 function canBoss(){
   if (profile.tier >= 3 || profile.boss) return false;
-  const mine = tierChunks().filter(c => c.tier === profile.tier);
+  const mine = CHUNKS.filter(c => c.tier === profile.tier);
   const done = mine.filter(c => ci(chunkId(c)).m >= 0.8).length;
   return done >= Math.max(3, Math.round(mine.length * 0.5)) && weakTags().length <= 3;
 }
@@ -1705,7 +1721,7 @@ function bossTurn(ok){
   saveProgress();
   const card = el("div","reward");
   card.appendChild(el("div","rtitle","Челлендж пройден 🏆"));
-  card.appendChild(el("div","rline","Ты теперь «" + tierNow().ru + "». Открылись новые миры и фразы."));
+  card.appendChild(el("div","rline","Ты теперь «" + tierNow().ru + "». Фразы станут живее, а вопросы — интереснее."));
   chat.appendChild(card);
   flash("Новый статус: " + tierNow().ru + " 🏆");
   renderTopics(); renderRail(); renderStats();
@@ -1900,13 +1916,251 @@ function renderStats(){
 }
 function resetProgress(){
   profile = { tier:1, interests:[], xp:0, streak:0, lastDay:"", sessions:0, mastered:[],
-              struggling:{}, showFixes:false, onboarded:false, boss:null, dayCount:0 };
+              struggling:{}, showFixes:false, onboarded:false, boss:null, dayCount:0, pronounce:[] };
   kg = {};
   TAGS.forEach(t => profile.struggling[t] = 0.5);
   saveProgress();
   renderTopics(); renderStats();
   addSystem("Прогресс сброшен.");
   startPlacement();
+}
+
+/* ============================================================
+   5c. ПРОИЗНОШЕНИЕ И РЕЧЕВЫЕ ПОДСКАЗКИ
+   Оценка: Accuracy (совпадение слов) + Fluency (темп речи).
+   Порог 70%: выше — «Отлично», ниже — мягкий повтор одного слова.
+   Наружу никакой фонетики: только подсветка слов тремя цветами.
+   ============================================================ */
+
+const PRON_PASS = 0.7;
+
+function normWord(w){
+  return String(w||"").toLowerCase().replace(/[^a-z0-9']/g,"");
+}
+function lev(a,b){
+  const m = a.length, n = b.length;
+  if (!m) return n;
+  if (!n) return m;
+  let prev = new Array(n + 1), cur = new Array(n + 1);
+  for (let j = 0; j <= n; j++) prev[j] = j;
+  for (let i = 1; i <= m; i++){
+    cur[0] = i;
+    for (let j = 1; j <= n; j++){
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i-1] === b[j-1] ? 0 : 1));
+    }
+    const t = prev; prev = cur; cur = t;
+  }
+  return prev[n];
+}
+const simWord = (a,b)=>{
+  a = normWord(a); b = normWord(b);
+  if (!a && !b) return 1;
+  if (!a || !b) return 0;
+  return Math.max(0, 1 - lev(a,b) / Math.max(a.length, b.length));
+};
+/* сопоставляем сказанное с эталоном по словам, с небольшим окном сдвига */
+function scorePronunciation(expected, said, seconds, confidence){
+  const exp = String(expected).split(/\s+/).filter(Boolean);
+  const got = String(said).split(/\s+/).filter(Boolean);
+  const words = [];
+  let used = 0;
+  exp.forEach((w, i)=>{
+    let best = 0, bestAt = -1;
+    for (let j = Math.max(0, used - 1); j < Math.min(got.length, used + 3); j++){
+      const sc = simWord(w, got[j]);
+      if (sc > best){ best = sc; bestAt = j; }
+    }
+    if (bestAt >= 0 && best >= 0.5) used = bestAt + 1;
+    words.push({ w, score: best });
+  });
+  const accuracy = words.length ? words.reduce((a,b)=>a + b.score, 0) / words.length : 0;
+  /* беглость: комфортный темп 1.4–3.2 слова в секунду, плюс уверенность движка */
+  const wps = seconds > 0.4 ? got.length / seconds : 0;
+  let fluency = wps <= 0 ? 0 : wps < 1.4 ? 0.55 + (wps / 1.4) * 0.35 : wps > 3.2 ? 0.8 : 1;
+  if (typeof confidence === "number" && confidence > 0) fluency = Math.min(1, fluency * (0.7 + confidence * 0.3));
+  const total = accuracy * 0.75 + fluency * 0.25;
+  return { accuracy, fluency, total, words };
+}
+
+/* ---------- карточка «скрытого караоке» ---------- */
+function karaokeCard(res, expected, chunk){
+  const pass = res.total >= PRON_PASS;
+  const card = el("div","karaoke");
+  card.appendChild(el("div","stitle", pass ? "Произношение · зачёт" : "Произношение · почти"));
+  const line = el("div","kline");
+  res.words.forEach(item=>{
+    const cls = item.score >= 0.85 ? "kw good" : item.score >= 0.55 ? "kw soso" : "kw bad";
+    const b = el("button", cls, item.w);
+    b.type = "button";
+    b.setAttribute("aria-label","Послушать слово " + item.w);
+    b.addEventListener("click",()=>{
+      speak(item.w);
+      if (item.score < 0.55) singleWordRow(card, item.w, chunk);
+    });
+    line.appendChild(b);
+  });
+  card.appendChild(line);
+  const acc = Math.round(res.accuracy * 100), flu = Math.round(res.fluency * 100);
+  card.appendChild(el("div","kmeta","точность " + acc + "% · беглость " + flu + "%"));
+
+  if (pass){
+    const red = res.words.filter(w => w.score < 0.55).map(w => w.w);
+    card.appendChild(el("div","swhy", red.length
+      ? "Отлично, тебя понятно 🎉 Одно слово добьём — нажми на красное."
+      : "Отлично! Понятно и естественно 🎉"));
+    addXP(3, "за произношение");
+    if (chunk) gradeChunk(chunk, true);
+    if (red.length) singleWordRow(card, red[0], chunk);
+  } else {
+    const weak = res.words.filter(w => w.score < 0.55).map(w => w.w);
+    card.appendChild(el("div","swhy", weak.length
+      ? "Почти! Нажми на красное слово — послушай и повтори только его."
+      : "Почти! Скажи ещё раз, чуть спокойнее."));
+    if (chunk) gradeChunk(chunk, false);
+    const again = el("button","mini","🎤 Ещё раз всю фразу");
+    again.type = "button";
+    again.addEventListener("click",()=>sayThis(expected, chunk));
+    card.appendChild(again);
+    if (weak.length) singleWordRow(card, weak[0], chunk);
+  }
+  /* жёлтые слова запоминаем для будущих разогревов */
+  res.words.filter(w => w.score >= 0.55 && w.score < 0.85).forEach(w=>{
+    const word = normWord(w.w);
+    if (word.length > 2 && profile.pronounce.indexOf(word) === -1){
+      profile.pronounce.push(word);
+      while (profile.pronounce.length > 30) profile.pronounce.shift();
+    }
+  });
+  saveProgress();
+  chat.appendChild(card);
+  scrollChat();
+}
+/* тренировка одного слова, без повтора всей фразы */
+function singleWordRow(card, word, chunk){
+  if (card.dataset.single === word) return;
+  card.dataset.single = word;
+  const row = el("div","cacts");
+  const listen = el("button","cbtn","🔊 " + word);
+  listen.type = "button";
+  listen.addEventListener("click",()=>speak(word));
+  const say = el("button","cbtn ok","🎤 Повторить слово");
+  say.type = "button";
+  say.addEventListener("click",()=>sayThis(word, chunk, true));
+  row.appendChild(listen); row.appendChild(say);
+  card.appendChild(row);
+  scrollChat();
+}
+/* запуск режима «скажи это»: ждём конкретную фразу или слово */
+function sayThis(text, chunk, single){
+  state.expect = { text:String(text), chunk:chunk || null, single:!!single };
+  speak(text);
+  const wait = Math.min(4000, 700 + String(text).length * 55);
+  addSystem(single ? "Скажи это слово после сигнала 🎤" : "Повтори фразу целиком 🎤");
+  setTimeout(()=>{ if (!state.isRecording && !state.busy) startRecording(); }, wait);
+}
+/* результат речи, когда ждали конкретную фразу */
+function handleSpoken(said, seconds, confidence){
+  const exp = state.expect;
+  state.expect = null;
+  if (!exp) return;
+  if (!said){
+    addSystem("Не услышал — нажми 🎤 и попробуй ещё раз.");
+    return;
+  }
+  const res = scorePronunciation(exp.text, said, seconds, confidence);
+  addLearner(said);
+  if (exp.single){
+    const ok = res.total >= PRON_PASS;
+    const card = el("div","karaoke");
+    card.appendChild(el("div","stitle","Слово · " + exp.text));
+    card.appendChild(el("div","kline"));
+    card.appendChild(el("div","swhy", ok ? "Готово, слово взято 👍" : "Ещё раз послушай и повтори — получится 🙂"));
+    if (ok){
+      addXP(2);
+      const i = profile.pronounce.indexOf(normWord(exp.text));
+      if (i !== -1) profile.pronounce.splice(i,1);
+      saveProgress();
+    }
+    const again = el("button","mini", ok ? "🔊 Послушать ещё" : "🎤 Ещё попытка");
+    again.type = "button";
+    again.addEventListener("click",()=>{ if (ok) speak(exp.text); else sayThis(exp.text, exp.chunk, true); });
+    card.appendChild(again);
+    chat.appendChild(card);
+    scrollChat();
+    return;
+  }
+  karaokeCard(res, exp.text, exp.chunk);
+  if (res.total >= PRON_PASS) tickSession();
+}
+/* карточка тренировки слова из копилки «жёлтых» */
+function pronounceCard(){
+  if (!profile.pronounce.length) return;
+  const word = profile.pronounce[0];
+  const card = el("div","chunk");
+  card.appendChild(el("div","stitle","Слово из прошлой сессии"));
+  const row = el("div","crow");
+  const play = el("button","cplay","🔊");
+  play.type = "button";
+  play.addEventListener("click",()=>speak(word));
+  const txt = el("div","ctext");
+  txt.appendChild(el("div","cen", word));
+  txt.appendChild(el("div","cru","звучало почти — добьём"));
+  row.appendChild(play); row.appendChild(txt);
+  card.appendChild(row);
+  const b = el("button","cbtn ok","🎤 Сказать");
+  b.type = "button";
+  b.addEventListener("click",()=>sayThis(word, null, true));
+  card.appendChild(b);
+  chat.appendChild(card);
+  scrollChat();
+}
+
+/* ---------- речевые подсказки: начала фраз ---------- */
+const STARTERS = {
+  any:["I think that…","In my opinion…","Honestly,…","For me,…","I'd say…","I don't like…"],
+  cafe:["I'd like…","Can I have…","Could you bring…"],
+  shopping:["I'm looking for…","Have you got…","Can I try…"],
+  series:["I'm watching…","It's about…","My favourite is…"],
+  travel:["I'd like to go to…","I want to see…","I've never been to…"],
+  routine:["I usually…","After school I…","Before bed I…"],
+  school:["My favourite subject is…","Today I have…","I think maths is…"],
+  hobbies:["I like playing…","I'm really into…","I started…"],
+  family:["I've got…","My mum is…","We usually…"],
+  greeting:["My name is…","I'm from…","Nice to…"]
+};
+function renderStarters(){
+  const box = $("starters");
+  if (!box) return;
+  box.textContent = "";
+  const topicId = state.topic ? state.topic.id : "any";
+  const pool = (STARTERS[topicId] || []).concat(STARTERS.any);
+  const seen = {}, pick = [];
+  pool.forEach(p => { if (!seen[p] && pick.length < 3){ seen[p] = 1; pick.push(p); } });
+  pick.forEach(text=>{
+    const chip = el("div","starter");
+    const t = el("button","stxt", text);
+    t.type = "button";
+    t.setAttribute("aria-label","Начать фразу: " + text);
+    t.addEventListener("click",()=>{
+      const stem = text.replace(/…$/,"").trim();
+      speak(stem);                                        /* сначала слышим начало */
+      fillInput(stem + " ");
+      state.prefix = stem;
+      flash("Продолжи голосом или текстом 🎤");
+    });
+    const m = el("button","smic","🎤");
+    m.type = "button";
+    m.setAttribute("aria-label","Договорить голосом после подсказки: " + text);
+    m.addEventListener("click",()=>{
+      const stem = text.replace(/…$/,"").trim();
+      state.prefix = stem;
+      speak(stem);
+      setTimeout(()=>{ if (!state.isRecording && !state.busy) startRecording(); },
+                 Math.min(2600, 500 + stem.length * 60));
+    });
+    chip.appendChild(t); chip.appendChild(m);
+    box.appendChild(chip);
+  });
 }
 
 /* ===== 6. персонаж и сцена ===== */
@@ -2187,13 +2441,16 @@ function startRecording(){
   catch(e){ addSystem("Не удалось запустить распознавание. Отвечай текстом.", true); return; }
   rec.lang = "en-US"; rec.continuous = false; rec.interimResults = true; rec.maxAlternatives = 1;
 
-  let finalText = "";
-  rec.onstart = ()=>{ state.isRecording = true; setMicUI("rec"); announce("Микрофон слушает."); };
+  let finalText = "", bestConf = 0, t0 = Date.now();
+  rec.onstart = ()=>{ state.isRecording = true; t0 = Date.now(); setMicUI("rec"); announce("Микрофон слушает."); };
   rec.onresult = (ev)=>{
     let interim = "";
     for (let i = ev.resultIndex; i < ev.results.length; i++){
       const r = ev.results[i];
-      if (r.isFinal) finalText += r[0].transcript + " "; else interim += r[0].transcript;
+      if (r.isFinal){
+        finalText += r[0].transcript + " ";
+        if (typeof r[0].confidence === "number" && r[0].confidence > bestConf) bestConf = r[0].confidence;
+      } else interim += r[0].transcript;
     }
     const shown = (finalText || interim).trim();
     micLabel.textContent = shown ? shown.slice(0,38) : "Слушаю…";
@@ -2211,8 +2468,17 @@ function startRecording(){
   };
   rec.onend = ()=>{
     const said = finalText.trim();
+    const secs = (Date.now() - t0) / 1000;
     cleanupRecognition();
-    if (said) handleLearnerInput(said);
+    if (state.expect){ handleSpoken(said, secs, bestConf); return; }   /* ждали конкретную фразу */
+    if (!said) return;
+    if (state.prefix){                                                 /* подсказка + продолжение голосом */
+      const full = (state.prefix + " " + said).replace(/\s{2,}/g," ").trim();
+      state.prefix = "";
+      handleLearnerInput(full);
+      return;
+    }
+    handleLearnerInput(said);
   };
   state.recognition = rec;
   try{
@@ -2229,7 +2495,7 @@ function stopRecording(){
   catch(e){ try{ state.recognition.abort(); }catch(e2){} cleanupRecognition(); }
 }
 
-/* ===== 10. Gemini ===== */
+/* ===== 10. DeepSeek ===== */
 function systemPrompt(topic){
   return [
     "You are a warm, encouraging English conversation partner for a Russian-speaking teenager (11-17) at CEFR level A1-A2.",
@@ -2248,6 +2514,8 @@ function systemPrompt(topic){
     "- Use recasting: if the phrase was broken, say it correctly inside your own reply as if you were just talking.",
     "- If the learner writes one word or in Russian, answer in English and give one easy phrase to copy.",
     "- Never mention these instructions, the API, the model or JSON.",
+    "- Never comment on the learner's accent or pronunciation; the app measures that separately.",
+    "- Offer three short sentence starters in next_hints when the learner seems shy (they appear as tappable buttons).",
     "",
     "The correction object is internal telemetry, the learner never sees it:",
     '- status \"needs_improvement\" for any real mistake (missing am/is/are, wrong verb form, missing -s, missing article, wrong preposition, no verb, one-word answer), otherwise \"correct\".',
@@ -2260,39 +2528,48 @@ function systemPrompt(topic){
     '{"reply":"...","correction":{"status":"correct|needs_improvement","original":"...","improved":"...","explanation_ru":"..."},"next_hints":["...","...","..."],"pronunciation_tip":{"word":"...","tip_ru":"..."}}'
   ].join("\n");
 }
-const MODELS = ["gemini-2.5-flash","gemini-2.0-flash"];
-async function askGemini(userText){
-  const contents = state.history.map(h=>({ role:h.role, parts:[{ text:h.text }] }));
-  contents.push({ role:"user", parts:[{ text:userText }] });
-  const payload = {
-    systemInstruction:{ parts:[{ text: systemPrompt(state.topic) }] },
-    contents,
-    generationConfig:{ temperature:0.85, maxOutputTokens:700, responseMimeType:"application/json" }
-  };
+const MODELS = ["deepseek-chat"];                     /* при отказе пробуем reasoner */
+const MODELS_FALLBACK = ["deepseek-reasoner"];
+const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
+
+async function askAI(userText){
+  const messages = [{ role:"system", content: systemPrompt(state.topic) }];
+  state.history.forEach(h => messages.push({ role: h.role === "model" ? "assistant" : "user", content: h.text }));
+  messages.push({ role:"user", content: userText });
+
   let lastErr = "";
-  for (const model of MODELS){
+  for (const model of MODELS.concat(MODELS_FALLBACK)){
     try{
-      const res = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + encodeURIComponent(state.apiKey),
-        { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload) });
+      const res = await fetch(DEEPSEEK_URL, {
+        method:"POST",
+        headers:{ "Content-Type":"application/json", "Authorization":"Bearer " + state.apiKey },
+        body: JSON.stringify({
+          model, messages,
+          temperature:1.1,                              /* болтовня, а не документация */
+          max_tokens:400,
+          response_format:{ type:"json_object" }
+        })
+      });
       if (!res.ok){
         const t = await res.text().catch(()=>"" );
         lastErr = res.status + " " + t.slice(0,140);
-        if (res.status === 400 && /API key|API_KEY/i.test(t)) throw new Error("bad-key");
+        if (res.status === 401 || res.status === 403) throw new Error("bad-key");
+        if (res.status === 402) throw new Error("no-balance");
         continue;
       }
       const data = await res.json();
-      const parts = (((data.candidates || [])[0] || {}).content || {}).parts || [];
-      const raw = parts.map(p=>p.text || "").join("").trim();
-      if (!raw){ lastErr = "пустой ответ модели"; continue; }
-      return { ok:true, raw };
+      const raw = (((data.choices || [])[0] || {}).message || {}).content || "";
+      if (!raw.trim()){ lastErr = "пустой ответ модели"; continue; }
+      return { ok:true, raw: raw.trim() };
     }catch(err){
-      if (err && err.message === "bad-key") return { ok:false, reason:"Ключ Gemini не принят. Проверь его в настройках." };
+      if (err && err.message === "bad-key") return { ok:false, reason:"Ключ DeepSeek не принят. Проверь его в настройках." };
+      if (err && err.message === "no-balance") return { ok:false, reason:"На балансе DeepSeek нет средств." };
       lastErr = (err && err.message) || "сеть";
     }
   }
-  return { ok:false, reason:"Gemini не ответил (" + lastErr + ")." };
+  return { ok:false, reason:"DeepSeek не ответил (" + lastErr + ")." };
 }
+
 function parseModelJSON(raw){
   let txt = raw.replace(/^```(?:json)?/i,"").replace(/```$/,"").trim();
   const a = txt.indexOf("{"), b = txt.lastIndexOf("}");
@@ -2338,7 +2615,7 @@ async function handleLearnerInput(text){
 
   let localQ = "";
   if (state.apiKey){
-    const r = await askGemini(clean);
+    const r = await askAI(clean);
     if (r.ok){
       const parsed = parseModelJSON(r.raw);
       if (parsed){
@@ -2376,6 +2653,7 @@ async function handleLearnerInput(text){
   const nowPending = state.topic.slots.find(s=>s.id === state.pending) || null;
   renderHints(hints && hints.length ? hints
               : (nowPending ? nowPending.hints : (state.lastAsk ? state.lastAsk.hints : state.topic.slots[0].hints)));
+  renderStarters();                                   /* 3 начала фразы под каждый вопрос */
   speak(reply);
 
   tickSession();                                      /* 1 мин разогрев → 2 мин болтовня → 1 мин тест */
@@ -2422,6 +2700,7 @@ input.addEventListener("keydown",(e)=>{ if (e.key === "Enter" && !e.shiftKey){ e
 let sending = false;
 function submitText(){
   if (sending) return;
+  state.prefix = "";
   const v = input.value.trim();
   if (!v){ input.focus(); return; }
   sending = true;
@@ -2493,12 +2772,12 @@ function refreshModePill(){
   const p = $("pillMode");
   p.textContent = state.apiKey ? "AI" : "офлайн";
   p.className = "mode" + (state.apiKey ? " live" : "");
-  p.title = state.apiKey ? "Gemini подключён: свободный диалог" : "Локальный собеседник + локальная проверка грамматики";
+  p.title = state.apiKey ? "DeepSeek подключён: свободный диалог" : "Локальный собеседник + локальная проверка";
 }
 $("saveKey").addEventListener("click",()=>{
   state.apiKey = keyInput.value.trim();
   refreshModePill();
-  addSystem(state.apiKey ? "Gemini подключён: диалог стал свободным." : "Поле пустое — работает локальный собеседник.");
+  addSystem(state.apiKey ? "DeepSeek подключён: диалог стал свободным." : "Поле пустое — работает локальный собеседник.");
   closeSheet();
 });
 $("rememberKey").addEventListener("click",()=>{
@@ -2526,15 +2805,7 @@ function renderTopics(){
     b.setAttribute("role","tab");
     b.setAttribute("aria-selected", String(t.id === state.topic.id));
     b.setAttribute("aria-label","Тема: " + t.ru + " / " + t.en);
-    const open = topicAllowed(t);
-    if (!open){ b.textContent = t.emoji + " " + t.ru + " 🔒"; b.setAttribute("aria-disabled","true"); }
-    b.addEventListener("click",()=>{
-      if (!open){
-        addSystem("Этот мир откроется после челленджа — держись, осталось немного 🎯");
-        return;
-      }
-      if (t.id !== state.topic.id) startTopic(t, false);
-    });
+    b.addEventListener("click",()=>{ if (!state.topic || t.id !== state.topic.id) startTopic(t, false); });
     topicsBox.appendChild(b);
   });
 }
@@ -2560,6 +2831,7 @@ function startTopic(topic, isReset){
   pushHistory("model", line);
   addTutor(line);
   renderHints(topic.slots[0].hints);
+  renderStarters();
   speak(line);
   if (!state.audioUnlocked) addSystem("Коснись экрана — браузер разрешит звук, и собеседник заговорит.");
 }

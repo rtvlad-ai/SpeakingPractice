@@ -156,6 +156,8 @@ body{font-family:var(--ui);color:var(--ink);background:var(--page);-webkit-text-
 .send-row{display:flex;gap:8px;align-items:flex-end}
 .send-row textarea{flex:1 1 auto;font:inherit;font-size:16px;line-height:1.3;resize:none;border:1px solid var(--line);
   border-radius:12px;padding:7px 10px;background:var(--card);color:var(--ink)}
+.dict{flex:none;width:42px;min-height:38px;padding:0;font-size:14px;border-radius:12px;border:1px solid var(--line);
+  background:var(--card);color:var(--ink)}
 .send{flex:none;width:42px;min-height:38px;padding:0;font-size:16px;border-radius:12px;border:none;background:var(--accent);color:#fff}
 .meta-row{display:flex;justify-content:space-between;font-size:10px;color:var(--ink-soft);min-height:13px}
 
@@ -344,6 +346,7 @@ button[disabled]{opacity:.5;cursor:not-allowed}
       <span id="micIcon">🎤</span><span id="micLabel">Начать говорить</span>
     </button>
     <div class="send-row">
+      <button class="dict" id="dictBtn" aria-label="Надиктовать текст с клавиатуры">⌨︎🎙</button>
       <textarea id="textInput" rows="1" maxlength="250" placeholder="…или напиши ответ" aria-label="Написать ответ по-английски"></textarea>
       <button class="send" id="sendBtn" aria-label="Отправить ответ собеседнику">➤</button>
     </div>
@@ -403,9 +406,10 @@ button[disabled]{opacity:.5;cursor:not-allowed}
   <div class="row"><button id="testVoice" aria-label="Послушать выбранный голос">Послушать голос</button></div>
 
   <h3>Микрофон</h3>
+  <p class="note" id="buildLine"></p>
   <label class="check" for="autoMic"><input type="checkbox" id="autoMic"> Hands-free: слушать сразу после реплики (на iPhone Safari всё равно требует одно касание)</label>
   <div class="diag" id="diag"></div>
-  <label class="check" for="holdStream"><input type="checkbox" id="holdStream"> Режим совместимости микрофона (держать аудиопоток открытым — лечит «микрофон открылся, но тишина» в Safari)</label>
+  <label class="check" for="holdStream"><input type="checkbox" id="holdStream"> Экспериментально: держать аудиопоток открытым. На iPhone обычно делает хуже — Safari глушит распознавание, включай только если без этого совсем не слышит.</label>
   <div class="row">
     <button id="micTest" aria-label="Проверить доступ к микрофону">Проверить микрофон</button>
     <button id="logBtn" aria-label="Показать лог микрофона">Лог микрофона</button>
@@ -2916,10 +2920,10 @@ function micHelp(reason){
   msg += " Обходной путь: нажми поле ввода и надиктуй текст значком микрофона на клавиатуре — это работает всегда.";
   addSystem(msg, true);
   logMic("подсказка показана: " + (reason || ""));
-  probeMic();
 }
 
 /* лог всех событий распознавания: видно, где именно Safari останавливается */
+const BUILD = "v22";
 const micLogLines = [];
 function logMic(msg){
   const t = new Date();
@@ -2956,6 +2960,7 @@ function micLogCard(){
 }
 function envReport(){
   const ua = navigator.userAgent || "";
+  logMic("сборка: " + BUILD);
   logMic("браузер: " + ua.slice(0,90));
   logMic("SpeechRecognition: " + (window.SpeechRecognition ? "есть" : "нет") +
          ", webkit: " + (window.webkitSpeechRecognition ? "есть" : "нет"));
@@ -2964,6 +2969,7 @@ function envReport(){
 /* Обход бага WebKit: после первой сессии распознавание получает тишину.
    Помогает держать собственный getUserMedia-поток открытым всё время записи. */
 function grabStream(cb){
+  /* по умолчанию выключено: на iOS 17+ собственный поток глушит распознавание (audio-capture: Source is muted) */
   if (!state.holdStream || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ cb(); return; }
   if (state.micStream){ logMic("поток уже удержан"); cb(); return; }
   try{
@@ -3076,7 +3082,19 @@ function openRecognition(){
     const code = (ev && ev.error) || "unknown";
     state.lastRecError = code;
     logMic("ОШИБКА: " + code + (ev && ev.message ? " — " + String(ev.message).slice(0,60) : ""));
-    if (code === "not-allowed" || code === "service-not-allowed" || code === "audio-capture"){
+    if (code === "audio-capture"){
+      /* Source is muted: аудиовход занят или заглушен системой — лечится только перезагрузкой */
+      done = true;
+      clearTimeout(state.startWatch);
+      cleanupRecognition();
+      releaseStream();
+      logMic("источник заглушен — предлагаю перезагрузку");
+      micState.textContent = "микрофон заглушен — перезагрузи страницу";
+      addSystem("Safari заглушил микрофонный вход (audio-capture: Source is muted). Закрой другие приложения со звуком и перезагрузи страницу — прогресс сохранён. Пока можно надиктовать фразу значком микрофона на клавиатуре в поле ввода.", true);
+      micLogCard(); offerReload();
+      return;
+    }
+    if (code === "not-allowed" || code === "service-not-allowed"){
       state.micBlocked = true;
       state.micFails = (state.micFails || 0) + 1;
       micHelp(code);
@@ -3093,10 +3111,9 @@ function openRecognition(){
       releaseStream();
       if (!state.silentRetry){
         state.silentRetry = true;
-        state.holdStream = !state.holdStream;
-        logMic("тишина в потоке — повтор " + (state.holdStream ? "с удержанием потока" : "без удержания"));
+        logMic("тишина в сессии — один повтор через 900 мс");
         micState.textContent = "перезапускаю микрофон…";
-        setTimeout(()=>{ if (!state.isRecording) startRecording(); }, 700);
+        setTimeout(()=>{ if (!state.isRecording) startRecording(); }, 900);
       } else {
         state.silentRetry = false;
         logMic("тишина и на повторе");
@@ -3425,6 +3442,10 @@ function submitText(){
   handleLearnerInput(v).finally(()=>{ sending = false; });
 }
 sendBtn.addEventListener("click", submitText);
+$("dictBtn").addEventListener("click",()=>{        /* системная диктовка Safari работает всегда */
+  input.focus();
+  flash("Нажми микрофон на клавиатуре и говори");
+});
 /* тап включает запись; конец фразы ловится по тишине и отправляется сам */
 micBtn.addEventListener("click",()=>{
   if (state.isRecording) stopRecording();              /* второй тап — отправить сразу */
@@ -3624,8 +3645,9 @@ $("micTest").addEventListener("click", async ()=>{
 });
 
 /* ===== 17. старт ===== */
-state.holdStream = IS_IOS;                            /* на iPhone сразу включаем режим совместимости */
+state.holdStream = false;                             /* выключено: свой поток забирает микрофон у распознавания */
 try{ const hs = localStorage.getItem("englishPractice.holdStream"); if (hs !== null) state.holdStream = hs === "1"; }catch(e){}
+const bl = $("buildLine"); if (bl) bl.textContent = "Сборка " + BUILD + ". Если правки не видны — обнови страницу с очисткой кеша (потяни вниз в Safari).";
 applyTheme(); updateCounter(); autoGrow(); refreshModePill(); runDiagnostics(); envReport();
 const hsBox = $("holdStream");
 if (hsBox){

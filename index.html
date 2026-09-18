@@ -290,6 +290,9 @@ body{font-family:var(--ui);color:var(--ink);background:var(--page);-webkit-text-
 .avatar.huh{animation:tilt 1.4s ease-in-out infinite alternate}
 @keyframes tilt{from{transform:rotate(-3deg)}to{transform:rotate(4deg)}}
 
+.logbox{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;line-height:1.35;white-space:pre-wrap;
+  max-height:30vh;overflow:auto;background:var(--page);border:1px solid var(--line);border-radius:10px;padding:7px 8px;color:var(--ink)}
+
 button{font:inherit;cursor:pointer}
 button:active{transform:translateY(1px)}
 button[disabled]{opacity:.5;cursor:not-allowed}
@@ -402,7 +405,11 @@ button[disabled]{opacity:.5;cursor:not-allowed}
   <h3>Микрофон</h3>
   <label class="check" for="autoMic"><input type="checkbox" id="autoMic"> Hands-free: слушать сразу после реплики (на iPhone Safari всё равно требует одно касание)</label>
   <div class="diag" id="diag"></div>
-  <div class="row"><button id="micTest" aria-label="Проверить доступ к микрофону">Проверить микрофон</button></div>
+  <div class="row">
+    <button id="micTest" aria-label="Проверить доступ к микрофону">Проверить микрофон</button>
+    <button id="logBtn" aria-label="Показать лог микрофона">Лог микрофона</button>
+  </div>
+  <div class="logbox" id="micLog"></div>
 
   <h3>Микрофон, ключ и данные</h3>
   <div class="note"><ul>
@@ -1149,7 +1156,7 @@ const state = {
   history:[], answered:new Set(), facts:{}, pending:null, extraIdx:0, asked:0, lastAsk:null,
   isRecording:false, recognition:null, recTimer:null,
   soundOn:true, rate:1.08, autoMic:false, themeMode:"auto", photosOn:true,
-  lastTutorLine:"", audioUnlocked:false, pendingSpeech:null, expect:null, prefix:"", quest:null, stopRequested:false, recInstance:null, recFinish:null, micFails:0, lastRecError:"", startWatch:null, endWatch:null, busyWatch:null,
+  lastTutorLine:"", audioUnlocked:false, pendingSpeech:null, expect:null, prefix:"", quest:null, stopRequested:false, recFinish:null, micFails:0, micEverStarted:false, lastRecError:"", startWatch:null, endWatch:null, busyWatch:null,
   busy:false, micBlocked:false, exchanges:0
 };
 
@@ -2902,12 +2909,57 @@ function probeMic(){                                   /* вызываем си�
 function micHelp(reason){
   let msg = "Микрофон не включился" + (reason ? " (" + reason + ")" : "") + ". ";
   if (IS_STANDALONE) msg += "На iPhone распознавание речи не работает в иконке с экрана «Домой» — открой страницу прямо в Safari.";
-  else if (IS_IOS) msg += "В Safari нажми «аА» слева в адресной строке → Настройки веб-сайта → Микрофон → Разрешить, потом обнови страницу.";
+  else if (IS_IOS) msg += "Проверь два места: 1) Настройки → Основные → Клавиатура → Включить диктовку (без неё Safari не распознаёт речь); " +
+    "2) в Safari «аА» слева в адресной строке → Настройки веб-сайта → Микрофон → Разрешить. Потом обнови страницу.";
   else msg += "Разреши микрофон в настройках сайта или отвечай текстом.";
+  msg += " Обходной путь: нажми поле ввода и надиктуй текст значком микрофона на клавиатуре — это работает всегда.";
   addSystem(msg, true);
+  logMic("подсказка показана: " + (reason || ""));
   probeMic();
 }
 
+/* лог всех событий распознавания: видно, где именно Safari останавливается */
+const micLogLines = [];
+function logMic(msg){
+  const t = new Date();
+  const stamp = String(t.getMinutes()).padStart(2,"0") + ":" + String(t.getSeconds()).padStart(2,"0") +
+                "." + String(t.getMilliseconds()).padStart(3,"0");
+  micLogLines.push(stamp + "  " + msg);
+  while (micLogLines.length > 60) micLogLines.shift();
+  const box = $("micLog");
+  if (box) box.textContent = micLogLines.join("\n");
+}
+function micLogCard(){
+  const old = document.getElementById("logCard");
+  if (old && old.parentNode) old.parentNode.removeChild(old);
+  const card = el("div","choice");
+  card.id = "logCard";
+  card.appendChild(el("div","dtitle","Что происходит с микрофоном"));
+  const pre = el("div","logbox", micLogLines.join("\n"));
+  card.appendChild(pre);
+  const row = el("div","cacts");
+  const copy = el("button","cbtn","Скопировать лог");
+  copy.type = "button";
+  copy.addEventListener("click",()=>{
+    const text = micLogLines.join("\n");
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(()=>flash("Лог скопирован"),()=>{});
+    else { input.value = text; flash("Лог в поле ввода"); }
+  });
+  const hide = el("button","cbtn","Скрыть");
+  hide.type = "button";
+  hide.addEventListener("click",()=>{ if (card.parentNode) card.parentNode.removeChild(card); });
+  row.appendChild(copy); row.appendChild(hide);
+  card.appendChild(row);
+  chat.appendChild(card);
+  scrollChat();
+}
+function envReport(){
+  const ua = navigator.userAgent || "";
+  logMic("браузер: " + ua.slice(0,90));
+  logMic("SpeechRecognition: " + (window.SpeechRecognition ? "есть" : "нет") +
+         ", webkit: " + (window.webkitSpeechRecognition ? "есть" : "нет"));
+  logMic("https: " + (!!window.isSecureContext) + ", standalone: " + IS_STANDALONE + ", iOS: " + IS_IOS);
+}
 function offerReload(){
   if (document.getElementById("reloadCard")) return;
   const card = el("div","choice");
@@ -2935,9 +2987,18 @@ function startRecording(){
   if (state.busy) releaseBusy();                       /* зависший запрос не глушит микрофон */
   if (synth){ try{ synth.cancel(); setSpeaking(false); }catch(e){} }
 
+  logMic("тап: запускаю запись");
+  if (IS_IOS && !state.micEverStarted && navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+    try{                                               /* просим доступ в том же касании, поток сразу отпускаем */
+      navigator.mediaDevices.getUserMedia({ audio:true }).then(st=>{
+        st.getTracks().forEach(t=>t.stop());
+        logMic("getUserMedia: доступ подтверждён");
+      }).catch(err=>logMic("getUserMedia отказ: " + ((err && err.name) || err)));
+    }catch(e){ logMic("getUserMedia бросил " + ((e && e.name) || e)); }
+  }
   let rec;
-  try{ rec = new SR(); }
-  catch(e){ micHelp("не создаётся"); return; }
+  try{ rec = new SR(); logMic("объект создан"); }
+  catch(e){ logMic("объект НЕ создан: " + ((e && e.name) || e)); micHelp("не создаётся"); return; }
   rec.lang = "en-US";
   rec.continuous = false;                              /* браузер сам закрывает запись после фразы */
   rec.interimResults = true;
@@ -2964,8 +3025,16 @@ function startRecording(){
     handleLearnerInput(said);
   };
 
+  rec.onaudiostart = ()=>{ logMic("audiostart: микрофон открыт"); micState.textContent = "микрофон открыт, говори"; };
+  rec.onsoundstart = ()=>logMic("soundstart: слышу звук");
+  rec.onspeechstart = ()=>{ logMic("speechstart: пошла речь"); micState.textContent = "слышу тебя"; };
+  rec.onspeechend = ()=>logMic("speechend: речь закончилась");
+  rec.onaudioend = ()=>logMic("audioend: микрофон закрыт");
+  rec.onnomatch = ()=>logMic("nomatch: не разобрал");
   rec.onstart = ()=>{
+    logMic("onstart");
     started = true;
+    state.micEverStarted = true;
     state.micFails = 0;
     clearTimeout(state.startWatch);
     state.isRecording = true; t0 = Date.now();
@@ -2977,6 +3046,7 @@ function startRecording(){
     for (let i = ev.resultIndex; i < ev.results.length; i++){
       const r = ev.results[i];
       if (r.isFinal){
+        logMic("результат (final): " + String(r[0].transcript).slice(0,40));
         finalText += r[0].transcript + " ";
         if (typeof r[0].confidence === "number" && r[0].confidence > bestConf) bestConf = r[0].confidence;
       } else interim += r[0].transcript;
@@ -2987,10 +3057,12 @@ function startRecording(){
   rec.onerror = (ev)=>{
     const code = (ev && ev.error) || "unknown";
     state.lastRecError = code;
+    logMic("ОШИБКА: " + code + (ev && ev.message ? " — " + String(ev.message).slice(0,60) : ""));
     if (code === "not-allowed" || code === "service-not-allowed" || code === "audio-capture"){
       state.micBlocked = true;
       state.micFails = (state.micFails || 0) + 1;
       micHelp(code);
+      micLogCard();
       if (state.micFails >= 2) offerReload();
       finish();
       return;
@@ -2999,18 +3071,21 @@ function startRecording(){
       addSystem(REC_ERRORS[code] || "Распознавание прервалось. Попробуй ещё раз или напиши ответ.", true);
     finish();
   };
-  rec.onend = finish;                                  /* конец фразы определил браузер */
+  rec.onend = ()=>{ logMic("onend, распознано символов: " + finalText.trim().length); finish(); };
 
   state.recognition = rec;
   micState.textContent = "открываю микрофон…";
   try{
     rec.start();
+    logMic("start() вызван без исключения");
     /* сторож только сообщает, ничего не обрывает */
     state.startWatch = setTimeout(()=>{
       if (!started && !done){
         state.micFails = (state.micFails || 0) + 1;
+        logMic("сторож: onstart так и не пришёл");
         micState.textContent = "микрофон не открылся — нажми ещё раз";
         micHelp("нет ответа");
+        micLogCard();
         if (state.micFails >= 2) offerReload();
       }
     }, 3000);
@@ -3018,9 +3093,10 @@ function startRecording(){
       if (state.isRecording) stopRecording();
     }, 20000);
   }catch(e){
+    logMic("start() выбросил " + ((e && e.name) || e) + ": " + ((e && e.message) || ""));
     cleanupRecognition();
     if (/InvalidState/i.test(String((e && e.name) || e))) addSystem("Микрофон ещё занят — нажми ещё раз.");
-    else micHelp("start(): " + ((e && e.name) || "ошибка"));
+    else { micHelp("start(): " + ((e && e.name) || "ошибка")); micLogCard(); }
   }
 }
 function stopRecording(){                              /* только по явному тапу или по 20-секундной страховке */
@@ -3370,6 +3446,7 @@ $("showFixes").addEventListener("change",(e)=>{
 });
 $("sessionBtn").addEventListener("click",()=>{ closeSheet(); startSession(); });
 $("questsBtn2").addEventListener("click",()=>{ closeSheet(); openQuests(); });
+$("logBtn").addEventListener("click",()=>{ closeSheet(); micLogCard(); });
 
 /* ===== 14. ключ API ===== */
 const keyInput = $("apiKey");
@@ -3489,22 +3566,26 @@ function runDiagnostics(){
   }catch(e){}
 }
 $("micTest").addEventListener("click", async ()=>{
+  logMic("проверка доступа через getUserMedia");
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    logMic("getUserMedia недоступен");
     addSystem("Браузер не умеет запрашивать микрофон.", true); return;
   }
   try{
     const s = await navigator.mediaDevices.getUserMedia({ audio:true });
+    logMic("getUserMedia: доступ есть, дорожек " + s.getTracks().length);
     s.getTracks().forEach(t=>t.stop());
     state.micBlocked = false; setMicUI("idle");
     addSystem("Микрофон работает. Можно нажимать «Начать говорить»."); closeSheet();
   }catch(e){
+    logMic("getUserMedia отказ: " + ((e && e.name) || e));
     state.micBlocked = true; setMicUI("blocked");
     addSystem("Доступ к микрофону не дали. Разреши его в настройках сайта или отвечай текстом.", true);
   }
 });
 
 /* ===== 17. старт ===== */
-applyTheme(); updateCounter(); autoGrow(); refreshModePill(); runDiagnostics();
+applyTheme(); updateCounter(); autoGrow(); refreshModePill(); runDiagnostics(); envReport();
 loadProgress();
 renderStats();
 $("showFixes").checked = !!profile.showFixes;

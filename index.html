@@ -66,7 +66,7 @@ body{font-family:var(--ui);color:var(--ink);background:var(--page);-webkit-text-
 .ico{width:34px;height:34px;min-height:34px;padding:0;font-size:15px;border-radius:11px;border:none;
   background:var(--ico);color:var(--ink);display:grid;place-items:center}
 
-.stage{display:flex;align-items:flex-end;gap:8px;padding:4px 12px 8px;flex:none}
+.stage{display:flex;align-items:flex-end;gap:8px;padding:4px 12px 8px;flex:none;max-height:38vh;overflow:hidden}
 .avatar{width:96px;height:96px;flex:none;filter:drop-shadow(0 6px 14px rgba(0,0,0,.28));transition:width .3s ease,height .3s ease}
 .app.min .avatar{width:68px;height:68px}
 .avatar svg,.avatar img{width:100%;height:100%;overflow:visible}
@@ -84,7 +84,7 @@ body{font-family:var(--ui);color:var(--ink);background:var(--page);-webkit-text-
 .cloud .role{font-size:11px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cloud .say{margin-left:auto;flex:none;width:30px;height:30px;min-height:30px;padding:0;border-radius:50%;
   border:none;background:var(--accent);color:#fff;font-size:14px}
-.cloud .line{font-family:var(--en);font-size:19px;line-height:1.34;max-height:24vh;overflow-y:auto}
+.cloud .line{font-family:var(--en);font-size:19px;line-height:1.34;max-height:20vh;overflow-y:auto;overflow-wrap:anywhere}
 .app.min .cloud .line{font-size:18px}
 .avatar .mouth{transform-box:fill-box;transform-origin:center}
 .avatar.speaking .mouth{animation:talk .26s ease-in-out infinite alternate}
@@ -2665,7 +2665,8 @@ function setPhoto(topic){
 /* ===== облако с репликой рядом с персонажем ===== */
 function setCloud(text){
   const line = $("cloudLine");
-  line.textContent = text || "";
+  const t = String(text || "");
+  line.textContent = t.length > 260 ? t.slice(0,257).replace(/\s+\S*$/,"") + "…" : t;
   line.scrollTop = 0;
 }
 function setCloudThinking(){
@@ -2915,12 +2916,13 @@ function systemPrompt(topic){
     "- next_hints: 3 casual phrases the learner could say next.",
     "- Omit pronunciation_tip unless it really matters.",
     "",
+    "Keep the whole JSON under 60 words: reply max 2 sentences, explanation_ru max 12 words, 3 short hints.",
     "Answer with STRICT JSON only, no markdown, exactly this shape:",
     '{"reply":"...","correction":{"status":"correct|needs_improvement","original":"...","improved":"...","explanation_ru":"..."},"next_hints":["...","...","..."],"pronunciation_tip":{"word":"...","tip_ru":"..."}}'
   ].join("\n");
 }
-const MODELS = ["deepseek-chat"];                     /* при отказе пробуем reasoner */
-const MODELS_FALLBACK = ["deepseek-reasoner"];
+const MODELS = ["deepseek-chat"];                     /* reasoner не держит json_object */
+const MODELS_FALLBACK = [];
 const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
 
 async function askAI(userText){
@@ -2936,8 +2938,8 @@ async function askAI(userText){
         headers:{ "Content-Type":"application/json", "Authorization":"Bearer " + state.apiKey },
         body: JSON.stringify({
           model, messages,
-          temperature:1.1,                              /* болтовня, а не документация */
-          max_tokens:400,
+          temperature:1.05,                             /* болтовня, а не документация */
+          max_tokens:900,                               /* короткий JSON не должен обрезаться */
           response_format:{ type:"json_object" }
         })
       });
@@ -2961,6 +2963,38 @@ async function askAI(userText){
   return { ok:false, reason:"DeepSeek не ответил (" + lastErr + ")." };
 }
 
+/* если JSON обрезался, вытаскиваем поля регуляркой — сырой текст ученику не показываем */
+function repairModelText(raw){
+  const un = (x)=>String(x).replace(/\\"/g,'"').replace(/\\n/g," ").replace(/\\\\/g,"\\");
+  const pick = (key)=>{
+    const m = raw.match(new RegExp('"' + key + '"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"'));
+    return m ? un(m[1]) : "";
+  };
+  const out = {};
+  const reply = pick("reply");
+  if (reply) out.reply = reply;
+  const st = (raw.match(/"status"\s*:\s*"(correct|needs_improvement)"/) || [])[1];
+  if (st) out.correction = { status:st, original:pick("original"), improved:pick("improved"), explanation_ru:pick("explanation_ru") };
+  const hm = raw.match(/"next_hints"\s*:\s*\[([^\]]*)/);
+  if (hm){
+    const list = (hm[1].match(/"((?:[^"\\]|\\.)*)"/g) || []).map(x => un(x.slice(1,-1)));
+    if (list.length) out.next_hints = list;
+  }
+  return out.reply ? out : null;
+}
+/* в облако и в чат попадает только человеческий текст */
+function sanitizeReply(text){
+  let t = String(text || "").trim();
+  if (!t) return "";
+  if (t.charAt(0) === "{" || t.indexOf('"reply"') !== -1){
+    const rep = repairModelText(t);
+    t = (rep && rep.reply) ? rep.reply : "";
+  }
+  if (!t) return "";
+  if (/[{}\[\]]|"\w+"\s*:/.test(t)) return "";      /* всё ещё похоже на JSON — не показываем */
+  if (t.length > 240) t = t.slice(0,237).replace(/\s+\S*$/,"") + "…";
+  return t;
+}
 function parseModelJSON(raw){
   let txt = raw.replace(/^```(?:json)?/i,"").replace(/```$/,"").trim();
   const a = txt.indexOf("{"), b = txt.lastIndexOf("}");
@@ -3008,15 +3042,16 @@ async function handleLearnerInput(text){
   if (state.apiKey){
     const r = await askAI(clean);
     if (r.ok){
-      const parsed = parseModelJSON(r.raw);
-      if (parsed){
-        reply = (parsed.reply || "").trim();
+      const parsed = parseModelJSON(r.raw) || repairModelText(r.raw);
+      if (parsed && parsed.reply){
+        reply = sanitizeReply(parsed.reply);
         hints = Array.isArray(parsed.next_hints) ? parsed.next_hints : null;
         corr = mergeCorrection(parsed.correction, local);
         tip = parsed.pronunciation_tip || null;
-      } else {
-        reply = r.raw.slice(0,300); corr = local;
-        note = "Ответ пришёл не в формате JSON — показываю как обычную реплику.";
+      }
+      if (!reply){                                      /* ответ пришёл битым — отвечает локальный собеседник */
+        const lr = localReply(clean);
+        reply = lr.reply; hints = lr.hints; corr = local; localQ = lr.q || "";
       }
     } else {
       const lr = localReply(clean);
@@ -3030,7 +3065,12 @@ async function handleLearnerInput(text){
 
   typing.remove();
   if (note) addSystem(note, true);
-  if (!reply) reply = "Okay! Tell me more 🙂";
+  reply = sanitizeReply(reply);
+  if (!reply){
+    const lr2 = localReply(clean);
+    reply = sanitizeReply(lr2.reply) || "Okay! Tell me more 🙂";
+    hints = lr2.hints; localQ = lr2.q || "";
+  }
 
   /* оценка идёт в фон, ошибка возвращается в ответе как рекаст */
   const res = assessTurn(clean, corr);

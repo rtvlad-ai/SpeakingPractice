@@ -137,7 +137,7 @@ body{font-family:var(--ui);color:var(--ink);background:var(--page);-webkit-text-
 .typing i:nth-child(3){animation-delay:.36s}
 @keyframes dots{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
 
-.chips{display:flex;gap:7px;overflow-x:auto;padding:4px 14px 6px;scrollbar-width:none;flex:none}
+.chips{display:none}
 .chips::-webkit-scrollbar{display:none}
 .chip{flex:none;display:flex;border:1px solid var(--glass-line);border-radius:999px;background:var(--glass);
   overflow:hidden;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
@@ -390,9 +390,10 @@ button[disabled]{opacity:.5;cursor:not-allowed}
   </label>
   <label class="field" for="rate">Темп речи
     <select id="rate" aria-label="Темп речи собеседника">
-      <option value="1">Естественный</option>
-      <option value="0.92">Чуть медленнее</option>
-      <option value="0.8">Медленно, для трудных фраз</option>
+      <option value="1.2">Живой, как в разговоре</option>
+      <option value="1.08" selected>Обычный</option>
+      <option value="0.95">Чуть медленнее</option>
+      <option value="0.85">Медленно, для трудных фраз</option>
     </select>
   </label>
   <div class="row"><button id="testVoice" aria-label="Послушать выбранный голос">Послушать голос</button></div>
@@ -1139,7 +1140,7 @@ const state = {
   apiKey:"", topic:TOPICS[0],
   history:[], answered:new Set(), facts:{}, pending:null, extraIdx:0, asked:0, lastAsk:null,
   isRecording:false, recognition:null, recTimer:null,
-  soundOn:true, rate:1, autoMic:false, themeMode:"auto", photosOn:true,
+  soundOn:true, rate:1.08, autoMic:false, themeMode:"auto", photosOn:true,
   lastTutorLine:"", audioUnlocked:false, pendingSpeech:null, expect:null, prefix:"", quest:null,
   busy:false, micBlocked:false, exchanges:0
 };
@@ -1457,10 +1458,55 @@ function planSession(){
 }
 function startSession(){
   planSession();
+  session.phase = "choice";
+  session.opened = false;
+  chooseStartCard();
+  renderRail();
+}
+/* с чего начать: карточки фраз или сразу разговор по теме */
+function chooseStartCard(){
+  const card = el("div","choice");
+  card.appendChild(el("div","dtitle","С чего начнём?"));
+  card.appendChild(el("div","dwhy","Разогрев — 3 карточки фраз с озвучкой, минута. Разговор — сразу тема «" +
+    (state.topic ? state.topic.ru : "") + "»."));
+  const warm = el("button","cbtn ok wide","🔥 Разогрев на минуту");
+  warm.type = "button";
+  warm.addEventListener("click",()=>{
+    if (card.dataset.done) return;
+    card.dataset.done = "1";
+    beginWarm();
+  });
+  const talk = el("button","cbtn wide","💬 Сразу к разговору");
+  talk.type = "button";
+  talk.addEventListener("click",()=>{
+    if (card.dataset.done) return;
+    card.dataset.done = "1";
+    toPhase("talk");
+  });
+  card.appendChild(warm); card.appendChild(talk);
+  chat.appendChild(card);
+  scrollChat();
+}
+function beginWarm(){
+  session.phase = "warm";
+  session.phaseStart = Date.now();
+  addSystem("Разогрев: послушай и отметь, что знаешь. Потом перейдём к разговору.");
   session.chunks.forEach((c,i)=>setTimeout(()=>chunkCard(c), i * 120));
   if (profile.pronounce.length) setTimeout(pronounceCard, 400);
-  if (profile.interests.length && profile.sessions % 2 === 0) gossipCard();
-  addSystem("3 минуты: разогрев → болтаем → быстрый тест.");
+  if (profile.interests.length && profile.sessions % 2 === 0) setTimeout(gossipCard, 600);
+  renderRail();
+}
+/* первая реплика собеседника звучит только когда начался разговор */
+function startOpening(){
+  if (!session || session.opened) return;
+  session.opened = true;
+  const topic = state.topic;
+  const line = topic.start;
+  state.lastTutorLine = line;
+  pushHistory("model", line);
+  addTutor(line);
+  renderHints(topic.slots[0].hints);
+  speak(line);
 }
 function phaseBudgetOver(){
   return Date.now() - session.phaseStart >= PHASE_MS[session.phase];
@@ -1468,14 +1514,14 @@ function phaseBudgetOver(){
 function toPhase(next){
   session.phase = next;
   session.phaseStart = Date.now();
-  if (next === "talk") flash("Погнали болтать 💬");
+  if (next === "talk"){ flash("Погнали болтать 💬"); startOpening(); }
   if (next === "quiz"){ session.quiz = buildQuiz(4); nextQuizCard(); }
   renderRail();
 }
 /* ход ученика в разговоре двигает сессию */
 function tickSession(){
   if (!session){ startSession(); return; }
-  if (session.phase === "warm") toPhase("talk");        /* заговорил — разогрев закончен */
+  if (session.phase === "choice" || session.phase === "warm") toPhase("talk");   /* заговорил — переходим к теме */
   else if (session.phase === "talk"){
     session.turns++;
     if (profile.boss) return;                            // босс-баттл не прерываем
@@ -1513,7 +1559,10 @@ function chunkCard(c){
     if (good) addXP(2);
     if (!good) speak(c.t);
     session.warmDone++;
-    if (session.warmDone >= session.chunks.length) toPhase("talk");
+    if (session.warmDone >= session.chunks.length){
+      addSystem("Разогрев закончен — теперь тема «" + (state.topic ? state.topic.ru : "") + "».");
+      toPhase("talk");
+    }
     renderRail();
     const use = el("button","mini","✍️ Сказать это в чате");
     use.type = "button";
@@ -1655,14 +1704,24 @@ function vibeShort(text){                                 // односложн�
   if (n <= 2) session.shortStreak++; else session.shortStreak = 0;
   return session.shortStreak >= 2;
 }
-function offerChoice(slot){                               // готовые варианты ответа
+function offerChoice(slot){                               // начала фраз, договаривает ученик
   if (!slot) return;
   const card = el("div","choice");
-  card.appendChild(el("div","dtitle","Выбери ответ 👇"));
+  card.appendChild(el("div","dtitle","Начни с этого 👇"));
   (slot.hints || []).slice(0,3).forEach(h => {
-    const b = el("button","cbtn wide", h);
+    const stem = stemOf(h);
+    if (!stem) return;
+    const b = el("button","cbtn wide", stem);
     b.type = "button";
-    b.addEventListener("click",()=>{ if (!card.dataset.done){ card.dataset.done = "1"; handleLearnerInput(h); } });
+    b.addEventListener("click",()=>{
+      if (card.dataset.done) return;
+      card.dataset.done = "1";
+      const clean2 = stem.replace(/…$/,"").trim();
+      state.prefix = clean2;
+      speak(clean2);
+      fillInput(clean2 + " ");
+      flash("Договори голосом или текстом 🎤");
+    });
     card.appendChild(b);
   });
   chat.appendChild(card);
@@ -1875,9 +1934,10 @@ function renderRail(){
     return;
   }
   if (session){
-    const names = { warm:"разогрев", talk:"болтаем", quiz:"тест", done:"готово" };
-    const left = Math.max(0, Math.round((PHASE_MS[session.phase] - (Date.now() - session.phaseStart)) / 1000));
-    rail.appendChild(el("span","seg now", names[session.phase] + (session.phase === "done" ? "" : " · " + left + "с")));
+    const names = { choice:"выбор", warm:"разогрев", talk:"болтаем", quiz:"тест", done:"готово" };
+    const budget = PHASE_MS[session.phase];
+    const left = budget ? Math.max(0, Math.round((budget - (Date.now() - session.phaseStart)) / 1000)) : null;
+    rail.appendChild(el("span","seg now", names[session.phase] + (left === null ? "" : " · " + left + "с")));
     if (session.phase === "talk") rail.appendChild(el("span","seg", "реплик " + session.turns + "/6"));
     if (session.phase === "quiz") rail.appendChild(el("span","seg", "карточек " + session.quizDone + "/" + session.quiz.length));
   }
@@ -1921,7 +1981,7 @@ function startPlacement(){
     saveProgress();
     $("modalVeil").hidden = true; $("modal").hidden = true;
     renderTopics();
-    startTopic(TOPICS[0], false);                     /* начинаем со знакомства, дальше выбор за тобой */
+    startTopic(TOPICS[0], false, false, true);
     startSession();
   });
   box.appendChild(go);
@@ -2183,12 +2243,20 @@ const STARTERS = {
   family:["I've got…","My mum is…","We usually…"],
   greeting:["My name is…","I'm from…","Nice to…"]
 };
-function renderStarters(){
+/* из готового предложения делаем начало фразы: ученик договаривает сам */
+function stemOf(sentence){
+  const words = String(sentence || "").replace(/[.!?]+$/,"").trim().split(/\s+/).filter(Boolean);
+  if (words.length < 2) return "";
+  const take = Math.max(2, Math.min(4, Math.floor(words.length * 0.6)));
+  return words.slice(0, take).join(" ") + "…";
+}
+function renderStarters(list){
   const box = $("starters");
   if (!box) return;
   box.textContent = "";
   const topicId = state.topic ? state.topic.id : "any";
-  const pool = (STARTERS[topicId] || []).concat(STARTERS.any);
+  const fromSlot = (list || []).map(stemOf).filter(Boolean);
+  const pool = fromSlot.concat(STARTERS[topicId] || [], STARTERS.any);
   const seen = {}, pick = [];
   pool.forEach(p => { if (!seen[p] && pick.length < 3){ seen[p] = 1; pick.push(p); } });
   pick.forEach(text=>{
@@ -2410,6 +2478,8 @@ function questReply(text, ok){
 function endQuest(win){
   const st = state.quest;
   state.quest = null;
+  const base = TOPICS.find(t => t.id === (state.topic && state.topic.id));
+  if (base){ state.topic = base; renderCharacter(base); }
   if (!st) return;
   if (!win){
     addSystem("Квест отложен — возвращайся, когда захочешь 🙂");
@@ -2434,7 +2504,7 @@ function endQuest(win){
   card.appendChild(more);
   const chatBtn = el("button","cbtn","Свободный чат 💬");
   chatBtn.type = "button";
-  chatBtn.addEventListener("click",()=>startTopic(state.topic, true));
+  chatBtn.addEventListener("click",()=>startTopic(TOPICS.find(t => t.id === (state.topic && state.topic.id)) || TOPICS[0], true));
   card.appendChild(chatBtn);
   chat.appendChild(card);
   scrollChat();
@@ -2686,7 +2756,7 @@ function speak(text){
       if (!piece){ left--; return; }
       const u = new SpeechSynthesisUtterance(piece);
       if (chosenVoice){ u.voice = chosenVoice; u.lang = chosenVoice.lang; } else u.lang = "en-US";
-      u.rate = state.rate;
+      u.rate = (state.expect && state.expect.single) ? Math.max(0.85, state.rate - 0.2) : state.rate;
       u.pitch = /\?\s*$/.test(piece) ? 1.06 : 1;
       if (i === 0) u.onstart = ()=>setSpeaking(true);
       u.onend = ()=>{ if (--left <= 0) setSpeaking(false); };
@@ -2980,7 +3050,6 @@ async function handleLearnerInput(text){
   const nowPending = state.topic.slots.find(s=>s.id === state.pending) || null;
   renderHints(hints && hints.length ? hints
               : (nowPending ? nowPending.hints : (state.lastAsk ? state.lastAsk.hints : state.topic.slots[0].hints)));
-  renderStarters();                                   /* 3 начала фразы под каждый вопрос */
   speak(reply);
 
   addXP(xpForSentence(clean));                        /* длиннее фраза — больше XP */
@@ -3002,12 +3071,14 @@ async function handleLearnerInput(text){
 }
 
 /* ===== 12. подсказки и ввод ===== */
+/* полные готовые ответы убраны: из них делаются только начала фраз */
 function renderHints(list){
+  renderStarters(list || []);
   const box = $("chips");
+  if (!box) return;
   box.textContent = "";
-  list = (list || []).slice(0,4);
-  const extra = pickChunks(1)[0];                        // одна живая фраза в подсказках
-  if (extra && list.indexOf(extra.t) === -1) list = list.concat([extra.t]);
+  return;
+  /* eslint-disable no-unreachable */
   (list || []).slice(0,5).forEach(h=>{
     const text = String(h || "").trim();
     if (!text) return;
@@ -3157,11 +3228,15 @@ function renderTopics(){
     b.setAttribute("role","tab");
     b.setAttribute("aria-selected", String(t.id === state.topic.id));
     b.setAttribute("aria-label","Тема: " + t.ru + " / " + t.en);
-    b.addEventListener("click",()=>{ if (!state.topic || t.id !== state.topic.id) startTopic(t, false); });
+    b.addEventListener("click",()=>{
+      if (state.quest) endQuest(false);
+      if (!state.topic || t.id !== state.topic.id) startTopic(t, false);
+      else startTopic(t, true);
+    });
     topicsBox.appendChild(b);
   });
 }
-function startTopic(topic, isReset, keepQuest){
+function startTopic(topic, isReset, keepQuest, quiet){
   if (!topic) topic = TOPICS[0];
   if (state.quest && !keepQuest) state.quest = null;   /* смена мира выключает квест */
   state.expect = null; state.prefix = "";
@@ -3183,13 +3258,17 @@ function startTopic(topic, isReset, keepQuest){
   setEmotion("neutral");
   addSystem((isReset ? "Заново. " : "") + topic.ru + " / " + topic.en + " — " + topic.goal + ".");
 
-  const line = topic.start;
-  state.lastTutorLine = line;
-  pushHistory("model", line);
-  addTutor(line);
-  renderHints(topic.slots[0].hints);
-  renderStarters();
-  speak(line);
+  if (quiet){                                          /* ждём выбора: разогрев или разговор */
+    renderHints(topic.slots[0].hints);
+  } else {
+    const line = topic.start;
+    state.lastTutorLine = line;
+    pushHistory("model", line);
+    addTutor(line);
+    renderHints(topic.slots[0].hints);
+    speak(line);
+    if (session) session.opened = true;
+  }
   if (!state.audioUnlocked) addSystem("Коснись экрана — браузер разрешит звук, и собеседник заговорит.");
 }
 
@@ -3244,7 +3323,7 @@ if (!profile.onboarded){
   startPlacement();
 } else {
   const last = TOPICS.find(t => t.id === profile.lastTopic);
-  startTopic(last || TOPICS[0], false);               /* последняя выбранная тема, иначе знакомство */
+  startTopic(last || TOPICS[0], false, false, true);   /* тема готова, но собеседник молчит до выбора */
   startSession();
 }
 </script>

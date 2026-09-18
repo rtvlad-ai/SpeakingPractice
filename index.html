@@ -1149,7 +1149,7 @@ const state = {
   history:[], answered:new Set(), facts:{}, pending:null, extraIdx:0, asked:0, lastAsk:null,
   isRecording:false, recognition:null, recTimer:null,
   soundOn:true, rate:1.08, autoMic:false, themeMode:"auto", photosOn:true,
-  lastTutorLine:"", audioUnlocked:false, pendingSpeech:null, expect:null, prefix:"", quest:null, stopRequested:false, recFinish:null, startWatch:null, endWatch:null, busyWatch:null,
+  lastTutorLine:"", audioUnlocked:false, pendingSpeech:null, expect:null, prefix:"", quest:null, stopRequested:false, recInstance:null, recFinish:null, startWatch:null, endWatch:null, busyWatch:null,
   busy:false, micBlocked:false, exchanges:0
 };
 
@@ -2874,7 +2874,7 @@ function cleanupRecognition(){
       state.recognition.onresult = null; state.recognition.onerror = null;
       state.recognition.onend = null; state.recognition.onstart = null;
     }catch(e){}
-    state.recognition = null;
+    state.recognition = null;                          /* сам объект живёт в state.recInstance */
   }
   setMicUI(state.micBlocked ? "blocked" : "idle");
 }
@@ -2919,9 +2919,12 @@ function startRecording(){
   if (synth){ try{ synth.cancel(); setSpeaking(false); }catch(e){} }
 
   state.stopRequested = false;
-  let rec;
-  try{ rec = new SR(); }
-  catch(e){ micHelp("не создаётся"); return; }
+  let rec = state.recInstance;                         /* Safari поднимает распознавание только у первого объекта */
+  if (!rec){
+    try{ rec = new SR(); state.recInstance = rec; }
+    catch(e){ micHelp("не создаётся"); return; }
+  }
+  try{ rec.onresult = rec.onerror = rec.onend = rec.onstart = null; }catch(e){}
   rec.lang = "en-US";
   rec.continuous = false;
   rec.interimResults = !IS_IOS;                        /* на iOS только финальный результат */
@@ -3001,9 +3004,8 @@ function startRecording(){
   rec.onend = finish;
 
   state.recognition = rec;
-  try{
-    rec.start();
-    micState.textContent = "открываю микрофон…";
+  micState.textContent = "открываю микрофон…";
+  const arm = ()=>{
     /* Safari может не позвать onstart вообще — тогда говорим, что делать */
     state.startWatch = setTimeout(()=>{
       if (!started && !finished){
@@ -3011,25 +3013,45 @@ function startRecording(){
         cleanupRecognition();
         micHelp("нет доступа");
       }
-    }, 2200);
+    }, 2600);
     state.recTimer = setTimeout(()=>{ if (state.isRecording) stopRecording(); }, 15000);
-  }catch(e){
-    cleanupRecognition();
-    if (/InvalidState/i.test(String(e && e.name))) addSystem("Микрофон ещё занят предыдущей записью — нажми ещё раз.");
-    else micHelp("start() не сработал");
-  }
+  };
+  const launch = (retry)=>{
+    try{
+      rec.start();
+      arm();
+    }catch(e){
+      if (!retry && /InvalidState/i.test(String((e && e.name) || e))){
+        try{ rec.abort(); }catch(e2){}               /* прошлая сессия ещё висит — сбрасываем и пробуем снова */
+        setTimeout(()=>launch(true), 350);
+        return;
+      }
+      cleanupRecognition();
+      micHelp("start() не сработал");
+    }
+  };
+  /* речь синтезатора держит аудиосессию: на iOS ждём, пока она освободится */
+  if (synth && synth.speaking){
+    try{ synth.cancel(); }catch(e){}
+    setTimeout(()=>launch(false), IS_IOS ? 260 : 80);
+  } else launch(false);
 }
 function stopRecording(){
   state.stopRequested = true;
   clearTimeout(silenceTimer);
-  if (!state.recognition){
+  clearTimeout(state.startWatch);
+  const rec = state.recognition || state.recInstance;
+  if (!rec){
     if (state.recFinish) state.recFinish(); else cleanupRecognition();
     return;
   }
-  try{ state.recognition.stop(); }
-  catch(e){ try{ state.recognition.abort(); }catch(e2){} }
+  try{ rec.stop(); }
+  catch(e){ try{ rec.abort(); }catch(e2){} }
   /* iOS иногда не присылает onend — добиваем сами */
-  state.endWatch = setTimeout(()=>{ if (state.recFinish) state.recFinish(); }, 1500);
+  state.endWatch = setTimeout(()=>{                    /* Safari проигнорировал stop() — жёстко сбрасываем */
+    try{ if (state.recInstance && state.recInstance.abort) state.recInstance.abort(); }catch(e){}
+    setTimeout(()=>{ if (state.recFinish) state.recFinish(); }, 250);
+  }, 600);
 }
 
 /* ===== 10. DeepSeek ===== */

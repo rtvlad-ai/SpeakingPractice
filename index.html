@@ -215,6 +215,47 @@ body{font-family:var(--ui);color:var(--ink);background:var(--page);-webkit-text-
 .modal h2{margin:0 0 4px}
 .modal #mBody{display:flex;flex-direction:column;gap:9px}
 
+/* карточки фраз, тесты, награды */
+.chunk,.gossip,.swipe,.reward,.meme,.choice,.builder{align-self:stretch;max-width:100%;border-radius:16px;padding:12px 13px;
+  display:flex;flex-direction:column;gap:8px;background:var(--glass);border:1px solid var(--glass-line);
+  box-shadow:var(--shadow);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.crow{display:flex;gap:10px;align-items:center}
+.cplay{flex:none;width:44px;height:44px;min-height:44px;padding:0;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:18px}
+.ctext{min-width:0}
+.cen{font-family:var(--en);font-size:21px;line-height:1.25}
+.cru{font-size:13px;color:var(--ink-soft)}
+.cacts{display:flex;gap:7px;flex-wrap:wrap}
+.cbtn{flex:1 1 auto;min-height:42px;border-radius:13px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:14.5px;font-weight:600}
+.cbtn.ok{background:var(--accent);border-color:transparent;color:#fff}
+.cbtn.on{background:var(--accent);border-color:transparent;color:#fff}
+.cbtn.wide{flex:1 1 100%;font-family:var(--en);font-size:16px;font-weight:500;text-align:left;padding:10px 12px}
+.gtitle,.rtitle,.stitle{font-size:11.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.03em}
+.gline{font-family:var(--en);font-size:17px;line-height:1.4}
+.sen{font-family:var(--en);font-size:20px;line-height:1.3;text-align:center;padding:6px 0}
+.shint{font-size:12px;color:var(--ink-soft);text-align:center}
+.sbtns{display:flex;gap:8px}
+.sbtn{flex:1 1 0;min-height:48px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:16px;font-weight:700}
+.sbtn.good{background:var(--good);border-color:var(--good-line)}
+.sbtn.bad{background:var(--red-soft);border-color:transparent;color:var(--red-ink)}
+.swhy{font-size:13.5px;text-align:center}
+.rtitle{font-size:14px;text-transform:none;letter-spacing:0}
+.rline{font-size:13.5px;line-height:1.45}
+.meme{align-items:center;text-align:center}
+.memoji{font-size:44px;line-height:1}
+.bline{min-height:30px;font-family:var(--en);font-size:19px}
+.bbank{display:flex;gap:6px;flex-wrap:wrap}
+.brick{min-height:38px;padding:7px 11px;border-radius:11px;border:1px solid var(--line);background:var(--card);
+  color:var(--ink);font-family:var(--en);font-size:16px}
+.brick:disabled{opacity:.35}
+.ichips{display:flex;gap:7px;flex-wrap:wrap}
+.ichips .cbtn{flex:1 1 40%}
+/* всплывающие награды */
+.flash{position:fixed;left:0;right:0;top:calc(env(safe-area-inset-top) + 52px);z-index:45;
+  display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none}
+.flashItem{background:var(--accent);color:#fff;font-size:13px;font-weight:700;padding:7px 13px;border-radius:999px;
+  box-shadow:var(--shadow);animation:pop .3s ease}
+@keyframes pop{from{transform:translateY(-8px);opacity:0}to{transform:translateY(0);opacity:1}}
+
 button{font:inherit;cursor:pointer}
 button:active{transform:translateY(1px)}
 button[disabled]{opacity:.5;cursor:not-allowed}
@@ -274,13 +315,15 @@ button[disabled]{opacity:.5;cursor:not-allowed}
   <button class="ico close" id="sheetClose" aria-label="Закрыть настройки">✕</button>
   <h2>Настройки</h2>
 
-  <h3>Прогресс</h3>
+  <h3>Профиль</h3>
   <div class="diag" id="stats"></div>
   <div class="row">
-    <button id="placeBtn" aria-label="Пройти тест уровня заново">Тест уровня</button>
-    <button id="resetProg" class="danger" aria-label="Сбросить прогресс обучения">Сбросить прогресс</button>
+    <button id="placeBtn" aria-label="Выбрать интересы заново">Сменить интересы</button>
+    <button id="sessionBtn" aria-label="Начать новую трёхминутную сессию">Новая сессия ▶</button>
+    <button id="resetProg" class="danger" aria-label="Сбросить прогресс">Сбросить</button>
   </div>
-  <p class="note">Уровень меняется только через тест-веху: нужно освоить все навыки уровня и держать точность не ниже 85%. Слова и правила повторяются по расписанию интервального повторения.</p>
+  <label class="check" for="showFixes"><input type="checkbox" id="showFixes"> Показывать разбор ошибок (по умолчанию ошибки исправляются незаметно, в ответе собеседника)</label>
+  <p class="note">Статус растёт сам: приложение считает, какие фразы ты уже держишь, и подкидывает слабые места в разговоре и тесте. Уровни, проценты и грамматические термины наружу не выносятся.</p>
 
   <h3>Оформление</h3>
   <div class="seg" role="group" aria-label="Тема оформления">
@@ -317,7 +360,7 @@ button[disabled]{opacity:.5;cursor:not-allowed}
   <div class="row"><button id="testVoice" aria-label="Послушать выбранный голос">Послушать голос</button></div>
 
   <h3>Микрофон</h3>
-  <label class="check" for="autoMic"><input type="checkbox" id="autoMic"> Авто-микрофон: включать запись сразу после реплики собеседника</label>
+  <label class="check" for="autoMic"><input type="checkbox" id="autoMic"> Hands-free: слушать сразу после реплики собеседника — можно говорить на ходу</label>
   <div class="diag" id="diag"></div>
   <div class="row"><button id="micTest" aria-label="Проверить доступ к микрофону">Проверить микрофон</button></div>
 
@@ -332,6 +375,7 @@ button[disabled]{opacity:.5;cursor:not-allowed}
   </ul></div>
 </aside>
 
+<div class="flash" id="flash" aria-live="polite"></div>
 <div class="veil" id="modalVeil" hidden></div>
 <aside class="sheet modal" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="mTitle">
   <h2 id="mTitle">Тест</h2>
@@ -477,6 +521,37 @@ const TOPICS = [
      full:(v)=>"I'd like to try "+clean1(v)+".", react:(v)=>cap(clean1(v))+" would be fun to learn."}],
   extra:[{q:"Who taught you that?",hints:["My dad taught me.","I learned on YouTube.","Nobody, I just tried."]},
          {q:"Do you watch sport on TV?",hints:["Yes, football.","Sometimes.","No, I prefer playing."]}]
+},
+{ id:"series", emoji:"📺", ru:"Сериалы", en:"Series and films", scene:"family",
+  char:{name:"Sam",role:"приятель из чата о сериалах",skin:"#E8B98D",hair:"#2B1D16",style:"curly",shirt:"#6B5BD6",extra:"headphones"},
+  role:"a friendly peer named Sam who talks about series, films and memes",
+  goal:"болтать про сериалы: что смотришь, кто любимый герой",
+  start:"Hey! What are you watching these days? 📺",
+  words:["I'm watching…","my favourite show","It's about…","No spoilers!"],
+  slots:[
+    {id:"show",q:"What are you watching these days?",ex:"I'm watching Stranger Things.",bare:true,
+     hints:["I'm watching a new series.","I don't watch much.","I watch anime."],
+     det:/i'?m watching\s+([a-z0-9' ]{2,24})|i watch\s+([a-z0-9' ]{2,24})/i,
+     full:(v)=>"I'm watching " + clean1(v) + ".", react:(v)=>cap(clean1(v)) + " is a good one 🍿"},
+    {id:"about",q:"What is it about?",ex:"It's about friends and monsters.",
+     hints:["It's about friends.","It's a comedy.","It's about school life."],
+     det:/(?:it'?s |its )?about\s+([a-z' ]{3,26})|\b(comedy|drama|anime|horror|action|romance)\b/i,
+     full:(v)=>"It's about " + clean1(v) + ".", react:(v)=>"Sounds interesting — " + clean1(v) + " 👀"},
+    {id:"hero",q:"Who is your favourite character?",ex:"My favourite character is Eleven.",bare:true,
+     hints:["My favourite character is Eleven.","I like the bad guy.","All of them!"],
+     det:/(?:character is|i like)\s+([a-z0-9' ]{2,20})/i,
+     full:(v)=>"My favourite character is " + cap(clean1(v)) + ".", react:(v)=>cap(clean1(v)) + " is a legend 😎"},
+    {id:"when",q:"When do you usually watch it?",ex:"I watch it in the evening.",
+     hints:["I watch it in the evening.","At the weekend.","Before I go to bed."],
+     det:/\b(evening|morning|night|weekend|after school|before bed|at the weekend)\b/i,
+     full:(v)=>"I watch it " + clean1(v) + ".", react:()=>"Same, evenings are the best time ⏰"},
+    {id:"rec",q:"Can you recommend something to me?",ex:"You should watch it, it's great.",
+     hints:["You should watch it!","Maybe, if you like comedy.","No, it's boring."],
+     det:/\b(you should|watch it|recommend|try it)\b/i,
+     yes:"Cool, I'll add it to my list 📝", no:"Okay, I'll skip that one 😄",
+     full:()=>"You should watch it, it's great.", react:()=>"Adding it to my list 📝"}],
+  extra:[{q:"Do you watch in English or with subtitles?",hints:["With subtitles.","In English sometimes.","In Russian, honestly."]},
+         {q:"What was the last film you watched?",hints:["I watched a comedy.","I don't remember.","Something on Netflix."]}]
 },
 { id:"cafe", emoji:"☕", ru:"В кафе", en:"At the Café", scene:"cafe",
   char:{name:"Tom",role:"официант в кафе",skin:"#E8B98D",hair:"#8A5A2B",style:"short",shirt:"#2B2F4A",extra:"apron"},
@@ -998,7 +1073,7 @@ function localReply(text){
     return {reply:"Sorry, I didn't catch that. " + ref.q, hints:ref.hints};
 
   const nx = nextQuestion();
-  return {reply:(react + " " + nx.q).replace(/\s{2,}/g," ").trim(), hints:nx.hints};
+  return {reply:(react + " " + nx.q).replace(/\s{2,}/g," ").trim(), react, q:nx.q, hints:nx.hints};
 }
 
 /* ===== 4. состояние ===== */
@@ -1066,14 +1141,14 @@ function addFeedback(corr, tip){
   const st = corr.status || "correct";
   const card = el("div","feedback" + (st === "needs_improvement" ? " fix" : st === "better" ? " polish" : ""));
   if (st === "correct"){
-    card.appendChild(el("div","head","Отлично! Фраза правильная."));
+    card.appendChild(el("div","head","Чисто 👌"));
     if (corr.original) card.appendChild(el("div","good",corr.original));
   } else if (st === "better"){
-    card.appendChild(el("div","head","Хорошо! Можно сказать чуть лучше:"));
+    card.appendChild(el("div","head","Ещё вариант, посочнее:"));
     card.appendChild(el("div","good",corr.improved));
     if (corr.explanation_ru) card.appendChild(el("div","why",corr.explanation_ru));
   } else {
-    card.appendChild(el("div","head","Так не годится — вот правильный вариант:"));
+    card.appendChild(el("div","head","Между нами: звучит лучше так 🙂"));
     if (corr.original) card.appendChild(el("div","orig",corr.original));
     card.appendChild(el("div","good",corr.improved));
     if (corr.explanation_ru) card.appendChild(el("div","why",corr.explanation_ru));
@@ -1101,656 +1176,737 @@ function addFeedback(corr, tip){
 }
 
 /* ============================================================
-   5b. ДВИЖОК ОБУЧЕНИЯ
-   Реализует схему: Knowledge Graph -> оценка -> SRS -> подбор
-   контента -> проверка вехи. Всё локально, в localStorage.
+   5b. КАЗУАЛЬНЫЙ ДВИЖОК
+   Ничего академического наружу: уровни скрыты в «тиры», грамматика
+   живёт коэффициентами, ошибки исправляются рекастом, сессия — 3 минуты.
    ============================================================ */
 
-/* ---------- каталог навыков: объяснение, примеры, упражнения ---------- */
-const SKILLS = {
-  "be":{ ru:"Глагол be: am / is / are", en:"the verb to be in present",
-    tip:"В английском предложении почти всегда есть глагол. I am, he/she/it is, we/you/they are.",
-    ex:["I am from Moscow.","She is my sister.","We are at school."],
-    drills:[{q:"___ tired today.",opts:["I am","I","Am I"],a:0,why:"После I всегда am."},
-            {q:"My brother ___ ten years old.",opts:["is","are","be"],a:0,why:"He, she, it — is."}]},
-  "subject":{ ru:"Подлежащее в предложении", en:"every sentence needs a subject",
-    tip:"По-английски нельзя начать предложение без того, кто действует: не «playing football», а «I play football».",
-    ex:["I play football.","My friend lives in Kazan.","We watch films together."],
-    drills:[{q:"Как правильно ответить на «What do you do after school?»",opts:["Playing football.","I play football.","Play football me."],a:1,why:"Нужно подлежащее I."},
-            {q:"___ my best friend.",opts:["Is","He is","Being"],a:1,why:"Кто? — he."}]},
-  "full-sentence":{ ru:"Полный ответ, а не одно слово", en:"answer in a full sentence",
-    tip:"Одно слово понятно, но в разговоре отвечают целым предложением: «Moscow» → «I am from Moscow».",
-    ex:["I am from Moscow.","I have six lessons today.","My favourite subject is maths."],
-    drills:[{q:"Вопрос: Where are you from? Лучший ответ:",opts:["Moscow.","From Moscow.","I am from Moscow."],a:2,why:"Полное предложение с подлежащим и глаголом."},
-            {q:"Вопрос: How old are you? Лучший ответ:",opts:["I am 14 years old.","14.","Fourteen years."],a:0,why:"Возраст — через am."}]},
-  "articles":{ ru:"Артикли a / an / the", en:"articles a, an, the",
-    tip:"Перед профессией и одним предметом нужен a/an: I am a student, I have a dog.",
-    ex:["I am a student.","I have a sister.","My mum is a teacher."],
-    drills:[{q:"I am ___ student.",opts:["a","the","—"],a:0,why:"Профессия и роль — с артиклем a."},
-            {q:"I play ___ guitar.",opts:["the","a","—"],a:0,why:"С инструментами — the."}]},
-  "have-got":{ ru:"have got — «у меня есть»", en:"have got for possession",
-    tip:"I have got / I have — про то, что у тебя есть. He has got — с he, she, it.",
-    ex:["I have got one sister.","He has a dog.","We have two cats."],
-    drills:[{q:"She ___ a new phone.",opts:["has","have","haves"],a:0,why:"С she — has."},
-            {q:"I ___ two brothers.",opts:["have","has","am"],a:0,why:"С I — have."}]},
-  "plural-quantifier":{ ru:"Множественное число, many / much", en:"plurals and quantifiers",
-    tip:"После числа — множественное число: two lessons. Many — со счётными, much — с неисчисляемыми.",
-    ex:["I have six lessons today.","I have many friends.","I don't have much time."],
-    drills:[{q:"I have three ___.",opts:["lessons","lesson","lessones"],a:0,why:"После числа — множественное число."},
-            {q:"I don't have ___ time.",opts:["much","many","a lot"],a:0,why:"Time неисчисляемое — much."}]},
-  "third-person-s":{ ru:"-s у he / she / it", en:"third person -s",
-    tip:"He, she, it добавляют -s к глаголу: he plays, she likes, it works.",
-    ex:["He plays football.","She likes music.","My mum works in a school."],
-    drills:[{q:"My sister ___ English.",opts:["studies","study","studys"],a:0,why:"She — studies."},
-            {q:"He ___ to school by bus.",opts:["goes","go","going"],a:0,why:"He — goes."}]},
-  "negation":{ ru:"Отрицание don't / doesn't", en:"negation with don't and doesn't",
-    tip:"I don't like, he doesn't like. После don't/doesn't — начальная форма глагола.",
-    ex:["I don't like fish.","He doesn't play tennis.","We don't have homework today."],
-    drills:[{q:"He ___ like maths.",opts:["doesn't","don't","not"],a:0,why:"С he — doesn't."},
-            {q:"I ___ have a pet.",opts:["don't","doesn't","am not"],a:0,why:"С I — don't."}]},
-  "gerund":{ ru:"like + -ing", en:"like doing something",
-    tip:"После like, love, enjoy глагол получает -ing: I like playing, I love drawing.",
-    ex:["I like playing football.","I love drawing.","She enjoys reading books."],
-    drills:[{q:"I like ___ video games.",opts:["playing","play","to playing"],a:0,why:"После like — -ing."},
-            {q:"She loves ___.",opts:["dancing","dance","danced"],a:0,why:"После love — -ing."}]},
-  "infinitive-to":{ ru:"want / need + to", en:"want to, need to",
-    tip:"После want, need, would like ставится to: I want to go, I'd like to try.",
-    ex:["I want to go home.","I need to buy a T-shirt.","I'd like to visit Italy."],
-    drills:[{q:"I want ___ a pizza.",opts:["to order","order","ordering"],a:0,why:"После want — to."},
-            {q:"I'd like ___ it on.",opts:["to try","try","trying"],a:0,why:"would like + to."}]},
-  "prepositions":{ ru:"Предлоги времени и места", en:"prepositions of time and place",
-    tip:"at seven o'clock, on Monday, in Moscow, go to school, go home (без to).",
-    ex:["I get up at seven o'clock.","On Monday I play football.","I live in Moscow."],
-    drills:[{q:"I get up ___ half past six.",opts:["at","in","on"],a:0,why:"Со временем — at."},
-            {q:"___ Saturday I rest.",opts:["On","In","At"],a:0,why:"С днями недели — on."}]},
-  "modals":{ ru:"Вежливые просьбы: can / could", en:"polite requests with can and could",
-    tip:"Can I have…? Could you…? После can и could — начальная форма глагола.",
-    ex:["Can I have a cup of tea?","Could you help me, please?","Can I try it on?"],
-    drills:[{q:"___ I have the bill, please?",opts:["Can","Do","Am"],a:0,why:"Просьба — Can I…?"},
-            {q:"Can I ___ it on?",opts:["try","trying","to try"],a:0,why:"После can — начальная форма."}]},
-  "past-simple":{ ru:"Прошедшее время", en:"past simple",
-    tip:"Yesterday I went, I played, I saw. После didn't — начальная форма: I didn't go.",
-    ex:["Yesterday I played football.","Last summer I went to the sea.","I didn't see that film."],
-    drills:[{q:"Yesterday I ___ to the cinema.",opts:["went","go","goed"],a:0,why:"Go → went."},
-            {q:"I didn't ___ my homework.",opts:["do","did","done"],a:0,why:"После didn't — начальная форма."}]},
-  "frequency":{ ru:"Как часто: always, usually, twice a week", en:"frequency adverbs",
-    tip:"Always, usually, often, sometimes, never ставятся перед глаголом: I usually get up at seven.",
-    ex:["I usually get up at seven.","I often play football.","Twice a week."],
-    drills:[{q:"I ___ go to bed at ten.",opts:["usually","usual","using"],a:0,why:"Наречие частоты — usually."},
-            {q:"Как сказать «два раза в неделю»?",opts:["twice a week","two times week","two in week"],a:0,why:"twice a week."}]}
+const TIERS = [
+  { n:1, ru:"Новичок",   worlds:["greeting","cafe","hobbies"] },
+  { n:2, ru:"Бывалый",   worlds:["greeting","cafe","hobbies","school","routine","series"] },
+  { n:3, ru:"Уверенный", worlds:"all" }
+];
+
+/* интересы для онбординга — от них зависят миры, фразы и «слухи» */
+const INTERESTS = [
+  { id:"series", ru:"Сериалы", emoji:"📺" },
+  { id:"sport",  ru:"Спорт",   emoji:"⚽" },
+  { id:"games",  ru:"Игры",    emoji:"🎮" },
+  { id:"music",  ru:"Музыка",  emoji:"🎧" },
+  { id:"food",   ru:"Еда",     emoji:"🍕" },
+  { id:"travel", ru:"Поездки", emoji:"✈️" }
+];
+
+/* фразовые блоки вместо отдельных слов */
+const CHUNKS = [
+  { t:"How's it going?",        ru:"Как дела?",                  tier:1, tags:["small_talk"] },
+  { t:"I'm good, thanks!",      ru:"Всё хорошо, спасибо!",       tier:1, tags:["be"] },
+  { t:"Nice to meet you.",      ru:"Приятно познакомиться.",     tier:1, tags:["small_talk"] },
+  { t:"My name is…",            ru:"Меня зовут…",                tier:1, tags:["be"] },
+  { t:"I'm from Moscow.",       ru:"Я из Москвы.",               tier:1, tags:["be","prepositions"] },
+  { t:"I'm 14 years old.",      ru:"Мне 14.",                    tier:1, tags:["be"] },
+  { t:"See you later!",         ru:"До встречи!",                tier:1, tags:["small_talk"] },
+  { t:"I'd like a pizza, please.", ru:"Мне пиццу, пожалуйста.",  tier:1, tags:["requests"], world:"cafe" },
+  { t:"Can I have some water?", ru:"Можно воды?",                tier:1, tags:["requests"], world:"cafe" },
+  { t:"How much is it?",        ru:"Сколько это стоит?",         tier:1, tags:["requests"], world:"cafe" },
+  { t:"I like playing football.", ru:"Мне нравится играть в футбол.", tier:1, tags:["gerund"], world:"hobbies" },
+  { t:"Sounds fun!",            ru:"Звучит здорово!",            tier:1, tags:["small_talk"] },
+  { t:"Me too!",                ru:"Я тоже!",                    tier:1, tags:["small_talk"] },
+  { t:"I don't know.",          ru:"Не знаю.",                   tier:1, tags:["negation"] },
+  { t:"Never mind.",            ru:"Ничего страшного.",          tier:2, tags:["small_talk"] },
+  { t:"What are you up to?",    ru:"Чем занимаешься?",           tier:2, tags:["small_talk"] },
+  { t:"I'm watching a series.", ru:"Я смотрю сериал.",           tier:2, tags:["continuous"], world:"series" },
+  { t:"It's my favourite show.", ru:"Это мой любимый сериал.",   tier:2, tags:["be"], world:"series" },
+  { t:"What's it about?",       ru:"О чём он?",                  tier:2, tags:["small_talk"], world:"series" },
+  { t:"No spoilers, please!",   ru:"Без спойлеров!",             tier:2, tags:["requests"], world:"series" },
+  { t:"I'm really into it.",    ru:"Я реально втянулся.",        tier:2, tags:["small_talk"] },
+  { t:"He plays really well.",  ru:"Он играет очень хорошо.",    tier:2, tags:["third_person"], world:"hobbies" },
+  { t:"I usually get up at seven.", ru:"Обычно я встаю в семь.", tier:2, tags:["frequency","prepositions"], world:"routine" },
+  { t:"On Monday I have maths.", ru:"В понедельник у меня математика.", tier:2, tags:["prepositions"], world:"school" },
+  { t:"I have six lessons today.", ru:"Сегодня у меня шесть уроков.", tier:2, tags:["plural"], world:"school" },
+  { t:"I don't like waking up early.", ru:"Не люблю рано вставать.", tier:2, tags:["negation","gerund"], world:"routine" },
+  { t:"Can I try it on?",       ru:"Можно примерить?",           tier:2, tags:["requests"], world:"shopping" },
+  { t:"That's too expensive.",  ru:"Это слишком дорого.",        tier:2, tags:["be"], world:"shopping" },
+  { t:"Yesterday I played football.", ru:"Вчера я играл в футбол.", tier:2, tags:["past_tense"], world:"hobbies" },
+  { t:"I watched it last night.", ru:"Я смотрел это вчера вечером.", tier:2, tags:["past_tense"], world:"series" },
+  { t:"To be honest…",          ru:"Честно говоря…",             tier:3, tags:["small_talk"] },
+  { t:"I'd rather stay home.",  ru:"Я лучше останусь дома.",     tier:3, tags:["requests"] },
+  { t:"It depends.",            ru:"Смотря по обстоятельствам.", tier:3, tags:["small_talk"] },
+  { t:"I've never been abroad.", ru:"Я никогда не был за границей.", tier:3, tags:["perfect"], world:"travel" },
+  { t:"I'm thinking of going to Italy.", ru:"Думаю поехать в Италию.", tier:3, tags:["gerund"], world:"travel" },
+  { t:"What would you do?",     ru:"А ты бы что сделал?",        tier:3, tags:["conditional"] },
+  { t:"That makes sense.",      ru:"Это логично.",               tier:3, tags:["small_talk"] },
+  { t:"I'm not sure about that.", ru:"Я в этом не уверен.",      tier:3, tags:["negation"] },
+  { t:"We used to play together.", ru:"Мы раньше играли вместе.", tier:3, tags:["past_tense"] },
+  { t:"Could you say that again?", ru:"Повтори, пожалуйста.",    tier:3, tags:["requests"] }
+];
+const chunkId = (c)=>"chunk:" + c.t.toLowerCase().replace(/[^a-z' ]/g,"").trim();
+
+/* грамматика живёт коэффициентами, наружу почти не показывается */
+const TAGS = ["be","past_tense","prepositions","third_person","negation","gerund","requests","plural","frequency","small_talk","continuous","perfect","conditional"];
+const TAG_TIP = {
+  be:"«Я такой-то» по-английски всегда с am/is/are: I am tired 🙂",
+  past_tense:"Про вчера — вторая форма: go → went, watch → watched 🕰",
+  prepositions:"at seven, on Monday, in Moscow — мелочь, а звучит по-своему 📍",
+  third_person:"He/she любят -s: he plays, she likes ✨",
+  negation:"Не — это don't / doesn't: I don't like rain 🌧",
+  gerund:"После like/love глагол с -ing: I like playing 🎮",
+  requests:"Просьба — с can или I'd like: Can I have…? 🙏",
+  plural:"После числа — множественное: two lessons 📚",
+  frequency:"usually, often, never ставим перед глаголом ⏰",
+  small_talk:"Короткие фразы вроде «Never mind» звучат как у своих 😎",
+  continuous:"Прямо сейчас — am/is + -ing: I'm watching 📺",
+  perfect:"Опыт в жизни — have been / have never been 🌍",
+  conditional:"Would — про «бы»: What would you do? 🤔"
 };
 
-/* ---------- микроуровни: навыки, слова и доступные темы ---------- */
-const LEVELS = [
-  { id:"A1.1", ru:"Первые фразы", skills:["be","subject","full-sentence"], topics:["greeting"],
-    vocab:["name","old","from","city","fine","tired","friend","hello","please","thanks","meet","today"] },
-  { id:"A1.2", ru:"Школа и семья", skills:["be","articles","have-got","plural-quantifier"], topics:["greeting","school","family"],
-    vocab:["school","lesson","teacher","subject","maths","sister","brother","mother","father","pet","homework","kind"] },
-  { id:"A1.3", ru:"Present Simple", skills:["third-person-s","negation","gerund"], topics:["greeting","school","family","hobbies","routine"],
-    vocab:["play","like","draw","music","football","game","free time","every day","after school","together","read","watch"] },
-  { id:"A2.1", ru:"Просьбы и покупки", skills:["infinitive-to","modals","prepositions"], topics:["school","hobbies","routine","cafe","shopping"],
-    vocab:["order","juice","cake","size","colour","price","expensive","try on","bill","menu","shop","cheap"] },
-  { id:"A2.2", ru:"Планы и прошлое", skills:["past-simple","infinitive-to","frequency"], topics:["routine","travel","family","cafe","shopping"],
-    vocab:["travel","plane","train","summer","mountains","sea","yesterday","last year","visit","museum","abroad","holiday"] },
-  { id:"A2.3", ru:"Свободный разговор", skills:["past-simple","frequency","negation","gerund"], topics:"all",
-    vocab:["because","however","interesting","difficult","opinion","agree","prefer","usually","instead","enough","already","almost"] }
-];
-const levelIndexById = (id)=>Math.max(0, LEVELS.findIndex(l=>l.id === id));
-
-/* ---------- какие правила проверки к какому навыку относятся ---------- */
-const SKILL_OF_WHY = [
-  [/подлежащ/i,"subject"],
-  [/возраст/i,"be"],
-  [/\bam\b|\bis\b|\bare\b|глагол be|не хватает глагола/i,"be"],
-  [/артикл/i,"articles"],
-  [/-s\b|he, she, it глагол/i,"third-person-s"],
+/* из объяснения проверки достаём тег грамматики — наружу он не попадает */
+const WHY_TAG = [
+  [/подлежащ|не хватает глагола|глагол be|возраст|артикл/i,"be"],
+  [/-s у|he, she, it глагол|получает -s/i,"third_person"],
   [/don'?t|doesn'?t|отрицан/i,"negation"],
   [/-ing/i,"gerund"],
-  [/частица to|после want/i,"infinitive-to"],
-  [/предлог|днями недели|со временем/i,"prepositions"],
-  [/множествен|many|much/i,"plural-quantifier"],
-  [/прошл|didn'?t/i,"past-simple"],
-  [/has\b|have\b/i,"have-got"],
-  [/can\b|could\b|просьб/i,"modals"],
-  [/every day|наречие/i,"frequency"]
+  [/частица to|после want|\bcan\b|\bcould\b|просьб/i,"requests"],
+  [/предлог|днями недели|со временем|без to/i,"prepositions"],
+  [/множествен|many|much|после числа/i,"plural"],
+  [/прошл|didn'?t/i,"past_tense"],
+  [/every day|наречи/i,"frequency"],
+  [/\bam\b|\bis\b|\bare\b/i,"be"]
 ];
 function skillOfWhy(why){
-  for (const pair of SKILL_OF_WHY) if (pair[0].test(String(why||""))) return pair[1];
+  for (const pair of WHY_TAG) if (pair[0].test(String(why || ""))) return pair[1];
   return null;
 }
 
-/* ---------- хранилище ---------- */
-const LS_PROF = "englishPractice.v5.profile";
-const LS_KG   = "englishPractice.v5.kg";
-let profile = { level:"A1.1", win:[], streak:0, sessions:0, placed:false, block:null, lastDay:"" };
-let kg = {};
+/* ---------- профиль ---------- */
+const LS_PROF = "englishPractice.v6.profile";
+const LS_KG   = "englishPractice.v6.chunks";
+let profile = {
+  tier:1, interests:[], xp:0, streak:0, lastDay:"", sessions:0,
+  mastered:[], struggling:{}, showFixes:false, onboarded:false,
+  boss:null, dayCount:0
+};
+let kg = {};                                        // прогресс по фразовым блокам
 function loadProgress(){
   try{ const p = JSON.parse(localStorage.getItem(LS_PROF) || "null"); if (p) profile = Object.assign(profile, p); }catch(e){}
   try{ const k = JSON.parse(localStorage.getItem(LS_KG) || "null"); if (k) kg = k; }catch(e){}
+  TAGS.forEach(t => { if (typeof profile.struggling[t] !== "number") profile.struggling[t] = 0.5; });
+  const today = new Date().toISOString().slice(0,10);
+  if (profile.lastDay !== today){
+    const y = new Date(Date.now() - 864e5).toISOString().slice(0,10);
+    profile.streak = profile.lastDay === y ? profile.streak : 0;
+    profile.dayCount = 0;
+  }
 }
 function saveProgress(){
   try{ localStorage.setItem(LS_PROF, JSON.stringify(profile)); }catch(e){}
   try{ localStorage.setItem(LS_KG, JSON.stringify(kg)); }catch(e){}
 }
-const levelNow = ()=>LEVELS[levelIndexById(profile.level)];
+const tierNow = ()=>TIERS[Math.max(0, Math.min(2, (profile.tier || 1) - 1))];
+function addXP(n, why){
+  profile.xp += n;
+  saveProgress();
+  renderRail();
+  if (why) flash("+" + n + " XP · " + why);
+}
+function markDay(){
+  const today = new Date().toISOString().slice(0,10);
+  if (profile.lastDay !== today){
+    const y = new Date(Date.now() - 864e5).toISOString().slice(0,10);
+    profile.streak = (profile.lastDay === y ? profile.streak : 0) + 1;
+    profile.lastDay = today;
+    profile.dayCount = 0;
+  }
+  profile.dayCount++;
+  saveProgress();
+}
 
-/* ---------- SRS (SM-2 в упрощённом виде) ---------- */
-function kgItem(id){
-  if (!kg[id]) kg[id] = { r:0, i:0, e:2.5, d:0, m:0, s:0, c:0 };
+/* ---------- фразы: мягкий SRS, невидимый для ученика ---------- */
+function ci(id){
+  if (!kg[id]) kg[id] = { s:0, ok:0, m:0, d:0, i:0 };
   return kg[id];
 }
-function gradeItem(id, g){                          // g: 0..5
-  const it = kgItem(id);
+function gradeChunk(c, good){
+  const it = ci(chunkId(c));
   it.s++;
-  if (g >= 3){
-    it.c++;
-    it.e = Math.max(1.3, Math.min(2.8, it.e + (0.1 - (5 - g) * 0.08)));
-    it.r++;
-    it.i = it.r === 1 ? 1 : it.r === 2 ? 3 : Math.min(60, Math.round(it.i * it.e));
-    it.m = Math.min(1, it.m + (g >= 4 ? 0.18 : 0.12));
+  if (good){
+    it.ok++;
+    it.m = Math.min(1, it.m + 0.2);
+    it.i = it.i ? Math.min(45, Math.round(it.i * 2.2)) : 1;
+    if (it.m >= 0.8 && profile.mastered.indexOf(c.t) === -1){
+      profile.mastered.push(c.t);
+      flash("Фраза в копилке: " + c.t + " 🎉");
+      addXP(3);
+    }
   } else {
-    it.r = 0; it.i = 1;
     it.m = Math.max(0, it.m - 0.25);
+    it.i = 1;
   }
-  it.d = Date.now() + it.i * 86400000;              // когда повторить
-  saveProgress();
-  return it;
-}
-const mastery = (id)=>kgItem(id).m;
-function dueList(prefix){
-  const now = Date.now();
-  return Object.keys(kg)
-    .filter(k => k.indexOf(prefix) === 0 && kg[k].s > 0 && kg[k].d <= now)
-    .sort((a,b)=>kg[a].d - kg[b].d);
-}
-
-/* ---------- точность и «правило 85%» ---------- */
-function pushAccuracy(ok){
-  profile.win.push(ok ? 1 : 0);
-  while (profile.win.length > 20) profile.win.shift();
-  profile.streak = ok ? profile.streak + 1 : 0;
+  it.d = Date.now() + it.i * 864e5;
+  (c.tags || []).forEach(tag => bumpTag(tag, good));
   saveProgress();
 }
-function accuracy(){
-  if (!profile.win.length) return 0.85;
-  return profile.win.reduce((a,b)=>a+b, 0) / profile.win.length;
+function bumpTag(tag, good){
+  if (typeof profile.struggling[tag] !== "number") profile.struggling[tag] = 0.5;
+  profile.struggling[tag] = good
+    ? Math.min(1, profile.struggling[tag] + 0.08)
+    : Math.max(0, profile.struggling[tag] - 0.15);
+  saveProgress();
 }
-function tuning(){                                   // push & pivot
-  const a = accuracy();
-  if (profile.win.length < 5) return { mode:"steady", newWords:2, review:2, target:6, free:2 };
-  if (a >= 0.9)  return { mode:"fast",    newWords:3, review:1, target:5, free:3 };
-  if (a <  0.75) return { mode:"support", newWords:1, review:3, target:7, free:0 };
-  return { mode:"steady", newWords:2, review:2, target:6, free:2 };
+const weakTags = ()=>TAGS.filter(t => profile.struggling[t] < 0.5).sort((a,b)=>profile.struggling[a] - profile.struggling[b]);
+function tierChunks(){
+  const t = profile.tier;
+  const worldOk = (c)=>!c.world || topicAllowedId(c.world);
+  return CHUNKS.filter(c => c.tier <= t && worldOk(c));
+}
+function pickChunks(n){
+  const pool = tierChunks();
+  const weak = weakTags();
+  const score = (c)=>{
+    const it = ci(chunkId(c));
+    let s = 0;
+    if (it.s === 0) s += 2;                               // новое
+    if (it.d && it.d <= Date.now()) s += 3;               // пора повторить
+    if ((c.tags || []).some(tag => weak.indexOf(tag) !== -1)) s += 2;
+    if ((c.world || "") === (state.topic ? state.topic.id : "")) s += 2;
+    if (profile.interests.indexOf(c.world) !== -1) s += 1;
+    return s - it.m;
+  };
+  return pool.slice().sort((a,b)=>score(b) - score(a)).slice(0, n);
 }
 
-/* ---------- выбор содержимого сессии ---------- */
-function weakestSkill(level){
-  let best = level.skills[0], bestM = 2;
-  level.skills.forEach(id => { const m = mastery("skill:" + id); if (m < bestM){ bestM = m; best = id; } });
-  return best;
+/* ---------- миры ---------- */
+function topicAllowedId(id){
+  const w = tierNow().worlds;
+  return w === "all" ? true : w.indexOf(id) !== -1;
 }
-function pickNewWords(level, n){
-  const fresh = level.vocab.filter(w => kgItem("word:" + w).s === 0);
-  return (fresh.length ? fresh : level.vocab).slice(0, n);
+function allowedTopics(){
+  const list = TOPICS.filter(t => topicAllowedId(t.id));
+  return list.length ? list : [TOPICS[0]];
 }
+const topicAllowed = (t)=>topicAllowedId(t.id);
+
+/* ---------- всплывающая плашка (награды, без нотаций) ---------- */
+function flash(text){
+  const box = $("flash");
+  if (!box) return;
+  const item = el("div","flashItem", text);
+  box.appendChild(item);
+  setTimeout(()=>{ if (item.parentNode) item.parentNode.removeChild(item); }, 3200);
+}
+
+/* ---------- сессия: 1 мин повтор + 2 мин диалог + 1 мин тест ---------- */
+const PHASE_MS = { warm:60000, talk:120000, quiz:60000 };
 let session = null;
 function planSession(){
-  const lv = levelNow(), t = tuning();
-  session = {
-    level:lv.id, tune:t, phase: t.review ? "review" : "target",
-    quota:{ review:t.review, target:t.target, free:t.free },
-    done:{ review:0, target:0, free:0 },
-    target: profile.block ? profile.block.skill : weakestSkill(lv),
-    newWords: pickNewWords(lv, t.newWords),
-    reviewQueue: dueList("skill:").concat(dueList("word:")).slice(0, t.review),
-    taught:false
-  };
+  session = { phase:"warm", start:Date.now(), phaseStart:Date.now(),
+              warmDone:0, turns:0, quizDone:0, quizOk:0, xp:0, newChunks:[],
+              shortStreak:0, errStreak:0, chunks:pickChunks(3), quiz:[], helperShown:false };
   profile.sessions++;
+  markDay();
   saveProgress();
   renderRail();
 }
-
-/* ---------- панель прогресса ---------- */
-function renderRail(){
-  const rail = $("rail");
-  if (!rail || !session) return;
-  rail.textContent = "";
-  const lvl = el("span","pill", profile.level + " · " + levelNow().ru);
-  rail.appendChild(lvl);
-  const acc = Math.round(accuracy() * 100);
-  const phases = [["review","Повтор"],["target","Новое"],["free","Свободно"]];
-  phases.forEach(([key,label])=>{
-    if (!session.quota[key]) return;
-    const seg = el("span","seg" + (session.phase === key ? " now" : ""),
-      label + " " + Math.min(session.done[key], session.quota[key]) + "/" + session.quota[key]);
-    rail.appendChild(seg);
-  });
-  rail.appendChild(el("span","seg", "точность " + acc + "%"));
-  const skill = SKILLS[session.target];
-  if (skill) rail.appendChild(el("span","seg", "цель: " + skill.ru));
-  if (profile.block) rail.appendChild(el("span","seg warn", "разбор темы"));
-  else if (canAdvance()){
-    const b = el("button","seg go", "Тест на " + (LEVELS[levelIndexById(profile.level) + 1] || {}).id);
-    b.type = "button";
-    b.addEventListener("click", startMilestone);
-    rail.appendChild(b);
+function startSession(){
+  planSession();
+  session.chunks.forEach((c,i)=>setTimeout(()=>chunkCard(c), i * 120));
+  if (profile.interests.length && profile.sessions % 2 === 0) gossipCard();
+  addSystem("3 минуты: разогрев → болтаем → быстрый тест.");
+}
+function phaseBudgetOver(){
+  return Date.now() - session.phaseStart >= PHASE_MS[session.phase];
+}
+function toPhase(next){
+  session.phase = next;
+  session.phaseStart = Date.now();
+  if (next === "talk") flash("Погнали болтать 💬");
+  if (next === "quiz"){ session.quiz = buildQuiz(4); nextQuizCard(); }
+  renderRail();
+}
+/* ход ученика в разговоре двигает сессию */
+function tickSession(){
+  if (!session){ startSession(); return; }
+  if (session.phase === "warm") toPhase("talk");        /* заговорил — разогрев закончен */
+  else if (session.phase === "talk"){
+    session.turns++;
+    if (profile.boss) return;                            // босс-баттл не прерываем
+    if (session.turns >= 6 || (phaseBudgetOver() && session.turns >= 4)) toPhase("quiz");
   }
-  $("levelPill").textContent = profile.level;
+  renderRail();
 }
 
-/* ---------- карточки-упражнения в чате ---------- */
-function drillFor(itemId){
-  if (itemId.indexOf("skill:") === 0){
-    const s = SKILLS[itemId.slice(6)];
-    if (!s) return null;
-    const d = s.drills[Math.min(s.drills.length - 1, kgItem(itemId).s % s.drills.length)];
-    return { id:itemId, title:s.ru, q:d.q, opts:d.opts, a:d.a, why:d.why };
-  }
-  const w = itemId.slice(5);
-  return { id:itemId, title:"Слово: " + w, q:"В каком предложении слово «" + w + "» на месте?",
-           opts:["I like " + w + ".", w + " I like.", "I am " + w + " like."], a:0,
-           why:"Подлежащее, глагол, потом слово." };
-}
-function askDrill(itemId, onDone){
-  const d = drillFor(itemId);
-  if (!d){ if (onDone) onDone(); return; }
-  const card = el("div","drill");
-  card.appendChild(el("div","dtitle","Повторение · " + d.title));
-  card.appendChild(el("div","dq", d.q));
-  const opts = el("div","dopts");
-  d.opts.forEach((text,i)=>{
-    const b = el("button","dopt", text);
-    b.type = "button";
-    b.addEventListener("click",()=>{
-      if (card.dataset.done) return;
-      card.dataset.done = "1";
-      const ok = i === d.a;
-      Array.prototype.forEach.call(opts.children,(node,j)=>{
-        node.disabled = true;
-        if (j === d.a) node.classList.add("right");
-        else if (j === i) node.classList.add("wrong");
-      });
-      card.appendChild(el("div","dwhy",(ok ? "Верно. " : "Правильно: " + d.opts[d.a] + ". ") + d.why));
-      gradeItem(d.id, ok ? 4 : 2);
-      pushAccuracy(ok);
-      if (!ok) noteFailure(d.id.indexOf("skill:") === 0 ? d.id.slice(6) : null);
-      else if (profile.block && profile.block.skill === d.id.slice(6)) clearBlockIfReady(true);
-      renderRail();
-      speak(ok ? d.opts[d.a] : d.opts[d.a]);
-      if (onDone) onDone();
-    });
-    opts.appendChild(b);
-  });
-  card.appendChild(opts);
+/* ---------- карточка фразы (разогрев) ---------- */
+function chunkCard(c){
+  const card = el("div","chunk");
+  const row = el("div","crow");
+  const say = el("button","cplay","🔊");
+  say.type = "button";
+  say.setAttribute("aria-label","Озвучить фразу");
+  say.addEventListener("click",()=>speak(c.t));
+  const txt = el("div","ctext");
+  txt.appendChild(el("div","cen", c.t));
+  txt.appendChild(el("div","cru", c.ru));
+  row.appendChild(say); row.appendChild(txt);
+  card.appendChild(row);
+  const acts = el("div","cacts");
+  const know = el("button","cbtn ok","Знаю 👍");
+  const soso = el("button","cbtn","Напомни 🤔");
+  know.type = soso.type = "button";
+  const answer = (good)=>{
+    if (card.dataset.done) return;
+    card.dataset.done = "1";
+    know.disabled = soso.disabled = true;
+    gradeChunk(c, good);
+    if (good) addXP(2);
+    if (!good) speak(c.t);
+    session.warmDone++;
+    if (session.warmDone >= session.chunks.length) toPhase("talk");
+    renderRail();
+    const use = el("button","mini","✍️ Сказать это в чате");
+    use.type = "button";
+    use.addEventListener("click",()=>fillInput(c.t));
+    card.appendChild(use);
+  };
+  know.addEventListener("click",()=>answer(true));
+  soso.addEventListener("click",()=>answer(false));
+  acts.appendChild(know); acts.appendChild(soso);
+  card.appendChild(acts);
   chat.appendChild(card);
   scrollChat();
 }
 
-/* ---------- обучающая карточка навыка ---------- */
-function teachCard(skillId){
-  const s = SKILLS[skillId];
-  if (!s) return;
-  const card = el("div","teach");
-  card.appendChild(el("div","dtitle","Цель сессии · " + s.ru));
-  card.appendChild(el("div","dwhy", s.tip));
-  const ex = el("div","dex");
-  s.ex.forEach(line => {
-    const b = el("button","mini","🔊 " + line);
-    b.type = "button";
-    b.setAttribute("aria-label","Озвучить пример: " + line);
-    b.addEventListener("click",()=>speak(line));
-    ex.appendChild(b);
-  });
-  card.appendChild(ex);
-  if (session && session.newWords.length)
-    card.appendChild(el("div","dwhy","Новые слова на сессию: " + session.newWords.join(", ")));
+/* ---------- «слухи»: короткий пост на языке про интересы ---------- */
+const GOSSIP = {
+  series:["They say the new season drops in June. My friend is already crying about it 😭",
+          "Rumour: the main character comes back. Nobody believes it, but everyone watches 👀"],
+  sport:["People say the coach is leaving after this season. Big drama in the group chat ⚽",
+         "Rumour: your favourite player trains at 5 a.m. every day. Respect 💪"],
+  games:["They say the next patch nerfs everything fun. Classic 🎮",
+         "Rumour: a new map is coming this month. My friend is already practising 🕹"],
+  music:["They say your favourite artist is dropping a surprise album 🎧",
+         "Rumour: the tour is coming to Europe. Tickets in one hour 😱"],
+  food:["They say the new pizza place puts honey on everything. Weird but good 🍕",
+        "Rumour: bubble tea with cheese foam is the new thing 🧋"],
+  travel:["They say flights to Turkey get cheap in October ✈️",
+          "Rumour: the best beach is the small one nobody posts about 🏖"]
+};
+function gossipCard(){
+  const pick = profile.interests[Math.floor(Math.random() * profile.interests.length)] || "series";
+  const lines = GOSSIP[pick] || GOSSIP.series;
+  const line = lines[Math.floor(Math.random() * lines.length)];
+  const card = el("div","gossip");
+  card.appendChild(el("div","gtitle","Слухи дня 🗣"));
+  card.appendChild(el("div","gline", line));
+  const b = el("button","mini","🔊 Послушать");
+  b.type = "button";
+  b.addEventListener("click",()=>speak(line));
+  card.appendChild(b);
   chat.appendChild(card);
   scrollChat();
 }
 
-/* ---------- узкое место: две ошибки подряд в одном навыке ---------- */
-const failStreak = {};
-function noteFailure(skillId){
-  if (!skillId) return;
-  failStreak[skillId] = (failStreak[skillId] || 0) + 1;
-  if (failStreak[skillId] >= 2 && (!profile.block || profile.block.skill !== skillId)){
-    profile.block = { skill:skillId, ok:0 };
-    saveProgress();
-    startRemediation(skillId);
+/* ---------- быстрый тест: правильно / неправильно ---------- */
+function corrupt(text){
+  const tries = [
+    [/\bI'm\b/, "I"], [/\bI am\b/i, "I"], [/\bis\b/i, "are"], [/\bare\b/i, "is"],
+    [/\b(\w+)ing\b/, "$1"], [/\bdon't\b/i, "no"], [/\bto\b/i, ""],
+    [/\bplays\b/i, "play"], [/\bwent\b/i, "go"], [/\bwatched\b/i, "watch"],
+    [/\bon\b/i, "in"], [/\bat\b/i, "on"], [/\ba\b/i, ""]
+  ];
+  for (const [re, rep] of tries){
+    if (re.test(text)){
+      const bad = text.replace(re, rep).replace(/\s{2,}/g," ").trim();
+      if (bad.toLowerCase() !== text.toLowerCase()) return bad;
+    }
   }
+  return text.replace(/^I\s/,"Me ");
 }
-function noteSuccess(skillId){
-  if (!skillId) return;
-  failStreak[skillId] = 0;
-  if (profile.block && profile.block.skill === skillId) clearBlockIfReady(true);
+function buildQuiz(n){
+  const pool = pickChunks(n * 2);
+  const items = [];
+  pool.slice(0, n).forEach((c,i)=>{
+    const good = i % 2 === 0;
+    items.push({ c, good, text: good ? c.t : corrupt(c.t) });
+  });
+  return items.sort(()=>Math.random() - 0.5);
 }
-function clearBlockIfReady(ok){
-  if (!profile.block) return;
-  profile.block.ok = ok ? profile.block.ok + 1 : 0;
-  if (profile.block.ok >= 2){
-    const s = SKILLS[profile.block.skill];
-    profile.block = null;
-    saveProgress();
-    addSystem("Тема «" + (s ? s.ru : "") + "» закрыта — идём дальше.");
-    if (session) session.target = weakestSkill(levelNow());
+function nextQuizCard(){
+  if (!session || session.phase !== "quiz") return;
+  const it = session.quiz[session.quizDone];
+  if (!it){ finishSession(); return; }
+  const card = el("div","swipe");
+  card.appendChild(el("div","stitle","Быстрый тест · " + (session.quizDone + 1) + " из " + session.quiz.length));
+  card.appendChild(el("div","sen", it.text));
+  card.appendChild(el("div","shint","Звучит правильно? Свайпни или нажми"));
+  const row = el("div","sbtns");
+  const no = el("button","sbtn bad","❌ Нет");
+  const yes = el("button","sbtn good","✅ Да");
+  no.type = yes.type = "button";
+  const answer = (saidGood)=>{
+    if (card.dataset.done) return;
+    card.dataset.done = "1";
+    const right = saidGood === it.good;
+    no.disabled = yes.disabled = true;
+    gradeChunk(it.c, right);
+    session.quizDone++;
+    if (right){ session.quizOk++; addXP(2); }
+    card.appendChild(el("div","swhy", right ? "В точку ✅" : "Правильно так: " + it.c.t));
+    if (!right) speak(it.c.t);
+    renderRail();
+    setTimeout(nextQuizCard, 450);
+  };
+  yes.addEventListener("click",()=>answer(true));
+  no.addEventListener("click",()=>answer(false));
+  row.appendChild(no); row.appendChild(yes);
+  card.appendChild(row);
+  /* свайп: вправо — «да», влево — «нет» */
+  let x0 = null;
+  card.addEventListener("pointerdown",(e)=>{ x0 = e.clientX; });
+  card.addEventListener("pointerup",(e)=>{
+    if (x0 === null) return;
+    const dx = e.clientX - x0; x0 = null;
+    if (Math.abs(dx) > 60) answer(dx > 0);
+  });
+  chat.appendChild(card);
+  scrollChat();
+}
+
+/* ---------- финал сессии: только награды ---------- */
+function finishSession(){
+  const secs = Math.round((Date.now() - session.start) / 1000);
+  addXP(5);
+  const card = el("div","reward");
+  card.appendChild(el("div","rtitle","Сессия закрыта 🎉"));
+  card.appendChild(el("div","rline","Время: " + Math.floor(secs / 60) + ":" + String(secs % 60).padStart(2,"0") +
+    " · тест: " + session.quizOk + "/" + Math.max(1, session.quizDone) + " · XP: " + profile.xp));
+  card.appendChild(el("div","rline","Серия дней: " + profile.streak + " 🔥 · фраз в копилке: " + profile.mastered.length));
+  const again = el("button","mini","Ещё 3 минуты ▶");
+  again.type = "button";
+  again.addEventListener("click",()=>{ startSession(); });
+  card.appendChild(again);
+  if (canBoss()){
+    const boss = el("button","mini","Челлендж 🎯");
+    boss.type = "button";
+    boss.addEventListener("click", startBoss);
+    card.appendChild(boss);
   }
-  saveProgress();
+  chat.appendChild(card);
+  scrollChat();
+  session.phase = "done";
   renderRail();
 }
-/* мини-история на любимую тему ученика — чтобы объяснить правило в контексте */
-function miniStory(skillId){
-  const s = SKILLS[skillId];
-  const thing = (state.facts && (state.facts.what || state.facts.free || state.facts.subject)) || "football";
-  const name = (state.facts && state.facts.name) ? cap(state.facts.name) : "Max";
-  const lines = {
-    "be": [name + " is at the park.", "He is happy because " + thing + " is his hobby.", "I am his friend."],
-    "subject": [name + " plays " + thing + " every day.", "We play together.", "It is fun."],
-    "full-sentence": ["Where is " + name + "? He is at the park.", "What does he do? He plays " + thing + "."],
-    "articles": [name + " is a student.", "He has a ball.", "The ball is new."],
-    "have-got": [name + " has got a ball.", "I have got a bike.", "We have got free time."],
-    "plural-quantifier": [name + " has two balls.", "He has many friends.", "He doesn't have much time."],
-    "third-person-s": [name + " likes " + thing + ".", "He plays every day.", "He goes to the park at five."],
-    "negation": [name + " doesn't like rain.", "I don't like rain too.", "We don't play in the rain."],
-    "gerund": [name + " likes playing " + thing + ".", "I love watching it.", "We enjoy training together."],
-    "infinitive-to": [name + " wants to play " + thing + ".", "I need to buy a ball.", "We would like to win."],
-    "prepositions": ["We meet at five o'clock.", "On Saturday we play " + thing + ".", "The park is in my city."],
-    "modals": ["Can I play with you?", "Could you pass the ball, please?", "Yes, you can."],
-    "past-simple": ["Yesterday " + name + " played " + thing + ".", "We went to the park.", "It was a good day."],
-    "frequency": [name + " usually plays " + thing + " after school.", "I often play with him.", "We never play at night."]
-  }[skillId] || [name + " is my friend.", "We like " + thing + "."];
-  return lines;
+
+/* ---------- vibe check ---------- */
+function vibeShort(text){                                 // односложные ответы
+  const n = String(text).trim().split(/\s+/).length;
+  if (n <= 2) session.shortStreak++; else session.shortStreak = 0;
+  return session.shortStreak >= 2;
 }
-function startRemediation(skillId){
-  const s = SKILLS[skillId];
-  addSystem("Две ошибки подряд в теме «" + (s ? s.ru : "") + "». Ставлю новое на паузу и разбираем её.", true);
-  teachCard(skillId);
-  const card = el("div","teach");
-  card.appendChild(el("div","dtitle","Мини-история с этим правилом"));
-  miniStory(skillId).forEach(line => {
-    const b = el("button","mini","🔊 " + line);
+function offerChoice(slot){                               // готовые варианты ответа
+  if (!slot) return;
+  const card = el("div","choice");
+  card.appendChild(el("div","dtitle","Выбери ответ 👇"));
+  (slot.hints || []).slice(0,3).forEach(h => {
+    const b = el("button","cbtn wide", h);
     b.type = "button";
-    b.setAttribute("aria-label","Озвучить: " + line);
-    b.addEventListener("click",()=>speak(line));
+    b.addEventListener("click",()=>{ if (!card.dataset.done){ card.dataset.done = "1"; handleLearnerInput(h); } });
     card.appendChild(b);
   });
   chat.appendChild(card);
-  askDrill("skill:" + skillId);
+  scrollChat();
+}
+function offerBuilder(slot){                              // собрать фразу из кирпичиков
+  if (!slot || !slot.ex) return;
+  const target = slot.ex.replace(/[.!?]$/,"");
+  const words = target.split(/\s+/);
+  const card = el("div","builder");
+  card.appendChild(el("div","dtitle","Собери фразу 🧱"));
+  const line = el("div","bline");
+  card.appendChild(line);
+  const bank = el("div","bbank");
+  const picked = [];
+  words.slice().sort(()=>Math.random() - 0.5).forEach(w => {
+    const b = el("button","brick", w);
+    b.type = "button";
+    b.addEventListener("click",()=>{
+      if (b.disabled) return;
+      b.disabled = true;
+      picked.push(w);
+      line.textContent = picked.join(" ");
+      if (picked.length === words.length){
+        const ok = picked.join(" ").toLowerCase() === words.join(" ").toLowerCase();
+        card.appendChild(el("div","dwhy", ok ? "Идеально ✅" : "Так: " + target));
+        if (ok) addXP(2);
+        speak(target);
+        const send = el("button","mini","Отправить в чат");
+        send.type = "button";
+        send.addEventListener("click",()=>handleLearnerInput(target));
+        card.appendChild(send);
+      }
+    });
+    bank.appendChild(b);
+  });
+  card.appendChild(bank);
+  chat.appendChild(card);
+  scrollChat();
+}
+/* три ошибки подряд — мягко закрываем сессию мемом, но с очками */
+function softStop(tag){
+  const tip = TAG_TIP[tag] || "Бывает! Язык не экзамен, а привычка 🙂";
+  const card = el("div","meme");
+  card.appendChild(el("div","memoji","🙃"));
+  card.appendChild(el("div","rtitle","Ок, стоп на минуту"));
+  card.appendChild(el("div","rline", tip));
+  card.appendChild(el("div","rline","Очки за попытку начислены — это тоже практика."));
+  const again = el("button","mini","Ещё разок ▶");
+  again.type = "button";
+  again.addEventListener("click",()=>{ startSession(); });
+  card.appendChild(again);
+  chat.appendChild(card);
+  scrollChat();
+  addXP(3, "за упорство");
+  session.phase = "done";
   renderRail();
 }
 
-/* ---------- веха уровня ---------- */
-function canAdvance(){
-  if (profile.block) return false;
-  if (levelIndexById(profile.level) >= LEVELS.length - 1) return false;
-  const lv = levelNow();
-  const allMastered = lv.skills.every(id => mastery("skill:" + id) >= 0.8);
-  return allMastered && accuracy() >= 0.85 && profile.win.length >= 10;
+/* ---------- босс-баттл: незаметный переход на новый тир ---------- */
+const BOSS = {
+  1:{ ru:"Ты в кафе в Лондоне. Закажи что-нибудь и поболтай с барменом.", start:"Hi there! What can I get you? ☕", topic:"cafe" },
+  2:{ ru:"Ты в языковом лагере. Познакомься с новым другом и расскажи про сериалы.", start:"Hey! I'm Sam. What do you watch these days? 📺", topic:"series" },
+  3:{ ru:"Ты в аэропорту, рейс задержали. Разберись с сотрудником.", start:"Sorry, your flight is delayed. Do you need help? ✈️", topic:"travel" }
+};
+function canBoss(){
+  if (profile.tier >= 3 || profile.boss) return false;
+  const mine = tierChunks().filter(c => c.tier === profile.tier);
+  const done = mine.filter(c => ci(chunkId(c)).m >= 0.8).length;
+  return done >= Math.max(3, Math.round(mine.length * 0.5)) && weakTags().length <= 3;
 }
-let milestone = null;
-function milestoneItems(){
-  const lv = levelNow(), items = [];
-  lv.skills.forEach(id => { SKILLS[id].drills.forEach(d => items.push({ id:"skill:" + id, q:d.q, opts:d.opts, a:d.a, why:d.why })); });
-  lv.vocab.slice(0,3).forEach(w => {
-    const d = drillFor("word:" + w);
-    items.push({ id:d.id, q:d.q, opts:d.opts, a:d.a, why:d.why });
-  });
-  return items.slice(0, 7);
+function startBoss(){
+  const b = BOSS[profile.tier];
+  if (!b) return;
+  profile.boss = { left:4, tier:profile.tier };
+  saveProgress();
+  const t = TOPICS.find(x => x.id === b.topic) || state.topic;
+  startTopic(t, true);
+  addSystem("Челлендж: " + b.ru + " Продержись 4 реплики 🎯");
+  state.lastTutorLine = b.start;
+  addTutor(b.start);
+  speak(b.start);
+  renderRail();
 }
-function startMilestone(){
-  milestone = { items:milestoneItems(), i:0, ok:0 };
-  $("mTitle").textContent = "Тест: " + profile.level + " → " + LEVELS[levelIndexById(profile.level) + 1].id;
-  $("modalVeil").hidden = false; $("modal").hidden = false;
-  renderMilestone();
-}
-function renderMilestone(){
-  const box = $("mBody");
-  box.textContent = "";
-  if (!milestone) return;
-  if (milestone.i >= milestone.items.length){
-    const score = milestone.ok / milestone.items.length;
-    const passed = score >= 0.85;
-    box.appendChild(el("div","dq", (passed ? "Сдано! " : "Пока не сдано. ") +
-      milestone.ok + " из " + milestone.items.length + " (" + Math.round(score * 100) + "%)"));
-    if (passed){
-      const next = LEVELS[levelIndexById(profile.level) + 1];
-      profile.level = next.id;
-      profile.win = [];
-      saveProgress();
-      box.appendChild(el("div","dwhy","Новый уровень: " + next.id + " — " + next.ru + ". Открылись темы: " +
-        (next.topics === "all" ? "все" : next.topics.length) + "."));
-    } else {
-      box.appendChild(el("div","dwhy","Нужно 85%. Повторим слабые темы и попробуем снова — прогресс сохранён."));
-    }
-    const close = el("button","mini","Продолжить");
-    close.type = "button";
-    close.addEventListener("click",()=>{
-      $("modalVeil").hidden = true; $("modal").hidden = true;
-      milestone = null;
-      planSession(); renderTopics(); renderRail();
-    });
-    box.appendChild(close);
-    return;
-  }
-  const it = milestone.items[milestone.i];
-  box.appendChild(el("div","dtitle","Вопрос " + (milestone.i + 1) + " из " + milestone.items.length));
-  box.appendChild(el("div","dq", it.q));
-  const opts = el("div","dopts");
-  it.opts.forEach((text,i)=>{
-    const b = el("button","dopt", text);
-    b.type = "button";
-    b.addEventListener("click",()=>{
-      const ok = i === it.a;
-      if (ok) milestone.ok++;
-      gradeItem(it.id, ok ? 4 : 2);
-      milestone.i++;
-      renderMilestone();
-    });
-    opts.appendChild(b);
-  });
-  box.appendChild(opts);
+function bossTurn(ok){
+  if (!profile.boss) return;
+  if (!ok){ profile.boss.left = Math.min(4, profile.boss.left + 1); saveProgress(); renderRail(); return; }
+  profile.boss.left--;
+  if (profile.boss.left > 0){ flash("Осталось реплик: " + profile.boss.left + " 🎯"); saveProgress(); renderRail(); return; }
+  profile.boss = null;
+  profile.tier = Math.min(3, profile.tier + 1);
+  profile.xp += 20;
+  saveProgress();
+  const card = el("div","reward");
+  card.appendChild(el("div","rtitle","Челлендж пройден 🏆"));
+  card.appendChild(el("div","rline","Ты теперь «" + tierNow().ru + "». Открылись новые миры и фразы."));
+  chat.appendChild(card);
+  flash("Новый статус: " + tierNow().ru + " 🏆");
+  renderTopics(); renderRail(); renderStats();
 }
 
-/* ---------- диагностика при первом запуске ---------- */
-let placement = null;
-function placementItems(){
-  const out = [];
-  LEVELS.forEach((lv,idx)=>{
-    const skill = SKILLS[lv.skills[lv.skills.length - 1]];
-    out.push({ lvl:idx, q:skill.drills[0].q, opts:skill.drills[0].opts, a:skill.drills[0].a });
-  });
-  return out;
+/* ---------- рекаст: исправляем, не поправляя ---------- */
+function recastify(text){
+  let s = " " + String(text || "").replace(/[.!?]+$/,"") + " ";
+  s = s.replace(/\bI am\b/gi," you are").replace(/\bI'm\b/gi," you are")
+       .replace(/\bI have\b/gi," you have").replace(/\bI\b/g," you")
+       .replace(/\bmy\b/gi," your").replace(/\bme\b/gi," you")
+       .replace(/\bwe are\b/gi," you are").replace(/\bwe\b/gi," you")
+       .replace(/\bam\b/gi," are");
+  return s.replace(/\s{2,}/g," ").trim();
 }
-function startPlacement(){
-  placement = { items:placementItems(), at:1, asked:0, best:0 };
-  $("mTitle").textContent = "Тест уровня — 1 минута";
-  $("modalVeil").hidden = false; $("modal").hidden = false;
-  renderPlacement();
+const RECAST_OPEN = ["Oh, ","Nice, ","Cool, ","Got it — ","Ah, "];
+function recastLine(corr){
+  const src = (corr && corr.improved) ? corr.improved : "";
+  if (!src) return "";
+  const open = RECAST_OPEN[Math.floor(Math.random() * RECAST_OPEN.length)];
+  return open + lowerFirst(recastify(src)) + "!";
 }
-function renderPlacement(){
-  const box = $("mBody");
-  box.textContent = "";
-  if (!placement) return;
-  if (placement.asked >= 5 || placement.at < 0 || placement.at >= LEVELS.length){
-    const lv = LEVELS[Math.max(0, Math.min(LEVELS.length - 1, placement.best))];
-    profile.level = lv.id; profile.placed = true; profile.win = [];
-    saveProgress();
-    box.appendChild(el("div","dq","Твой уровень: " + lv.id + " — " + lv.ru));
-    box.appendChild(el("div","dwhy","Сессии, слова и упражнения теперь подбираются под этот уровень. Уровень меняется по тесту-вехе, а не вручную."));
-    const go = el("button","mini","Начать");
-    go.type = "button";
-    go.addEventListener("click",()=>{
-      $("modalVeil").hidden = true; $("modal").hidden = true;
-      placement = null;
-      planSession(); renderTopics(); renderRail();
-      startTopic(allowedTopics()[0], false);
-    });
-    box.appendChild(go);
-    return;
-  }
-  const it = placement.items[placement.at];
-  box.appendChild(el("div","dtitle","Вопрос " + (placement.asked + 1) + " · уровень " + LEVELS[placement.at].id));
-  box.appendChild(el("div","dq", it.q));
-  const opts = el("div","dopts");
-  it.opts.forEach((text,i)=>{
-    const b = el("button","dopt", text);
-    b.type = "button";
-    b.addEventListener("click",()=>{
-      const ok = i === it.a;
-      gradeItem("skill:" + LEVELS[placement.at].skills[LEVELS[placement.at].skills.length - 1], ok ? 4 : 2);
-      if (ok){ placement.best = Math.max(placement.best, placement.at); placement.at++; }
-      else { placement.at--; }
-      placement.asked++;
-      renderPlacement();
-    });
-    opts.appendChild(b);
-  });
-  box.appendChild(opts);
-  const skip = el("button","mini","Пропустить тест");
-  skip.type = "button";
-  skip.addEventListener("click",()=>{
-    profile.placed = true; saveProgress();
-    $("modalVeil").hidden = true; $("modal").hidden = true;
-    placement = null;
-    planSession(); renderRail();
-    startTopic(allowedTopics()[0], false);
-  });
-  box.appendChild(skip);
+/* ошибку показываем открыто только если фраза непонятна */
+function meaningBroken(corr){
+  if (!corr || corr.status === "correct") return false;
+  const why = corr.explanation_ru || "";
+  return /русский|не знаю|не разобрал|распознавание/i.test(why);
+}
+function shouldShowFix(corr){
+  if (!corr || corr.status === "correct") return false;
+  return profile.showFixes || meaningBroken(corr);
 }
 
-/* ---------- темы, доступные на уровне ---------- */
-function allowedTopics(){
-  const lv = levelNow();
-  if (lv.topics === "all") return TOPICS;
-  const list = TOPICS.filter(t => lv.topics.indexOf(t.id) !== -1);
-  return list.length ? list : [TOPICS[0]];
+/* ---------- оценка хода: всё в фон ---------- */
+function usedChunks(text){
+  const t = " " + String(text).toLowerCase().replace(/[^a-z' ]/g," ") + " ";
+  return CHUNKS.filter(c => {
+    const key = c.t.toLowerCase().replace(/[^a-z' ]/g," ").replace(/\s{2,}/g," ").trim();
+    const core = key.split(" ").slice(0,3).join(" ");
+    return core.length > 5 && t.indexOf(core) !== -1;
+  });
 }
-const topicAllowed = (t)=>allowedTopics().indexOf(t) !== -1;
-
-/* ---------- оценка реплики ученика и ход сессии ---------- */
-function usedSkills(text){
+function tagsOf(text){
   const t = " " + String(text).toLowerCase() + " ";
   const out = [];
-  if (/\b(am|is|are)\b|'m\b|'s\b/.test(t)) out.push("be");
-  if (/\b(i|we|you|they|he|she|it|my|his|her)\b/.test(t)) out.push("subject");
-  if (/\b(a|an|the)\b/.test(t)) out.push("articles");
-  if (/\b(have|has|have got|has got)\b/.test(t)) out.push("have-got");
-  if (/\b(he|she|it)\s+\w+s\b/.test(t)) out.push("third-person-s");
-  if (/\b(don'?t|doesn'?t)\b/.test(t)) out.push("negation");
+  if (/\b(am|is|are)\b|'m\b/.test(t)) out.push("be");
+  if (/\b(went|watched|played|saw|was|were|had|bought)\b|\byesterday\b/.test(t)) out.push("past_tense");
+  if (/\b(at|on|in)\b/.test(t)) out.push("prepositions");
+  if (/\b(he|she)\s+\w+s\b/.test(t)) out.push("third_person");
+  if (/\b(don'?t|doesn'?t|never|not)\b/.test(t)) out.push("negation");
   if (/\b(like|love|enjoy)\s+\w+ing\b/.test(t)) out.push("gerund");
-  if (/\b(want|need|would like|'d like)\s+to\b/.test(t)) out.push("infinitive-to");
-  if (/\b(at|on|in|to)\b/.test(t)) out.push("prepositions");
-  if (/\b(can|could)\b/.test(t)) out.push("modals");
-  if (/\b(went|saw|played|was|were|did|bought|had)\b|\byesterday\b/.test(t)) out.push("past-simple");
-  if (/\b(always|usually|often|sometimes|never|twice|once)\b/.test(t)) out.push("frequency");
-  if (String(text).trim().split(/\s+/).length >= 3) out.push("full-sentence");
+  if (/\b(can|could|i'?d like|would like)\b/.test(t)) out.push("requests");
+  if (/\b(two|three|four|five|six|many)\s+\w+s\b/.test(t)) out.push("plural");
+  if (/\b(usually|often|always|sometimes|never|twice)\b/.test(t)) out.push("frequency");
+  if (/\b(i'?m|are you)\s+\w+ing\b/.test(t)) out.push("continuous");
   return out;
 }
-/* обновляем граф знаний по результату проверки фразы */
+/* главный вход: вызывается на каждую реплику ученика */
 function assessTurn(text, corr){
-  const clean = String(text || "");
   const ok = !corr || corr.status === "correct";
-  const errSkill = (corr && corr.status === "needs_improvement") ? (corr.skill || skillOfWhy(corr.explanation_ru)) : null;
-  pushAccuracy(ok);
-
-  if (errSkill){
-    gradeItem("skill:" + errSkill, 2);
-    noteFailure(errSkill);
+  const alias = { subject:"be", "full-sentence":"be", "third-person-s":"third_person", articles:"be",
+                  "infinitive-to":"requests", "past-simple":"past_tense", "plural-quantifier":"plural",
+                  modals:"requests", "have-got":"be" };
+  let errTag = null;
+  if (!ok){
+    const raw = corr.skill || skillOfWhy(corr.explanation_ru);
+    errTag = alias[raw] || (TAGS.indexOf(raw) !== -1 ? raw : null);
   }
-  const level = levelNow();
-  usedSkills(clean).forEach(id => {
-    if (id === errSkill) return;
-    if (level.skills.indexOf(id) === -1 && mastery("skill:" + id) === 0 && kgItem("skill:" + id).s === 0) return;
-    gradeItem("skill:" + id, ok ? 4 : 3);
-    if (ok) noteSuccess(id);
+
+  tagsOf(text).forEach(tag => { if (tag !== errTag) bumpTag(tag, ok); });
+  if (errTag) bumpTag(errTag, false);
+  usedChunks(text).forEach(c => gradeChunk(c, ok));
+
+  if (ok){ addXP(2); session.errStreak = 0; }
+  else session.errStreak++;
+
+  if (profile.boss) bossTurn(ok);
+  saveProgress();
+  return { ok, errTag, recast: ok ? "" : recastLine(corr) };
+}
+/* что сделать после реплики: помочь, притормозить или просто идти дальше */
+function afterTurn(text, corr, res){
+  const slot = state.topic.slots.find(s => s.id === state.pending) || null;
+  if (session.errStreak >= 3 && !profile.boss){ softStop(res.errTag); return; }
+  if (vibeShort(text) && !profile.boss && !session.helperShown){
+    session.helperShown = true;
+    if (Math.random() < 0.5) offerChoice(slot); else offerBuilder(slot);
+    return;
+  }
+  if (!res.ok && !profile.showFixes && session.turns % 3 === 0 && res.errTag){
+    const weak = profile.struggling[res.errTag];
+    if (weak < 0.35) offerBuilder(slot);                  // тихая тренировка слабого места
+  }
+}
+
+/* ---------- панель: только игровые сигналы ---------- */
+function renderRail(){
+  const rail = $("rail");
+  if (!rail) return;
+  rail.textContent = "";
+  rail.appendChild(el("span","pill","🔥 " + profile.streak));
+  rail.appendChild(el("span","seg", profile.xp + " XP"));
+  if (session){
+    const names = { warm:"разогрев", talk:"болтаем", quiz:"тест", done:"готово" };
+    const left = Math.max(0, Math.round((PHASE_MS[session.phase] - (Date.now() - session.phaseStart)) / 1000));
+    rail.appendChild(el("span","seg now", names[session.phase] + (session.phase === "done" ? "" : " · " + left + "с")));
+    if (session.phase === "talk") rail.appendChild(el("span","seg", "реплик " + session.turns + "/6"));
+    if (session.phase === "quiz") rail.appendChild(el("span","seg", "карточек " + session.quizDone + "/" + session.quiz.length));
+  }
+  if (profile.boss) rail.appendChild(el("span","seg warn","челлендж · " + profile.boss.left));
+  else if (canBoss()){
+    const b = el("button","seg go","Челлендж 🎯");
+    b.type = "button";
+    b.addEventListener("click", startBoss);
+    rail.appendChild(b);
+  }
+  const pill = $("levelPill");
+  if (pill) pill.textContent = tierNow().ru;
+}
+setInterval(()=>{ if (session && session.phase !== "done") renderRail(); }, 5000);
+
+/* ---------- онбординг: интересы, без тестов ---------- */
+function startPlacement(){
+  $("mTitle").textContent = "Что тебе интересно?";
+  $("modalVeil").hidden = false; $("modal").hidden = false;
+  const box = $("mBody");
+  box.textContent = "";
+  box.appendChild(el("div","dwhy","Выбери 2–3 темы — под них подберу фразы, разговоры и «слухи». Уровень подстроится сам, тестов не будет."));
+  const grid = el("div","ichips");
+  const chosen = {};
+  INTERESTS.forEach(it => {
+    const b = el("button","cbtn", it.emoji + " " + it.ru);
+    b.type = "button";
+    b.addEventListener("click",()=>{
+      chosen[it.id] = !chosen[it.id];
+      b.classList.toggle("on");
+    });
+    grid.appendChild(b);
   });
-  if (ok){
-    const words = clean.toLowerCase().replace(/[^a-z' ]/g," ").split(/\s+/);
-    level.vocab.forEach(w => { if (words.indexOf(w) !== -1) gradeItem("word:" + w, 4); });
-    if (session) session.newWords.forEach(w => { if (words.indexOf(w) !== -1) gradeItem("word:" + w, 5); });
-  }
-  return ok;
-}
-/* шаг сессии: 20% повтор -> 60% целевая тема -> 20% свободно */
-function advanceSession(){
-  if (!session) planSession();
-  if (session.phase === "done"){ finishSession(); renderRail(); return; }
-  const ph = session.phase;
-  session.done[ph]++;
-  if (session.done[ph] >= session.quota[ph]){
-    if (ph === "review"){
-      session.phase = "target";
-      if (!session.taught){ session.taught = true; teachCard(session.target); }
-    } else if (ph === "target"){
-      session.phase = session.quota.free ? "free" : "done";
-      if (session.phase === "free") addSystem("Свободная часть: говори о чём хочешь по теме, я поправлю ошибки.");
-    } else {
-      session.phase = "done";
-    }
-  }
-  if (session.phase === "review" && session.reviewQueue.length && session.done.review < session.quota.review)
-    askDrill(session.reviewQueue.shift());
-  if (session.phase === "target" && !session.taught){ session.taught = true; teachCard(session.target); }
-  if (session.phase === "done") finishSession();
-  renderRail();
-}
-function finishSession(){
-  const acc = Math.round(accuracy() * 100);
-  const t = tuning();
-  addSystem("Сессия закончена: точность " + acc + "%. " +
-    (t.mode === "fast" ? "Идём быстрее — больше новых слов." :
-     t.mode === "support" ? "Добавляю повторения, новое притормозим." : "Темп в норме."));
-  if (canAdvance()) addSystem("Все навыки уровня закрыты — доступен тест на следующий уровень (кнопка в панели прогресса).");
-  planSession();
-  if (session.reviewQueue.length) askDrill(session.reviewQueue.shift());
-  else { session.phase = "target"; session.taught = true; teachCard(session.target); }
+  box.appendChild(grid);
+  const go = el("button","mini","Начать 3 минуты ▶");
+  go.type = "button";
+  go.addEventListener("click",()=>{
+    profile.interests = Object.keys(chosen).filter(k => chosen[k]);
+    if (!profile.interests.length) profile.interests = ["series","food"];
+    profile.onboarded = true;
+    saveProgress();
+    $("modalVeil").hidden = true; $("modal").hidden = true;
+    renderTopics();
+    const wish = TOPICS.find(t => profile.interests.indexOf(t.id) !== -1 && topicAllowed(t));
+    startTopic(wish || allowedTopics()[0], false);
+    startSession();
+  });
+  box.appendChild(go);
 }
 
-/* ---------- подсказки для Gemini: строим по графу знаний ---------- */
-function activeVocab(cap2){
-  const lv = levelNow(), idx = levelIndexById(profile.level);
-  let words = [];
-  for (let i = 0; i <= idx; i++) words = words.concat(LEVELS[i].vocab);
-  Object.keys(kg).forEach(k => { if (k.indexOf("word:") === 0 && kg[k].m > 0) words.push(k.slice(5)); });
-  return Array.from(new Set(words)).slice(0, cap2 || 140);
-}
+/* ---------- промпт для AI: дружелюбный ровесник с рекастом ---------- */
 function scaffold(){
-  const lv = levelNow(), sk = SKILLS[session ? session.target : lv.skills[0]];
+  const weak = weakTags().slice(0,2).join(", ");
+  const known = profile.mastered.slice(-10).join(" / ");
   return [
-    "Learner level: CEFR " + lv.id + " (" + lv.ru + "). Session mode: " + (session ? session.phase : "target") + ".",
-    "Use ONLY simple structures for this level" + (levelIndexById(profile.level) < 4 ? " and present tense." : "."),
-    "Stay inside this active vocabulary plus the learner's own words: " + activeVocab(120).join(", ") + ".",
-    session && session.newWords.length ? "Introduce these new words if it is natural: " + session.newWords.join(", ") + "." : "",
-    sk ? "Target grammar to model in your replies: " + sk.en + " (examples: " + sk.ex.join(" / ") + ")." : "",
-    profile.block ? "The learner struggles with " + (SKILLS[profile.block.skill] || {}).en + ": model it slowly and ask questions that need it." : "",
-    "Rolling accuracy " + Math.round(accuracy() * 100) + "%: " +
-      (accuracy() >= 0.9 ? "you may add one slightly harder question." :
-       accuracy() < 0.75 ? "keep sentences very short and offer a model answer." : "keep the current difficulty.")
+    "Role: friendly English-speaking peer, same age as the learner. Not a teacher.",
+    "Tone: casual, encouraging, light emojis, max 2 short sentences per reply.",
+    "Hidden tier: " + profile.tier + " of 3 (" + tierNow().ru + "). Keep vocabulary inside this tier.",
+    "Never point out grammar mistakes explicitly unless the meaning is unclear.",
+    "Instead use RECASTING: naturally repeat the learner's broken phrase in correct form inside your reply, then ask one easy question.",
+    'Example — learner: "Yesterday I go to the cinema." you: "Oh, you went to the cinema! What did you watch? 🍿"',
+    "If the learner answers with one word or stops, ask a simple open question about their interests: " + (profile.interests.join(", ") || "series, food") + ".",
+    weak ? "Quietly give extra exposure to: " + weak + " (model it, never explain it)." : "",
+    known ? "Phrases the learner already owns, reuse them: " + known : "",
+    profile.boss ? "This is a roleplay challenge: stay in character and keep it fun." : ""
   ].filter(Boolean).join("\n");
 }
 
-/* ---------- статистика в настройках ---------- */
+/* ---------- статистика: игровая, без процентов грамматики ---------- */
 function renderStats(){
   const box = $("stats");
   if (!box) return;
   box.textContent = "";
-  const lv = levelNow();
   const line = (a,b)=>{ const r = el("div"); r.appendChild(el("span","mark","•")); r.appendChild(el("span",null,a + ": " + b)); box.appendChild(r); };
-  line("Уровень", profile.level + " — " + lv.ru);
-  line("Точность (последние 20)", Math.round(accuracy() * 100) + "%");
-  line("Режим", tuning().mode === "fast" ? "ускорение" : tuning().mode === "support" ? "поддержка" : "ровный");
-  line("Сессий пройдено", profile.sessions);
-  line("К повтору сейчас", dueList("skill:").length + dueList("word:").length);
-  const mastered = Object.keys(kg).filter(k => kg[k].m >= 0.8).length;
-  line("Освоено элементов", mastered);
-  lv.skills.forEach(id => line("  " + SKILLS[id].ru, Math.round(mastery("skill:" + id) * 100) + "%"));
-  if (profile.block) line("Разбор темы", SKILLS[profile.block.skill].ru);
+  line("Статус", tierNow().ru + " (" + profile.tier + "/3)");
+  line("XP", profile.xp);
+  line("Серия дней", profile.streak + " 🔥");
+  line("Сессий", profile.sessions);
+  line("Фраз в копилке", profile.mastered.length);
+  if (profile.mastered.length) line("Последние", profile.mastered.slice(-3).join(" · "));
+  line("Интересы", (profile.interests.map(id => (INTERESTS.find(i => i.id === id) || {}).ru).filter(Boolean).join(", ") || "не выбраны"));
+  if (profile.showFixes){
+    const weak = weakTags().slice(0,3);
+    line("Над чем работаем", weak.length ? weak.join(", ") : "всё ровно");
+  }
 }
 function resetProgress(){
-  profile = { level:"A1.1", win:[], streak:0, sessions:0, placed:false, block:null, lastDay:"" };
+  profile = { tier:1, interests:[], xp:0, streak:0, lastDay:"", sessions:0, mastered:[],
+              struggling:{}, showFixes:false, onboarded:false, boss:null, dayCount:0 };
   kg = {};
+  TAGS.forEach(t => profile.struggling[t] = 0.5);
   saveProgress();
-  planSession(); renderTopics(); renderRail(); renderStats();
-  addSystem("Прогресс сброшен. Начинаем с A1.1.");
+  renderTopics(); renderStats();
+  addSystem("Прогресс сброшен.");
+  startPlacement();
 }
 
 /* ===== 6. персонаж и сцена ===== */
@@ -1824,6 +1980,7 @@ const PHOTOS = {
   shopping:"photo-1772570824145-e996a55204fb",   /* магазин одежды */
   routine:"photo-1613940512699-fc9150817bb2",    /* утро, спальня */
   travel:"photo-1770126548552-c35de444a1c5",     /* горы из окна самолёта */
+  series:"photo-1763827657709-b1bbc3c4945b",     /* диван и телевизор */
   family:"photo-1763827657709-b1bbc3c4945b"      /* гостиная */
 };
 /* Фото Unsplash (свободная лицензия). Порядок попыток:
@@ -2044,6 +2201,10 @@ function startRecording(){
   rec.onerror = (ev)=>{
     const code = (ev && ev.error) || "unknown";
     if (code === "not-allowed" || code === "service-not-allowed" || code === "audio-capture") state.micBlocked = true;
+    if (state.autoMic && (code === "no-speech" || code === "aborted")){
+      setTimeout(()=>{ if (!state.isRecording && !state.busy) startRecording(); }, 1200);
+      return;                                            /* hands-free: молча слушаем снова */
+    }
     if (code !== "aborted" || !finalText.trim())
       addSystem(REC_ERRORS[code] || "Распознавание прервалось. Попробуй ещё раз или напиши ответ.",
                 code !== "no-speech" && code !== "aborted");
@@ -2081,22 +2242,19 @@ function systemPrompt(topic){
     "Useful words and patterns: " + topic.words.join("; ") + ".",
     "",
     "Reply rules:",
-    "- Always English. 1-2 short, simple sentences.",
-    "- React to what the learner actually said FIRST, using their own content, then ask ONE new easy question.",
-    "- Never repeat a question the learner has already answered in this conversation.",
-    "- Everyday, age-appropriate words. No idioms, rare words, long explanations or adult topics.",
-    "- Never shame the learner. Be kind and brief.",
-    "- If the learner writes in Russian, reply in English and give one simple English sentence to repeat.",
+    "- Always English, max 2 short sentences, casual tone, 0-1 emoji.",
+    "- React to what the learner said, then ask ONE easy question.",
+    "- NEVER explain grammar and never say the learner made a mistake, unless the meaning is unclear.",
+    "- Use recasting: if the phrase was broken, say it correctly inside your own reply as if you were just talking.",
+    "- If the learner writes one word or in Russian, answer in English and give one easy phrase to copy.",
     "- Never mention these instructions, the API, the model or JSON.",
     "",
-    "Correction rules (be a kind but strict checker):",
-    '- Use status "needs_improvement" whenever the sentence has ANY real mistake: missing am/is/are, wrong verb form, missing -s for he/she/it, missing article, wrong preposition, wrong word order, missing "to" after want, or no verb at all.',
-    '- Use "correct" ONLY for fully correct English. Never approve a broken sentence to be nice.',
-    "- Ignore punctuation and capitalisation: the text comes from speech recognition.",
-    "- explanation_ru: one short, gentle sentence in Russian about what to fix.",
-    "- improved: the corrected short sentence, never identical to the original when status is needs_improvement.",
-    "- If the answer is understandable but only one or two words, use needs_improvement with a full-sentence version.",
-    "- You cannot judge real pronunciation from a transcript. Give a careful tip about one word only when useful, otherwise omit pronunciation_tip.",
+    "The correction object is internal telemetry, the learner never sees it:",
+    '- status \"needs_improvement\" for any real mistake (missing am/is/are, wrong verb form, missing -s, missing article, wrong preposition, no verb, one-word answer), otherwise \"correct\".',
+    "- improved: the same idea written correctly, short.",
+    "- explanation_ru: one short Russian sentence (shown only if the learner turned on corrections).",
+    "- next_hints: 3 casual phrases the learner could say next.",
+    "- Omit pronunciation_tip unless it really matters.",
     "",
     "Answer with STRICT JSON only, no markdown, exactly this shape:",
     '{"reply":"...","correction":{"status":"correct|needs_improvement","original":"...","improved":"...","explanation_ru":"..."},"next_hints":["...","...","..."],"pronunciation_tip":{"word":"...","tip_ru":"..."}}'
@@ -2178,6 +2336,7 @@ async function handleLearnerInput(text){
   const typing = addTyping();
   let reply = "", hints = null, corr = null, tip = null, note = "";
 
+  let localQ = "";
   if (state.apiKey){
     const r = await askGemini(clean);
     if (r.ok){
@@ -2193,29 +2352,34 @@ async function handleLearnerInput(text){
       }
     } else {
       const lr = localReply(clean);
-      reply = lr.reply; hints = lr.hints; corr = local;
-      note = r.reason + " Отвечаю локально.";
+      reply = lr.reply; hints = lr.hints; corr = local; localQ = lr.q || "";
+      note = "";
     }
   } else {
     const lr = localReply(clean);
-    reply = lr.reply; hints = lr.hints; corr = local;
+    reply = lr.reply; hints = lr.hints; corr = local; localQ = lr.q || "";
   }
 
   typing.remove();
   if (note) addSystem(note, true);
-  if (!reply) reply = "Okay! Tell me more.";
+  if (!reply) reply = "Okay! Tell me more 🙂";
+
+  /* оценка идёт в фон, ошибка возвращается в ответе как рекаст */
+  const res = assessTurn(clean, corr);
+  if (res.recast && localQ) reply = res.recast + " " + localQ;       /* локальный собеседник */
+  else if (res.recast && !state.apiKey) reply = res.recast + " " + reply;
 
   state.lastTutorLine = reply;
   pushHistory("model", reply);
   addTutor(reply);
-  addFeedback(corr, tip);
+  if (shouldShowFix(corr)) addFeedback(corr, tip);                   /* обычно ошибку не показываем */
   const nowPending = state.topic.slots.find(s=>s.id === state.pending) || null;
   renderHints(hints && hints.length ? hints
               : (nowPending ? nowPending.hints : (state.lastAsk ? state.lastAsk.hints : state.topic.slots[0].hints)));
   speak(reply);
 
-  assessTurn(clean, corr);                            // обновляем граф знаний
-  advanceSession();                                   // двигаем сессию 20/60/20
+  tickSession();                                      /* 1 мин разогрев → 2 мин болтовня → 1 мин тест */
+  afterTurn(clean, corr, res);                        /* vibe check: варианты, кирпичики, мягкий стоп */
   renderStats();
 
   state.busy = false; setSendEnabled(true);
@@ -2231,10 +2395,8 @@ function renderHints(list){
   const box = $("chips");
   box.textContent = "";
   list = (list || []).slice(0,4);
-  if (session && SKILLS[session.target]){                // scaffolding: пример целевого правила
-    const model = SKILLS[session.target].ex[0];
-    if (model && list.indexOf(model) === -1) list = list.concat([model]);
-  }
+  const extra = pickChunks(1)[0];                        // одна живая фраза в подсказках
+  if (extra && list.indexOf(extra.t) === -1) list = list.concat([extra.t]);
   (list || []).slice(0,5).forEach(h=>{
     const text = String(h || "").trim();
     if (!text) return;
@@ -2311,14 +2473,15 @@ $("voiceSel").addEventListener("change",(e)=>{
 });
 $("testVoice").addEventListener("click",()=>speak("Hi! I'm your English speaking partner. Let's talk!"));
 $("autoMic").addEventListener("change",(e)=>{
-  if (e.target.checked && levelIndexById(profile.level) < 2){   /* фича открывается на A1.3 */
-    e.target.checked = false; state.autoMic = false;
-    addSystem("Свободный голосовой режим открывается на уровне A1.3 — сначала закрой A1.2.", true);
-    return;
-  }
   state.autoMic = !!e.target.checked;
-  if (state.autoMic) addSystem("Авто-микрофон включён: запись начнётся сама после реплики собеседника.");
+  if (state.autoMic) addSystem("Hands-free включён: говори, я слушаю сам. Акцент не важен 🎧");
 });
+$("showFixes").addEventListener("change",(e)=>{
+  profile.showFixes = !!e.target.checked;
+  saveProgress();
+  addSystem(profile.showFixes ? "Разбор ошибок включён." : "Ошибки снова исправляются незаметно, в ответе собеседника.");
+});
+$("sessionBtn").addEventListener("click",()=>{ closeSheet(); startSession(); });
 
 /* ===== 14. ключ API ===== */
 const keyInput = $("apiKey");
@@ -2328,7 +2491,7 @@ try{
 }catch(e){}
 function refreshModePill(){
   const p = $("pillMode");
-  p.textContent = state.apiKey ? "Gemini" : "локальный";
+  p.textContent = state.apiKey ? "AI" : "офлайн";
   p.className = "mode" + (state.apiKey ? " live" : "");
   p.title = state.apiKey ? "Gemini подключён: свободный диалог" : "Локальный собеседник + локальная проверка грамматики";
 }
@@ -2367,8 +2530,7 @@ function renderTopics(){
     if (!open){ b.textContent = t.emoji + " " + t.ru + " 🔒"; b.setAttribute("aria-disabled","true"); }
     b.addEventListener("click",()=>{
       if (!open){
-        addSystem("Тема откроется на следующем уровне — сначала тест-веха на " +
-          ((LEVELS[levelIndexById(profile.level) + 1] || {}).id || profile.level) + ".");
+        addSystem("Этот мир откроется после челленджа — держись, осталось немного 🎯");
         return;
       }
       if (t.id !== state.topic.id) startTopic(t, false);
@@ -2444,17 +2606,15 @@ $("micTest").addEventListener("click", async ()=>{
 /* ===== 17. старт ===== */
 applyTheme(); updateCounter(); autoGrow(); refreshModePill(); runDiagnostics();
 loadProgress();
-planSession();
 renderStats();
-if (!profile.placed){
+$("showFixes").checked = !!profile.showFixes;
+if (!profile.onboarded){
   renderTopics(); renderRail();
-  addSystem("Сначала короткий тест уровня — дальше приложение само подбирает слова, правила и темы.");
   startPlacement();
 } else {
-  startTopic(allowedTopics()[0], false);
-  if (session.reviewQueue.length) askDrill(session.reviewQueue.shift());
-  else { session.phase = "target"; session.taught = true; teachCard(session.target); }
-  renderRail();
+  const fav = TOPICS.find(t => profile.interests.indexOf(t.id) !== -1 && topicAllowed(t));
+  startTopic(fav || allowedTopics()[0], false);
+  startSession();
 }
 </script>
 </body>

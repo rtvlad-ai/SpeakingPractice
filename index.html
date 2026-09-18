@@ -446,6 +446,11 @@ window.addEventListener("unhandledrejection",(ev)=>{
 /* ===== 0. утилиты и формы глаголов ===== */
 const cap = (s)=>String(s||"").charAt(0).toUpperCase()+String(s||"").slice(1);
 const lowerFirst = (s)=>String(s||"").charAt(0).toLowerCase()+String(s||"").slice(1);
+/* телефон читает эмодзи вслух — вырезаем их из всего, что произносится и попадает в реплику */
+const EMOJI_RE = /[\u{1F000}-\u{1FAFF}\u{1F900}-\u{1F9FF}\u{2190}-\u{21FF}\u{2300}-\u{23FF}\u{2460}-\u{24FF}\u{25A0}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0E}\u{FE0F}\u{200D}\u{20E3}]/gu;
+function stripEmoji(text){
+  return String(text || "").replace(EMOJI_RE, "").replace(/\s{2,}/g," ").replace(/\s+([.!?,])/g,"$1").trim();
+}
 const clean1 = (s)=>String(s||"").replace(/\s+/g," ").replace(/[.,!?;:]+$/,"").trim();
 
 const V3 = {have:"has",do:"does",go:"goes",watch:"watches",study:"studies",fly:"flies",brush:"brushes",
@@ -1160,7 +1165,8 @@ const chat = $("chat"), app = $("app");
 const scrollChat = ()=>{ chat.scrollTop = chat.scrollHeight; };
 const announce = (m)=>{ $("srStatus").textContent = m; };
 
-function addTutor(text){
+function addTutor(rawText){
+  const text = stripEmoji(rawText);
   setCloud(text);                                     // живая реплика — в облаке у персонажа
   const wrap = el("div","msg tutor");
   wrap.appendChild(el("div","who-label", state.topic.char.name));
@@ -1473,18 +1479,21 @@ function chooseStartCard(){
   card.appendChild(el("div","dwhy","Разогрев — 3 карточки фраз. Разговор — сразу тема «" +
     (state.topic ? state.topic.ru : "") + "»."));
   const row = el("div","cacts");
-  const warm = el("button","cbtn ok","🔥 Разогрев");
+  const drop = ()=>{ if (card.parentNode) card.parentNode.removeChild(card); };
+  const warm = el("button","cbtn ok","Разогрев");
   warm.type = "button";
   warm.addEventListener("click",()=>{
     if (card.dataset.done) return;
     card.dataset.done = "1";
+    drop();                                            /* карточка уходит, чтобы не мешала чату */
     beginWarm();
   });
-  const talk = el("button","cbtn","💬 Разговор");
+  const talk = el("button","cbtn","Сразу разговор");
   talk.type = "button";
   talk.addEventListener("click",()=>{
     if (card.dataset.done) return;
     card.dataset.done = "1";
+    drop();
     toPhase("talk");
   });
   row.appendChild(warm); row.appendChild(talk);
@@ -1519,7 +1528,7 @@ function phaseBudgetOver(){
 function toPhase(next){
   session.phase = next;
   session.phaseStart = Date.now();
-  if (next === "talk"){ flash("Погнали болтать 💬"); startOpening(); }
+  if (next === "talk"){ flash("Погнали болтать"); startOpening(); }
   if (next === "quiz"){ session.quiz = buildQuiz(4); nextQuizCard(); }
   renderRail();
 }
@@ -1731,7 +1740,7 @@ function offerChoice(slot){                               // начала фра
       state.prefix = clean2;
       speak(clean2);
       fillInput(clean2 + " ");
-      flash("Договори голосом или текстом 🎤");
+      flash("Договори голосом или текстом");
     });
     card.appendChild(b);
   });
@@ -1924,15 +1933,16 @@ function maybeOfferQuest(){
   card.appendChild(el("div","dwhy","Все вопросы темы «" + state.topic.ru + "» закрыты. Проверим в сценке: " +
     q.emoji + " " + q.ru + " — " + q.brief));
   const row = el("div","cacts");
-  const go = el("button","cbtn ok","🎮 Квест");
+  const drop = ()=>{ if (card.parentNode) card.parentNode.removeChild(card); };
+  const go = el("button","cbtn ok","Квест");
   go.type = "button";
-  go.addEventListener("click",()=>{ if (!card.dataset.done){ card.dataset.done = "1"; startQuest(q); } });
+  go.addEventListener("click",()=>{ if (!card.dataset.done){ card.dataset.done = "1"; drop(); startQuest(q); } });
   const list = el("button","cbtn","Другие");
   list.type = "button";
-  list.addEventListener("click",()=>{ if (!card.dataset.done){ card.dataset.done = "1"; openQuests(); } });
-  const stay = el("button","cbtn","💬 Дальше");
+  list.addEventListener("click",()=>{ if (!card.dataset.done){ card.dataset.done = "1"; drop(); openQuests(); } });
+  const stay = el("button","cbtn","Дальше");
   stay.type = "button";
-  stay.addEventListener("click",()=>{ card.dataset.done = "1"; flash("Болтаем дальше 💬"); });
+  stay.addEventListener("click",()=>{ card.dataset.done = "1"; drop(); flash("Болтаем дальше"); });
   row.appendChild(go); row.appendChild(list); row.appendChild(stay);
   card.appendChild(row);
   chat.appendChild(card);
@@ -1960,7 +1970,7 @@ function renderRail(){
   const rail = $("rail");
   if (!rail) return;
   rail.textContent = "";
-  rail.appendChild(el("span","pill","🔥 " + profile.streak));
+  rail.appendChild(el("span","pill","серия " + profile.streak));
   rail.appendChild(el("span","seg", profile.xp + " XP"));
   if (profile.coins) rail.appendChild(el("span","seg", profile.coins + " 🪙"));
   if (profile.gems) rail.appendChild(el("span","seg", profile.gems + " 💎"));
@@ -2035,11 +2045,11 @@ function scaffold(){
   const known = profile.mastered.slice(-10).join(" / ");
   return [
     "Role: friendly English-speaking peer, same age as the learner. Not a teacher.",
-    "Tone: casual, encouraging, light emojis, max 2 short sentences per reply.",
+    "Tone: casual and encouraging, max 2 short sentences per reply, no emojis (they are read aloud by the phone).",
     "Hidden tier: " + profile.tier + " of 3 (" + tierNow().ru + "). Keep vocabulary inside this tier.",
     "Never point out grammar mistakes explicitly unless the meaning is unclear.",
     "Instead use RECASTING: naturally repeat the learner's broken phrase in correct form inside your reply, then ask one easy question.",
-    'Example — learner: "Yesterday I go to the cinema." you: "Oh, you went to the cinema! What did you watch? 🍿"',
+    'Example — learner: "Yesterday I go to the cinema." you: "Oh, you went to the cinema! What did you watch?"',
     "If the learner answers with one word or stops, ask a simple open question about their interests: " + (profile.interests.join(", ") || "series, food") + ".",
     weak ? "Quietly give extra exposure to: " + weak + " (model it, never explain it)." : "",
     known ? "Phrases the learner already owns, reuse them: " + known : "",
@@ -2055,7 +2065,7 @@ function renderStats(){
   const line = (a,b)=>{ const r = el("div"); r.appendChild(el("span","mark","•")); r.appendChild(el("span",null,a + ": " + b)); box.appendChild(r); };
   line("Статус", tierNow().ru + " (" + profile.tier + "/3)");
   line("XP", profile.xp);
-  line("Серия дней", profile.streak + " 🔥");
+  line("Серия дней", profile.streak);
   line("Сессий", profile.sessions);
   line("Фраз в копилке", profile.mastered.length);
   line("Монеты", (profile.coins || 0) + " 🪙 · " + (profile.gems || 0) + " 💎");
@@ -2316,7 +2326,7 @@ function renderStarters(list){
       speak(stem);                                        /* сначала слышим начало */
       fillInput(stem + " ");
       state.prefix = stem;
-      flash("Продолжи голосом или текстом 🎤");
+      flash("Продолжи голосом или текстом");
     });
     const m = el("button","smic","🎤");
     m.type = "button";
@@ -2592,7 +2602,7 @@ function questPrompt(){
   const left = st.q.goals.filter(g => !st.done[g.id]).map(g => g.ru).join("; ");
   return [
     "ROLEPLAY MODE. You are " + st.q.char.name + ", " + st.q.char.role + ". Scene: " + st.q.ru + ".",
-    "Stay in character, 1-2 short sentences, light emoji, never act like a teacher.",
+    "Stay in character, 1-2 short sentences, no emojis, never act like a teacher.",
     "The learner must achieve: " + st.q.goals.map(g => g.ru).join("; ") + ". Still open: " + (left || "nothing"),
     "Steer the scene so the learner has to say the remaining things, but never list the goals.",
     "If the learner's phrase is unclear, stay in role and say something like: " + st.q.repeat,
@@ -2712,7 +2722,7 @@ function setPhoto(topic){
 /* ===== облако с репликой рядом с персонажем ===== */
 function setCloud(text){
   const line = $("cloudLine");
-  const t = String(text || "");
+  const t = stripEmoji(text);
   line.textContent = t.length > 260 ? t.slice(0,257).replace(/\s+\S*$/,"") + "…" : t;
   line.scrollTop = 0;
 }
@@ -2797,7 +2807,9 @@ function speak(text){
   if (!chosenVoice) loadVoices();
   try{
     synth.cancel();
-    const parts = String(text).match(/[^.!?…]+[.!?…]*/g) || [String(text)];
+    const spokenText = stripEmoji(text);
+    if (!spokenText){ setSpeaking(false); return; }
+    const parts = spokenText.match(/[^.!?…]+[.!?…]*/g) || [spokenText];
     let left = parts.length;
     parts.forEach((raw,i)=>{
       const piece = raw.trim();
@@ -3034,7 +3046,7 @@ function systemPrompt(topic){
     "Useful words and patterns: " + topic.words.join("; ") + ".",
     "",
     "Reply rules:",
-    "- Always English, max 2 short sentences, casual tone, 0-1 emoji.",
+    "- Always English, max 2 short sentences, casual tone. Do NOT use emojis at all: the phone reads them aloud.",
     "- React to what the learner said, then ask ONE easy question.",
     "- NEVER explain grammar and never say the learner made a mistake, unless the meaning is unclear.",
     "- Use recasting: if the phrase was broken, say it correctly inside your own reply as if you were just talking.",

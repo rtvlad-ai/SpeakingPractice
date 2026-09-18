@@ -187,6 +187,34 @@ body{font-family:var(--ui);color:var(--ink);background:var(--page);-webkit-text-
 .diag div{display:flex;gap:7px;align-items:flex-start}
 .diag .mark{flex:none;width:18px;text-align:center}
 
+/* панель прогресса сессии */
+.rail{position:relative;z-index:2;display:flex;gap:6px;overflow-x:auto;padding:2px 12px 6px;scrollbar-width:none;flex:none;align-items:center}
+.rail::-webkit-scrollbar{display:none}
+.rail .pill,.rail .seg{flex:none;font-size:11.5px;padding:4px 9px;border-radius:999px;white-space:nowrap;
+  background:var(--glass);border:1px solid var(--glass-line);color:var(--ink-soft);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.rail .pill{font-weight:700;color:#fff;background:var(--accent);border-color:transparent}
+.rail .seg.now{color:var(--ink);font-weight:700;border-color:var(--accent)}
+.rail .seg.warn{color:var(--red-ink);background:var(--red-soft)}
+.rail button.seg.go{background:var(--accent);color:#fff;font-weight:700;border-color:transparent}
+
+/* упражнения и обучающие карточки в чате */
+.drill,.teach{align-self:stretch;max-width:100%;border-radius:14px;padding:11px 13px;display:flex;flex-direction:column;gap:7px;
+  background:var(--glass);border:1px solid var(--glass-line);box-shadow:var(--shadow);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.teach{border-left:4px solid var(--accent)}
+.dtitle{font-size:11.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.03em}
+.dq{font-family:var(--en);font-size:17px;line-height:1.35}
+.dopts{display:flex;flex-direction:column;gap:6px}
+.dopt{text-align:left;font-family:var(--en);font-size:16px;padding:9px 12px;border-radius:12px;
+  border:1px solid var(--line);background:var(--card);color:var(--ink)}
+.dopt.right{background:var(--good);border-color:var(--good-line);font-weight:700}
+.dopt.wrong{background:var(--red-soft);border-color:transparent;color:var(--red-ink)}
+.dwhy{font-size:13px;line-height:1.45;color:var(--ink)}
+.dex{display:flex;flex-direction:column;gap:5px;align-items:flex-start}
+.modal h2{margin:0 0 4px}
+.modal #mBody{display:flex;flex-direction:column;gap:9px}
+
 button{font:inherit;cursor:pointer}
 button:active{transform:translateY(1px)}
 button[disabled]{opacity:.5;cursor:not-allowed}
@@ -202,6 +230,7 @@ button[disabled]{opacity:.5;cursor:not-allowed}
   <div class="scrim" aria-hidden="true"></div>
   <div class="bar">
     <span class="brand">English Practice</span>
+    <span class="mode" id="levelPill">A1.1</span>
     <span class="mode" id="pillMode">локальный</span>
     <div class="bar-actions">
       <button class="ico" id="themeBtn" aria-label="Тема оформления: авто">🌗</button>
@@ -223,6 +252,7 @@ button[disabled]{opacity:.5;cursor:not-allowed}
     </div>
   </section>
   <div class="topics" id="topics" role="tablist" aria-label="Тема разговора"></div>
+  <div class="rail" id="rail" aria-label="Прогресс сессии"></div>
 
   <main class="chat" id="chat" role="log" aria-live="polite" aria-label="Диалог с собеседником"></main>
   <div class="chips" id="chips" aria-label="Варианты ответа"></div>
@@ -243,6 +273,14 @@ button[disabled]{opacity:.5;cursor:not-allowed}
 <aside class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-label="Настройки">
   <button class="ico close" id="sheetClose" aria-label="Закрыть настройки">✕</button>
   <h2>Настройки</h2>
+
+  <h3>Прогресс</h3>
+  <div class="diag" id="stats"></div>
+  <div class="row">
+    <button id="placeBtn" aria-label="Пройти тест уровня заново">Тест уровня</button>
+    <button id="resetProg" class="danger" aria-label="Сбросить прогресс обучения">Сбросить прогресс</button>
+  </div>
+  <p class="note">Уровень меняется только через тест-веху: нужно освоить все навыки уровня и держать точность не ниже 85%. Слова и правила повторяются по расписанию интервального повторения.</p>
 
   <h3>Оформление</h3>
   <div class="seg" role="group" aria-label="Тема оформления">
@@ -292,6 +330,12 @@ button[disabled]{opacity:.5;cursor:not-allowed}
     <li>Для публичного запуска нужен backend endpoint, который хранит ключ на сервере.</li>
     <li>Трекеров и аналитики на странице нет.</li>
   </ul></div>
+</aside>
+
+<div class="veil" id="modalVeil" hidden></div>
+<aside class="sheet modal" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <h2 id="mTitle">Тест</h2>
+  <div id="mBody"></div>
 </aside>
 
 <div class="sr-only" id="srStatus" role="status" aria-live="assertive"></div>
@@ -805,7 +849,8 @@ function checkGrammar(rawText, pending){
 
   const same = (a,b)=>String(a).toLowerCase().replace(/[^a-z0-9']/g,"") === String(b).toLowerCase().replace(/[^a-z0-9']/g,"");
   if (errors > 0 && !same(s, original))
-    return {status:"needs_improvement", original, improved:s, explanation_ru:whys.slice(0,2).join(" ")};
+    return {status:"needs_improvement", original, improved:s, explanation_ru:whys.slice(0,2).join(" "),
+            skill: skillOfWhy(whys[0])};
 
   const words = original.replace(/[^a-z0-9' ]/ig," ").trim().split(/\s+/).filter(Boolean);
   const ex = (pending && pending.ex) || "";
@@ -823,7 +868,7 @@ function checkGrammar(rawText, pending){
   // нет глагола: ответ неполный, даём целое предложение
   if (!hasVerb(original)){
     const full = (pending && pending.full) ? pending.full(clean1(original)) : null;
-    return {status:"needs_improvement", original, improved: full || ex || s,
+    return {status:"needs_improvement", original, improved: full || ex || s, skill:"full-sentence",
       explanation_ru:"Ответ неполный: нет глагола. По-английски отвечают целым предложением — скажи так."};
   }
   // нет подлежащего: "playing football", "am tired"
@@ -833,7 +878,7 @@ function checkGrammar(rawText, pending){
     if (/^(am|are)\b/.test(low)) fixed = "I " + low.replace(/^(am|are)\b/,"am");
     else if (/ing\b/.test(low.split(/\s+/)[0])) fixed = "I like " + low;
     else fixed = "I " + low;
-    return {status:"needs_improvement", original, improved: cap(fixed) + ".",
+    return {status:"needs_improvement", original, improved: cap(fixed) + ".", skill:"subject",
       explanation_ru:"Не хватает подлежащего. В английском предложении всегда есть кто: I, he, my friend…"};
   }
   if (polish > 0 && whys.filter(Boolean).length)
@@ -1053,6 +1098,659 @@ function addFeedback(corr, tip){
   }
   card.appendChild(acts);
   chat.appendChild(card); scrollChat();
+}
+
+/* ============================================================
+   5b. ДВИЖОК ОБУЧЕНИЯ
+   Реализует схему: Knowledge Graph -> оценка -> SRS -> подбор
+   контента -> проверка вехи. Всё локально, в localStorage.
+   ============================================================ */
+
+/* ---------- каталог навыков: объяснение, примеры, упражнения ---------- */
+const SKILLS = {
+  "be":{ ru:"Глагол be: am / is / are", en:"the verb to be in present",
+    tip:"В английском предложении почти всегда есть глагол. I am, he/she/it is, we/you/they are.",
+    ex:["I am from Moscow.","She is my sister.","We are at school."],
+    drills:[{q:"___ tired today.",opts:["I am","I","Am I"],a:0,why:"После I всегда am."},
+            {q:"My brother ___ ten years old.",opts:["is","are","be"],a:0,why:"He, she, it — is."}]},
+  "subject":{ ru:"Подлежащее в предложении", en:"every sentence needs a subject",
+    tip:"По-английски нельзя начать предложение без того, кто действует: не «playing football», а «I play football».",
+    ex:["I play football.","My friend lives in Kazan.","We watch films together."],
+    drills:[{q:"Как правильно ответить на «What do you do after school?»",opts:["Playing football.","I play football.","Play football me."],a:1,why:"Нужно подлежащее I."},
+            {q:"___ my best friend.",opts:["Is","He is","Being"],a:1,why:"Кто? — he."}]},
+  "full-sentence":{ ru:"Полный ответ, а не одно слово", en:"answer in a full sentence",
+    tip:"Одно слово понятно, но в разговоре отвечают целым предложением: «Moscow» → «I am from Moscow».",
+    ex:["I am from Moscow.","I have six lessons today.","My favourite subject is maths."],
+    drills:[{q:"Вопрос: Where are you from? Лучший ответ:",opts:["Moscow.","From Moscow.","I am from Moscow."],a:2,why:"Полное предложение с подлежащим и глаголом."},
+            {q:"Вопрос: How old are you? Лучший ответ:",opts:["I am 14 years old.","14.","Fourteen years."],a:0,why:"Возраст — через am."}]},
+  "articles":{ ru:"Артикли a / an / the", en:"articles a, an, the",
+    tip:"Перед профессией и одним предметом нужен a/an: I am a student, I have a dog.",
+    ex:["I am a student.","I have a sister.","My mum is a teacher."],
+    drills:[{q:"I am ___ student.",opts:["a","the","—"],a:0,why:"Профессия и роль — с артиклем a."},
+            {q:"I play ___ guitar.",opts:["the","a","—"],a:0,why:"С инструментами — the."}]},
+  "have-got":{ ru:"have got — «у меня есть»", en:"have got for possession",
+    tip:"I have got / I have — про то, что у тебя есть. He has got — с he, she, it.",
+    ex:["I have got one sister.","He has a dog.","We have two cats."],
+    drills:[{q:"She ___ a new phone.",opts:["has","have","haves"],a:0,why:"С she — has."},
+            {q:"I ___ two brothers.",opts:["have","has","am"],a:0,why:"С I — have."}]},
+  "plural-quantifier":{ ru:"Множественное число, many / much", en:"plurals and quantifiers",
+    tip:"После числа — множественное число: two lessons. Many — со счётными, much — с неисчисляемыми.",
+    ex:["I have six lessons today.","I have many friends.","I don't have much time."],
+    drills:[{q:"I have three ___.",opts:["lessons","lesson","lessones"],a:0,why:"После числа — множественное число."},
+            {q:"I don't have ___ time.",opts:["much","many","a lot"],a:0,why:"Time неисчисляемое — much."}]},
+  "third-person-s":{ ru:"-s у he / she / it", en:"third person -s",
+    tip:"He, she, it добавляют -s к глаголу: he plays, she likes, it works.",
+    ex:["He plays football.","She likes music.","My mum works in a school."],
+    drills:[{q:"My sister ___ English.",opts:["studies","study","studys"],a:0,why:"She — studies."},
+            {q:"He ___ to school by bus.",opts:["goes","go","going"],a:0,why:"He — goes."}]},
+  "negation":{ ru:"Отрицание don't / doesn't", en:"negation with don't and doesn't",
+    tip:"I don't like, he doesn't like. После don't/doesn't — начальная форма глагола.",
+    ex:["I don't like fish.","He doesn't play tennis.","We don't have homework today."],
+    drills:[{q:"He ___ like maths.",opts:["doesn't","don't","not"],a:0,why:"С he — doesn't."},
+            {q:"I ___ have a pet.",opts:["don't","doesn't","am not"],a:0,why:"С I — don't."}]},
+  "gerund":{ ru:"like + -ing", en:"like doing something",
+    tip:"После like, love, enjoy глагол получает -ing: I like playing, I love drawing.",
+    ex:["I like playing football.","I love drawing.","She enjoys reading books."],
+    drills:[{q:"I like ___ video games.",opts:["playing","play","to playing"],a:0,why:"После like — -ing."},
+            {q:"She loves ___.",opts:["dancing","dance","danced"],a:0,why:"После love — -ing."}]},
+  "infinitive-to":{ ru:"want / need + to", en:"want to, need to",
+    tip:"После want, need, would like ставится to: I want to go, I'd like to try.",
+    ex:["I want to go home.","I need to buy a T-shirt.","I'd like to visit Italy."],
+    drills:[{q:"I want ___ a pizza.",opts:["to order","order","ordering"],a:0,why:"После want — to."},
+            {q:"I'd like ___ it on.",opts:["to try","try","trying"],a:0,why:"would like + to."}]},
+  "prepositions":{ ru:"Предлоги времени и места", en:"prepositions of time and place",
+    tip:"at seven o'clock, on Monday, in Moscow, go to school, go home (без to).",
+    ex:["I get up at seven o'clock.","On Monday I play football.","I live in Moscow."],
+    drills:[{q:"I get up ___ half past six.",opts:["at","in","on"],a:0,why:"Со временем — at."},
+            {q:"___ Saturday I rest.",opts:["On","In","At"],a:0,why:"С днями недели — on."}]},
+  "modals":{ ru:"Вежливые просьбы: can / could", en:"polite requests with can and could",
+    tip:"Can I have…? Could you…? После can и could — начальная форма глагола.",
+    ex:["Can I have a cup of tea?","Could you help me, please?","Can I try it on?"],
+    drills:[{q:"___ I have the bill, please?",opts:["Can","Do","Am"],a:0,why:"Просьба — Can I…?"},
+            {q:"Can I ___ it on?",opts:["try","trying","to try"],a:0,why:"После can — начальная форма."}]},
+  "past-simple":{ ru:"Прошедшее время", en:"past simple",
+    tip:"Yesterday I went, I played, I saw. После didn't — начальная форма: I didn't go.",
+    ex:["Yesterday I played football.","Last summer I went to the sea.","I didn't see that film."],
+    drills:[{q:"Yesterday I ___ to the cinema.",opts:["went","go","goed"],a:0,why:"Go → went."},
+            {q:"I didn't ___ my homework.",opts:["do","did","done"],a:0,why:"После didn't — начальная форма."}]},
+  "frequency":{ ru:"Как часто: always, usually, twice a week", en:"frequency adverbs",
+    tip:"Always, usually, often, sometimes, never ставятся перед глаголом: I usually get up at seven.",
+    ex:["I usually get up at seven.","I often play football.","Twice a week."],
+    drills:[{q:"I ___ go to bed at ten.",opts:["usually","usual","using"],a:0,why:"Наречие частоты — usually."},
+            {q:"Как сказать «два раза в неделю»?",opts:["twice a week","two times week","two in week"],a:0,why:"twice a week."}]}
+};
+
+/* ---------- микроуровни: навыки, слова и доступные темы ---------- */
+const LEVELS = [
+  { id:"A1.1", ru:"Первые фразы", skills:["be","subject","full-sentence"], topics:["greeting"],
+    vocab:["name","old","from","city","fine","tired","friend","hello","please","thanks","meet","today"] },
+  { id:"A1.2", ru:"Школа и семья", skills:["be","articles","have-got","plural-quantifier"], topics:["greeting","school","family"],
+    vocab:["school","lesson","teacher","subject","maths","sister","brother","mother","father","pet","homework","kind"] },
+  { id:"A1.3", ru:"Present Simple", skills:["third-person-s","negation","gerund"], topics:["greeting","school","family","hobbies","routine"],
+    vocab:["play","like","draw","music","football","game","free time","every day","after school","together","read","watch"] },
+  { id:"A2.1", ru:"Просьбы и покупки", skills:["infinitive-to","modals","prepositions"], topics:["school","hobbies","routine","cafe","shopping"],
+    vocab:["order","juice","cake","size","colour","price","expensive","try on","bill","menu","shop","cheap"] },
+  { id:"A2.2", ru:"Планы и прошлое", skills:["past-simple","infinitive-to","frequency"], topics:["routine","travel","family","cafe","shopping"],
+    vocab:["travel","plane","train","summer","mountains","sea","yesterday","last year","visit","museum","abroad","holiday"] },
+  { id:"A2.3", ru:"Свободный разговор", skills:["past-simple","frequency","negation","gerund"], topics:"all",
+    vocab:["because","however","interesting","difficult","opinion","agree","prefer","usually","instead","enough","already","almost"] }
+];
+const levelIndexById = (id)=>Math.max(0, LEVELS.findIndex(l=>l.id === id));
+
+/* ---------- какие правила проверки к какому навыку относятся ---------- */
+const SKILL_OF_WHY = [
+  [/подлежащ/i,"subject"],
+  [/возраст/i,"be"],
+  [/\bam\b|\bis\b|\bare\b|глагол be|не хватает глагола/i,"be"],
+  [/артикл/i,"articles"],
+  [/-s\b|he, she, it глагол/i,"third-person-s"],
+  [/don'?t|doesn'?t|отрицан/i,"negation"],
+  [/-ing/i,"gerund"],
+  [/частица to|после want/i,"infinitive-to"],
+  [/предлог|днями недели|со временем/i,"prepositions"],
+  [/множествен|many|much/i,"plural-quantifier"],
+  [/прошл|didn'?t/i,"past-simple"],
+  [/has\b|have\b/i,"have-got"],
+  [/can\b|could\b|просьб/i,"modals"],
+  [/every day|наречие/i,"frequency"]
+];
+function skillOfWhy(why){
+  for (const pair of SKILL_OF_WHY) if (pair[0].test(String(why||""))) return pair[1];
+  return null;
+}
+
+/* ---------- хранилище ---------- */
+const LS_PROF = "englishPractice.v5.profile";
+const LS_KG   = "englishPractice.v5.kg";
+let profile = { level:"A1.1", win:[], streak:0, sessions:0, placed:false, block:null, lastDay:"" };
+let kg = {};
+function loadProgress(){
+  try{ const p = JSON.parse(localStorage.getItem(LS_PROF) || "null"); if (p) profile = Object.assign(profile, p); }catch(e){}
+  try{ const k = JSON.parse(localStorage.getItem(LS_KG) || "null"); if (k) kg = k; }catch(e){}
+}
+function saveProgress(){
+  try{ localStorage.setItem(LS_PROF, JSON.stringify(profile)); }catch(e){}
+  try{ localStorage.setItem(LS_KG, JSON.stringify(kg)); }catch(e){}
+}
+const levelNow = ()=>LEVELS[levelIndexById(profile.level)];
+
+/* ---------- SRS (SM-2 в упрощённом виде) ---------- */
+function kgItem(id){
+  if (!kg[id]) kg[id] = { r:0, i:0, e:2.5, d:0, m:0, s:0, c:0 };
+  return kg[id];
+}
+function gradeItem(id, g){                          // g: 0..5
+  const it = kgItem(id);
+  it.s++;
+  if (g >= 3){
+    it.c++;
+    it.e = Math.max(1.3, Math.min(2.8, it.e + (0.1 - (5 - g) * 0.08)));
+    it.r++;
+    it.i = it.r === 1 ? 1 : it.r === 2 ? 3 : Math.min(60, Math.round(it.i * it.e));
+    it.m = Math.min(1, it.m + (g >= 4 ? 0.18 : 0.12));
+  } else {
+    it.r = 0; it.i = 1;
+    it.m = Math.max(0, it.m - 0.25);
+  }
+  it.d = Date.now() + it.i * 86400000;              // когда повторить
+  saveProgress();
+  return it;
+}
+const mastery = (id)=>kgItem(id).m;
+function dueList(prefix){
+  const now = Date.now();
+  return Object.keys(kg)
+    .filter(k => k.indexOf(prefix) === 0 && kg[k].s > 0 && kg[k].d <= now)
+    .sort((a,b)=>kg[a].d - kg[b].d);
+}
+
+/* ---------- точность и «правило 85%» ---------- */
+function pushAccuracy(ok){
+  profile.win.push(ok ? 1 : 0);
+  while (profile.win.length > 20) profile.win.shift();
+  profile.streak = ok ? profile.streak + 1 : 0;
+  saveProgress();
+}
+function accuracy(){
+  if (!profile.win.length) return 0.85;
+  return profile.win.reduce((a,b)=>a+b, 0) / profile.win.length;
+}
+function tuning(){                                   // push & pivot
+  const a = accuracy();
+  if (profile.win.length < 5) return { mode:"steady", newWords:2, review:2, target:6, free:2 };
+  if (a >= 0.9)  return { mode:"fast",    newWords:3, review:1, target:5, free:3 };
+  if (a <  0.75) return { mode:"support", newWords:1, review:3, target:7, free:0 };
+  return { mode:"steady", newWords:2, review:2, target:6, free:2 };
+}
+
+/* ---------- выбор содержимого сессии ---------- */
+function weakestSkill(level){
+  let best = level.skills[0], bestM = 2;
+  level.skills.forEach(id => { const m = mastery("skill:" + id); if (m < bestM){ bestM = m; best = id; } });
+  return best;
+}
+function pickNewWords(level, n){
+  const fresh = level.vocab.filter(w => kgItem("word:" + w).s === 0);
+  return (fresh.length ? fresh : level.vocab).slice(0, n);
+}
+let session = null;
+function planSession(){
+  const lv = levelNow(), t = tuning();
+  session = {
+    level:lv.id, tune:t, phase: t.review ? "review" : "target",
+    quota:{ review:t.review, target:t.target, free:t.free },
+    done:{ review:0, target:0, free:0 },
+    target: profile.block ? profile.block.skill : weakestSkill(lv),
+    newWords: pickNewWords(lv, t.newWords),
+    reviewQueue: dueList("skill:").concat(dueList("word:")).slice(0, t.review),
+    taught:false
+  };
+  profile.sessions++;
+  saveProgress();
+  renderRail();
+}
+
+/* ---------- панель прогресса ---------- */
+function renderRail(){
+  const rail = $("rail");
+  if (!rail || !session) return;
+  rail.textContent = "";
+  const lvl = el("span","pill", profile.level + " · " + levelNow().ru);
+  rail.appendChild(lvl);
+  const acc = Math.round(accuracy() * 100);
+  const phases = [["review","Повтор"],["target","Новое"],["free","Свободно"]];
+  phases.forEach(([key,label])=>{
+    if (!session.quota[key]) return;
+    const seg = el("span","seg" + (session.phase === key ? " now" : ""),
+      label + " " + Math.min(session.done[key], session.quota[key]) + "/" + session.quota[key]);
+    rail.appendChild(seg);
+  });
+  rail.appendChild(el("span","seg", "точность " + acc + "%"));
+  const skill = SKILLS[session.target];
+  if (skill) rail.appendChild(el("span","seg", "цель: " + skill.ru));
+  if (profile.block) rail.appendChild(el("span","seg warn", "разбор темы"));
+  else if (canAdvance()){
+    const b = el("button","seg go", "Тест на " + (LEVELS[levelIndexById(profile.level) + 1] || {}).id);
+    b.type = "button";
+    b.addEventListener("click", startMilestone);
+    rail.appendChild(b);
+  }
+  $("levelPill").textContent = profile.level;
+}
+
+/* ---------- карточки-упражнения в чате ---------- */
+function drillFor(itemId){
+  if (itemId.indexOf("skill:") === 0){
+    const s = SKILLS[itemId.slice(6)];
+    if (!s) return null;
+    const d = s.drills[Math.min(s.drills.length - 1, kgItem(itemId).s % s.drills.length)];
+    return { id:itemId, title:s.ru, q:d.q, opts:d.opts, a:d.a, why:d.why };
+  }
+  const w = itemId.slice(5);
+  return { id:itemId, title:"Слово: " + w, q:"В каком предложении слово «" + w + "» на месте?",
+           opts:["I like " + w + ".", w + " I like.", "I am " + w + " like."], a:0,
+           why:"Подлежащее, глагол, потом слово." };
+}
+function askDrill(itemId, onDone){
+  const d = drillFor(itemId);
+  if (!d){ if (onDone) onDone(); return; }
+  const card = el("div","drill");
+  card.appendChild(el("div","dtitle","Повторение · " + d.title));
+  card.appendChild(el("div","dq", d.q));
+  const opts = el("div","dopts");
+  d.opts.forEach((text,i)=>{
+    const b = el("button","dopt", text);
+    b.type = "button";
+    b.addEventListener("click",()=>{
+      if (card.dataset.done) return;
+      card.dataset.done = "1";
+      const ok = i === d.a;
+      Array.prototype.forEach.call(opts.children,(node,j)=>{
+        node.disabled = true;
+        if (j === d.a) node.classList.add("right");
+        else if (j === i) node.classList.add("wrong");
+      });
+      card.appendChild(el("div","dwhy",(ok ? "Верно. " : "Правильно: " + d.opts[d.a] + ". ") + d.why));
+      gradeItem(d.id, ok ? 4 : 2);
+      pushAccuracy(ok);
+      if (!ok) noteFailure(d.id.indexOf("skill:") === 0 ? d.id.slice(6) : null);
+      else if (profile.block && profile.block.skill === d.id.slice(6)) clearBlockIfReady(true);
+      renderRail();
+      speak(ok ? d.opts[d.a] : d.opts[d.a]);
+      if (onDone) onDone();
+    });
+    opts.appendChild(b);
+  });
+  card.appendChild(opts);
+  chat.appendChild(card);
+  scrollChat();
+}
+
+/* ---------- обучающая карточка навыка ---------- */
+function teachCard(skillId){
+  const s = SKILLS[skillId];
+  if (!s) return;
+  const card = el("div","teach");
+  card.appendChild(el("div","dtitle","Цель сессии · " + s.ru));
+  card.appendChild(el("div","dwhy", s.tip));
+  const ex = el("div","dex");
+  s.ex.forEach(line => {
+    const b = el("button","mini","🔊 " + line);
+    b.type = "button";
+    b.setAttribute("aria-label","Озвучить пример: " + line);
+    b.addEventListener("click",()=>speak(line));
+    ex.appendChild(b);
+  });
+  card.appendChild(ex);
+  if (session && session.newWords.length)
+    card.appendChild(el("div","dwhy","Новые слова на сессию: " + session.newWords.join(", ")));
+  chat.appendChild(card);
+  scrollChat();
+}
+
+/* ---------- узкое место: две ошибки подряд в одном навыке ---------- */
+const failStreak = {};
+function noteFailure(skillId){
+  if (!skillId) return;
+  failStreak[skillId] = (failStreak[skillId] || 0) + 1;
+  if (failStreak[skillId] >= 2 && (!profile.block || profile.block.skill !== skillId)){
+    profile.block = { skill:skillId, ok:0 };
+    saveProgress();
+    startRemediation(skillId);
+  }
+}
+function noteSuccess(skillId){
+  if (!skillId) return;
+  failStreak[skillId] = 0;
+  if (profile.block && profile.block.skill === skillId) clearBlockIfReady(true);
+}
+function clearBlockIfReady(ok){
+  if (!profile.block) return;
+  profile.block.ok = ok ? profile.block.ok + 1 : 0;
+  if (profile.block.ok >= 2){
+    const s = SKILLS[profile.block.skill];
+    profile.block = null;
+    saveProgress();
+    addSystem("Тема «" + (s ? s.ru : "") + "» закрыта — идём дальше.");
+    if (session) session.target = weakestSkill(levelNow());
+  }
+  saveProgress();
+  renderRail();
+}
+/* мини-история на любимую тему ученика — чтобы объяснить правило в контексте */
+function miniStory(skillId){
+  const s = SKILLS[skillId];
+  const thing = (state.facts && (state.facts.what || state.facts.free || state.facts.subject)) || "football";
+  const name = (state.facts && state.facts.name) ? cap(state.facts.name) : "Max";
+  const lines = {
+    "be": [name + " is at the park.", "He is happy because " + thing + " is his hobby.", "I am his friend."],
+    "subject": [name + " plays " + thing + " every day.", "We play together.", "It is fun."],
+    "full-sentence": ["Where is " + name + "? He is at the park.", "What does he do? He plays " + thing + "."],
+    "articles": [name + " is a student.", "He has a ball.", "The ball is new."],
+    "have-got": [name + " has got a ball.", "I have got a bike.", "We have got free time."],
+    "plural-quantifier": [name + " has two balls.", "He has many friends.", "He doesn't have much time."],
+    "third-person-s": [name + " likes " + thing + ".", "He plays every day.", "He goes to the park at five."],
+    "negation": [name + " doesn't like rain.", "I don't like rain too.", "We don't play in the rain."],
+    "gerund": [name + " likes playing " + thing + ".", "I love watching it.", "We enjoy training together."],
+    "infinitive-to": [name + " wants to play " + thing + ".", "I need to buy a ball.", "We would like to win."],
+    "prepositions": ["We meet at five o'clock.", "On Saturday we play " + thing + ".", "The park is in my city."],
+    "modals": ["Can I play with you?", "Could you pass the ball, please?", "Yes, you can."],
+    "past-simple": ["Yesterday " + name + " played " + thing + ".", "We went to the park.", "It was a good day."],
+    "frequency": [name + " usually plays " + thing + " after school.", "I often play with him.", "We never play at night."]
+  }[skillId] || [name + " is my friend.", "We like " + thing + "."];
+  return lines;
+}
+function startRemediation(skillId){
+  const s = SKILLS[skillId];
+  addSystem("Две ошибки подряд в теме «" + (s ? s.ru : "") + "». Ставлю новое на паузу и разбираем её.", true);
+  teachCard(skillId);
+  const card = el("div","teach");
+  card.appendChild(el("div","dtitle","Мини-история с этим правилом"));
+  miniStory(skillId).forEach(line => {
+    const b = el("button","mini","🔊 " + line);
+    b.type = "button";
+    b.setAttribute("aria-label","Озвучить: " + line);
+    b.addEventListener("click",()=>speak(line));
+    card.appendChild(b);
+  });
+  chat.appendChild(card);
+  askDrill("skill:" + skillId);
+  renderRail();
+}
+
+/* ---------- веха уровня ---------- */
+function canAdvance(){
+  if (profile.block) return false;
+  if (levelIndexById(profile.level) >= LEVELS.length - 1) return false;
+  const lv = levelNow();
+  const allMastered = lv.skills.every(id => mastery("skill:" + id) >= 0.8);
+  return allMastered && accuracy() >= 0.85 && profile.win.length >= 10;
+}
+let milestone = null;
+function milestoneItems(){
+  const lv = levelNow(), items = [];
+  lv.skills.forEach(id => { SKILLS[id].drills.forEach(d => items.push({ id:"skill:" + id, q:d.q, opts:d.opts, a:d.a, why:d.why })); });
+  lv.vocab.slice(0,3).forEach(w => {
+    const d = drillFor("word:" + w);
+    items.push({ id:d.id, q:d.q, opts:d.opts, a:d.a, why:d.why });
+  });
+  return items.slice(0, 7);
+}
+function startMilestone(){
+  milestone = { items:milestoneItems(), i:0, ok:0 };
+  $("mTitle").textContent = "Тест: " + profile.level + " → " + LEVELS[levelIndexById(profile.level) + 1].id;
+  $("modalVeil").hidden = false; $("modal").hidden = false;
+  renderMilestone();
+}
+function renderMilestone(){
+  const box = $("mBody");
+  box.textContent = "";
+  if (!milestone) return;
+  if (milestone.i >= milestone.items.length){
+    const score = milestone.ok / milestone.items.length;
+    const passed = score >= 0.85;
+    box.appendChild(el("div","dq", (passed ? "Сдано! " : "Пока не сдано. ") +
+      milestone.ok + " из " + milestone.items.length + " (" + Math.round(score * 100) + "%)"));
+    if (passed){
+      const next = LEVELS[levelIndexById(profile.level) + 1];
+      profile.level = next.id;
+      profile.win = [];
+      saveProgress();
+      box.appendChild(el("div","dwhy","Новый уровень: " + next.id + " — " + next.ru + ". Открылись темы: " +
+        (next.topics === "all" ? "все" : next.topics.length) + "."));
+    } else {
+      box.appendChild(el("div","dwhy","Нужно 85%. Повторим слабые темы и попробуем снова — прогресс сохранён."));
+    }
+    const close = el("button","mini","Продолжить");
+    close.type = "button";
+    close.addEventListener("click",()=>{
+      $("modalVeil").hidden = true; $("modal").hidden = true;
+      milestone = null;
+      planSession(); renderTopics(); renderRail();
+    });
+    box.appendChild(close);
+    return;
+  }
+  const it = milestone.items[milestone.i];
+  box.appendChild(el("div","dtitle","Вопрос " + (milestone.i + 1) + " из " + milestone.items.length));
+  box.appendChild(el("div","dq", it.q));
+  const opts = el("div","dopts");
+  it.opts.forEach((text,i)=>{
+    const b = el("button","dopt", text);
+    b.type = "button";
+    b.addEventListener("click",()=>{
+      const ok = i === it.a;
+      if (ok) milestone.ok++;
+      gradeItem(it.id, ok ? 4 : 2);
+      milestone.i++;
+      renderMilestone();
+    });
+    opts.appendChild(b);
+  });
+  box.appendChild(opts);
+}
+
+/* ---------- диагностика при первом запуске ---------- */
+let placement = null;
+function placementItems(){
+  const out = [];
+  LEVELS.forEach((lv,idx)=>{
+    const skill = SKILLS[lv.skills[lv.skills.length - 1]];
+    out.push({ lvl:idx, q:skill.drills[0].q, opts:skill.drills[0].opts, a:skill.drills[0].a });
+  });
+  return out;
+}
+function startPlacement(){
+  placement = { items:placementItems(), at:1, asked:0, best:0 };
+  $("mTitle").textContent = "Тест уровня — 1 минута";
+  $("modalVeil").hidden = false; $("modal").hidden = false;
+  renderPlacement();
+}
+function renderPlacement(){
+  const box = $("mBody");
+  box.textContent = "";
+  if (!placement) return;
+  if (placement.asked >= 5 || placement.at < 0 || placement.at >= LEVELS.length){
+    const lv = LEVELS[Math.max(0, Math.min(LEVELS.length - 1, placement.best))];
+    profile.level = lv.id; profile.placed = true; profile.win = [];
+    saveProgress();
+    box.appendChild(el("div","dq","Твой уровень: " + lv.id + " — " + lv.ru));
+    box.appendChild(el("div","dwhy","Сессии, слова и упражнения теперь подбираются под этот уровень. Уровень меняется по тесту-вехе, а не вручную."));
+    const go = el("button","mini","Начать");
+    go.type = "button";
+    go.addEventListener("click",()=>{
+      $("modalVeil").hidden = true; $("modal").hidden = true;
+      placement = null;
+      planSession(); renderTopics(); renderRail();
+      startTopic(allowedTopics()[0], false);
+    });
+    box.appendChild(go);
+    return;
+  }
+  const it = placement.items[placement.at];
+  box.appendChild(el("div","dtitle","Вопрос " + (placement.asked + 1) + " · уровень " + LEVELS[placement.at].id));
+  box.appendChild(el("div","dq", it.q));
+  const opts = el("div","dopts");
+  it.opts.forEach((text,i)=>{
+    const b = el("button","dopt", text);
+    b.type = "button";
+    b.addEventListener("click",()=>{
+      const ok = i === it.a;
+      gradeItem("skill:" + LEVELS[placement.at].skills[LEVELS[placement.at].skills.length - 1], ok ? 4 : 2);
+      if (ok){ placement.best = Math.max(placement.best, placement.at); placement.at++; }
+      else { placement.at--; }
+      placement.asked++;
+      renderPlacement();
+    });
+    opts.appendChild(b);
+  });
+  box.appendChild(opts);
+  const skip = el("button","mini","Пропустить тест");
+  skip.type = "button";
+  skip.addEventListener("click",()=>{
+    profile.placed = true; saveProgress();
+    $("modalVeil").hidden = true; $("modal").hidden = true;
+    placement = null;
+    planSession(); renderRail();
+    startTopic(allowedTopics()[0], false);
+  });
+  box.appendChild(skip);
+}
+
+/* ---------- темы, доступные на уровне ---------- */
+function allowedTopics(){
+  const lv = levelNow();
+  if (lv.topics === "all") return TOPICS;
+  const list = TOPICS.filter(t => lv.topics.indexOf(t.id) !== -1);
+  return list.length ? list : [TOPICS[0]];
+}
+const topicAllowed = (t)=>allowedTopics().indexOf(t) !== -1;
+
+/* ---------- оценка реплики ученика и ход сессии ---------- */
+function usedSkills(text){
+  const t = " " + String(text).toLowerCase() + " ";
+  const out = [];
+  if (/\b(am|is|are)\b|'m\b|'s\b/.test(t)) out.push("be");
+  if (/\b(i|we|you|they|he|she|it|my|his|her)\b/.test(t)) out.push("subject");
+  if (/\b(a|an|the)\b/.test(t)) out.push("articles");
+  if (/\b(have|has|have got|has got)\b/.test(t)) out.push("have-got");
+  if (/\b(he|she|it)\s+\w+s\b/.test(t)) out.push("third-person-s");
+  if (/\b(don'?t|doesn'?t)\b/.test(t)) out.push("negation");
+  if (/\b(like|love|enjoy)\s+\w+ing\b/.test(t)) out.push("gerund");
+  if (/\b(want|need|would like|'d like)\s+to\b/.test(t)) out.push("infinitive-to");
+  if (/\b(at|on|in|to)\b/.test(t)) out.push("prepositions");
+  if (/\b(can|could)\b/.test(t)) out.push("modals");
+  if (/\b(went|saw|played|was|were|did|bought|had)\b|\byesterday\b/.test(t)) out.push("past-simple");
+  if (/\b(always|usually|often|sometimes|never|twice|once)\b/.test(t)) out.push("frequency");
+  if (String(text).trim().split(/\s+/).length >= 3) out.push("full-sentence");
+  return out;
+}
+/* обновляем граф знаний по результату проверки фразы */
+function assessTurn(text, corr){
+  const clean = String(text || "");
+  const ok = !corr || corr.status === "correct";
+  const errSkill = (corr && corr.status === "needs_improvement") ? (corr.skill || skillOfWhy(corr.explanation_ru)) : null;
+  pushAccuracy(ok);
+
+  if (errSkill){
+    gradeItem("skill:" + errSkill, 2);
+    noteFailure(errSkill);
+  }
+  const level = levelNow();
+  usedSkills(clean).forEach(id => {
+    if (id === errSkill) return;
+    if (level.skills.indexOf(id) === -1 && mastery("skill:" + id) === 0 && kgItem("skill:" + id).s === 0) return;
+    gradeItem("skill:" + id, ok ? 4 : 3);
+    if (ok) noteSuccess(id);
+  });
+  if (ok){
+    const words = clean.toLowerCase().replace(/[^a-z' ]/g," ").split(/\s+/);
+    level.vocab.forEach(w => { if (words.indexOf(w) !== -1) gradeItem("word:" + w, 4); });
+    if (session) session.newWords.forEach(w => { if (words.indexOf(w) !== -1) gradeItem("word:" + w, 5); });
+  }
+  return ok;
+}
+/* шаг сессии: 20% повтор -> 60% целевая тема -> 20% свободно */
+function advanceSession(){
+  if (!session) planSession();
+  if (session.phase === "done"){ finishSession(); renderRail(); return; }
+  const ph = session.phase;
+  session.done[ph]++;
+  if (session.done[ph] >= session.quota[ph]){
+    if (ph === "review"){
+      session.phase = "target";
+      if (!session.taught){ session.taught = true; teachCard(session.target); }
+    } else if (ph === "target"){
+      session.phase = session.quota.free ? "free" : "done";
+      if (session.phase === "free") addSystem("Свободная часть: говори о чём хочешь по теме, я поправлю ошибки.");
+    } else {
+      session.phase = "done";
+    }
+  }
+  if (session.phase === "review" && session.reviewQueue.length && session.done.review < session.quota.review)
+    askDrill(session.reviewQueue.shift());
+  if (session.phase === "target" && !session.taught){ session.taught = true; teachCard(session.target); }
+  if (session.phase === "done") finishSession();
+  renderRail();
+}
+function finishSession(){
+  const acc = Math.round(accuracy() * 100);
+  const t = tuning();
+  addSystem("Сессия закончена: точность " + acc + "%. " +
+    (t.mode === "fast" ? "Идём быстрее — больше новых слов." :
+     t.mode === "support" ? "Добавляю повторения, новое притормозим." : "Темп в норме."));
+  if (canAdvance()) addSystem("Все навыки уровня закрыты — доступен тест на следующий уровень (кнопка в панели прогресса).");
+  planSession();
+  if (session.reviewQueue.length) askDrill(session.reviewQueue.shift());
+  else { session.phase = "target"; session.taught = true; teachCard(session.target); }
+}
+
+/* ---------- подсказки для Gemini: строим по графу знаний ---------- */
+function activeVocab(cap2){
+  const lv = levelNow(), idx = levelIndexById(profile.level);
+  let words = [];
+  for (let i = 0; i <= idx; i++) words = words.concat(LEVELS[i].vocab);
+  Object.keys(kg).forEach(k => { if (k.indexOf("word:") === 0 && kg[k].m > 0) words.push(k.slice(5)); });
+  return Array.from(new Set(words)).slice(0, cap2 || 140);
+}
+function scaffold(){
+  const lv = levelNow(), sk = SKILLS[session ? session.target : lv.skills[0]];
+  return [
+    "Learner level: CEFR " + lv.id + " (" + lv.ru + "). Session mode: " + (session ? session.phase : "target") + ".",
+    "Use ONLY simple structures for this level" + (levelIndexById(profile.level) < 4 ? " and present tense." : "."),
+    "Stay inside this active vocabulary plus the learner's own words: " + activeVocab(120).join(", ") + ".",
+    session && session.newWords.length ? "Introduce these new words if it is natural: " + session.newWords.join(", ") + "." : "",
+    sk ? "Target grammar to model in your replies: " + sk.en + " (examples: " + sk.ex.join(" / ") + ")." : "",
+    profile.block ? "The learner struggles with " + (SKILLS[profile.block.skill] || {}).en + ": model it slowly and ask questions that need it." : "",
+    "Rolling accuracy " + Math.round(accuracy() * 100) + "%: " +
+      (accuracy() >= 0.9 ? "you may add one slightly harder question." :
+       accuracy() < 0.75 ? "keep sentences very short and offer a model answer." : "keep the current difficulty.")
+  ].filter(Boolean).join("\n");
+}
+
+/* ---------- статистика в настройках ---------- */
+function renderStats(){
+  const box = $("stats");
+  if (!box) return;
+  box.textContent = "";
+  const lv = levelNow();
+  const line = (a,b)=>{ const r = el("div"); r.appendChild(el("span","mark","•")); r.appendChild(el("span",null,a + ": " + b)); box.appendChild(r); };
+  line("Уровень", profile.level + " — " + lv.ru);
+  line("Точность (последние 20)", Math.round(accuracy() * 100) + "%");
+  line("Режим", tuning().mode === "fast" ? "ускорение" : tuning().mode === "support" ? "поддержка" : "ровный");
+  line("Сессий пройдено", profile.sessions);
+  line("К повтору сейчас", dueList("skill:").length + dueList("word:").length);
+  const mastered = Object.keys(kg).filter(k => kg[k].m >= 0.8).length;
+  line("Освоено элементов", mastered);
+  lv.skills.forEach(id => line("  " + SKILLS[id].ru, Math.round(mastery("skill:" + id) * 100) + "%"));
+  if (profile.block) line("Разбор темы", SKILLS[profile.block.skill].ru);
+}
+function resetProgress(){
+  profile = { level:"A1.1", win:[], streak:0, sessions:0, placed:false, block:null, lastDay:"" };
+  kg = {};
+  saveProgress();
+  planSession(); renderTopics(); renderRail(); renderStats();
+  addSystem("Прогресс сброшен. Начинаем с A1.1.");
 }
 
 /* ===== 6. персонаж и сцена ===== */
@@ -1376,6 +2074,10 @@ function systemPrompt(topic){
     "You are a warm, encouraging English conversation partner for a Russian-speaking teenager (11-17) at CEFR level A1-A2.",
     "Persona: " + topic.role + ". Speak like a real person, never like a textbook.",
     "Topic: " + topic.en + ". Hidden learning goal: " + topic.goal + ".",
+    "",
+    "LEARNER MODEL (follow it strictly):",
+    scaffold(),
+    "",
     "Useful words and patterns: " + topic.words.join("; ") + ".",
     "",
     "Reply rules:",
@@ -1512,6 +2214,10 @@ async function handleLearnerInput(text){
               : (nowPending ? nowPending.hints : (state.lastAsk ? state.lastAsk.hints : state.topic.slots[0].hints)));
   speak(reply);
 
+  assessTurn(clean, corr);                            // обновляем граф знаний
+  advanceSession();                                   // двигаем сессию 20/60/20
+  renderStats();
+
   state.busy = false; setSendEnabled(true);
 
   if (state.autoMic && !state.micBlocked && SR){
@@ -1524,6 +2230,11 @@ async function handleLearnerInput(text){
 function renderHints(list){
   const box = $("chips");
   box.textContent = "";
+  list = (list || []).slice(0,4);
+  if (session && SKILLS[session.target]){                // scaffolding: пример целевого правила
+    const model = SKILLS[session.target].ex[0];
+    if (model && list.indexOf(model) === -1) list = list.concat([model]);
+  }
   (list || []).slice(0,5).forEach(h=>{
     const text = String(h || "").trim();
     if (!text) return;
@@ -1578,12 +2289,15 @@ $("photosOn").addEventListener("change",(e)=>{
   try{ localStorage.setItem(LS_PHOTOS, state.photosOn ? "1" : "0"); }catch(err){}
   setPhoto(state.topic);
 });
+$("resetProg").addEventListener("click",()=>{ resetProgress(); closeSheet(); });
+$("placeBtn").addEventListener("click",()=>{ closeSheet(); startPlacement(); });
+$("modalVeil").addEventListener("click",()=>{});      /* тест закрывается только кнопкой */
 $("themeAuto").addEventListener("click",()=>setTheme("auto"));
 $("themeLight").addEventListener("click",()=>setTheme("light"));
 $("themeDark").addEventListener("click",()=>setTheme("dark"));
 
 const veil = $("veil"), sheet = $("sheet");
-function openSheet(){ veil.hidden = false; sheet.hidden = false; $("sheetClose").focus(); }
+function openSheet(){ renderStats(); veil.hidden = false; sheet.hidden = false; $("sheetClose").focus(); }
 function closeSheet(){ veil.hidden = true; sheet.hidden = true; $("settingsBtn").focus(); }
 $("settingsBtn").addEventListener("click", openSheet);
 $("sheetClose").addEventListener("click", closeSheet);
@@ -1597,6 +2311,11 @@ $("voiceSel").addEventListener("change",(e)=>{
 });
 $("testVoice").addEventListener("click",()=>speak("Hi! I'm your English speaking partner. Let's talk!"));
 $("autoMic").addEventListener("change",(e)=>{
+  if (e.target.checked && levelIndexById(profile.level) < 2){   /* фича открывается на A1.3 */
+    e.target.checked = false; state.autoMic = false;
+    addSystem("Свободный голосовой режим открывается на уровне A1.3 — сначала закрой A1.2.", true);
+    return;
+  }
   state.autoMic = !!e.target.checked;
   if (state.autoMic) addSystem("Авто-микрофон включён: запись начнётся сама после реплики собеседника.");
 });
@@ -1644,11 +2363,21 @@ function renderTopics(){
     b.setAttribute("role","tab");
     b.setAttribute("aria-selected", String(t.id === state.topic.id));
     b.setAttribute("aria-label","Тема: " + t.ru + " / " + t.en);
-    b.addEventListener("click",()=>{ if (t.id !== state.topic.id) startTopic(t, false); });
+    const open = topicAllowed(t);
+    if (!open){ b.textContent = t.emoji + " " + t.ru + " 🔒"; b.setAttribute("aria-disabled","true"); }
+    b.addEventListener("click",()=>{
+      if (!open){
+        addSystem("Тема откроется на следующем уровне — сначала тест-веха на " +
+          ((LEVELS[levelIndexById(profile.level) + 1] || {}).id || profile.level) + ".");
+        return;
+      }
+      if (t.id !== state.topic.id) startTopic(t, false);
+    });
     topicsBox.appendChild(b);
   });
 }
 function startTopic(topic, isReset){
+  if (!topicAllowed(topic)) topic = allowedTopics()[0];
   if (state.isRecording) stopRecording();
   if (synth){ try{ synth.cancel(); }catch(e){} setSpeaking(false); }
   state.topic = topic;
@@ -1714,7 +2443,19 @@ $("micTest").addEventListener("click", async ()=>{
 
 /* ===== 17. старт ===== */
 applyTheme(); updateCounter(); autoGrow(); refreshModePill(); runDiagnostics();
-startTopic(TOPICS[0], false);
+loadProgress();
+planSession();
+renderStats();
+if (!profile.placed){
+  renderTopics(); renderRail();
+  addSystem("Сначала короткий тест уровня — дальше приложение само подбирает слова, правила и темы.");
+  startPlacement();
+} else {
+  startTopic(allowedTopics()[0], false);
+  if (session.reviewQueue.length) askDrill(session.reviewQueue.shift());
+  else { session.phase = "target"; session.taught = true; teachCard(session.target); }
+  renderRail();
+}
 </script>
 </body>
 </html>

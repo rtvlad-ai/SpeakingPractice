@@ -149,7 +149,7 @@ body{font-family:var(--ui);color:var(--ink);background:var(--page);-webkit-text-
   backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   padding:6px 10px calc(6px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:6px}
 .mic{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;min-height:42px;font-size:15px;
-  font-weight:700;border-radius:13px;border:none;background:var(--accent);color:#fff}
+  font-weight:700;border-radius:13px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation;border:none;background:var(--accent);color:#fff}
 .mic.rec{background:var(--red)}
 .mic .dot{width:11px;height:11px;border-radius:50%;background:#fff;animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{transform:scale(.8);opacity:.7}50%{transform:scale(1.2);opacity:1}}
@@ -1144,7 +1144,7 @@ const state = {
   history:[], answered:new Set(), facts:{}, pending:null, extraIdx:0, asked:0, lastAsk:null,
   isRecording:false, recognition:null, recTimer:null,
   soundOn:true, rate:1.08, autoMic:false, themeMode:"auto", photosOn:true,
-  lastTutorLine:"", audioUnlocked:false, pendingSpeech:null, expect:null, prefix:"", quest:null,
+  lastTutorLine:"", audioUnlocked:false, pendingSpeech:null, expect:null, prefix:"", quest:null, stopRequested:false,
   busy:false, micBlocked:false, exchanges:0
 };
 
@@ -2829,8 +2829,8 @@ const micBtn = $("micBtn"), micIcon = $("micIcon"), micLabel = $("micLabel"), mi
 function setMicUI(mode){
   if (mode === "rec"){
     micBtn.classList.add("rec"); micBtn.disabled = false;
-    micIcon.textContent = "⏹"; micLabel.textContent = "Остановить запись";
-    micBtn.setAttribute("aria-label","Остановить запись"); micState.textContent = "слушаю…";
+    micIcon.textContent = "🔴"; micLabel.textContent = "Слушаю… (тап — отправить)";
+    micBtn.setAttribute("aria-label","Слушаю: нажми, чтобы отправить сразу"); micState.textContent = "говори, конец фразы поймаю сам";
   } else if (mode === "blocked"){
     micBtn.classList.remove("rec"); micBtn.disabled = true;
     micIcon.textContent = "🚫"; micLabel.textContent = "Микрофон недоступен";
@@ -2840,11 +2840,17 @@ function setMicUI(mode){
     micBtn.classList.remove("rec"); micBtn.disabled = false;
     micIcon.textContent = "🎤"; micLabel.textContent = "Нажми и говори";
     micBtn.setAttribute("aria-label","Нажми и говори по-английски");
-    micState.textContent = "микрофон готов";
+    micState.textContent = "нажми — слушаю, пауза — отправляю";
   }
+}
+let silenceTimer = null;
+function armSilence(ms){                               /* тишина дольше ms = фраза закончилась */
+  clearTimeout(silenceTimer);
+  silenceTimer = setTimeout(()=>{ if (state.isRecording) stopRecording(); }, ms);
 }
 function cleanupRecognition(){
   state.isRecording = false;
+  clearTimeout(silenceTimer); silenceTimer = null;
   if (state.recTimer){ clearTimeout(state.recTimer); state.recTimer = null; }
   if (state.recognition){
     try{
@@ -2869,6 +2875,7 @@ function startRecording(){
   if (state.busy){ addSystem("Секунду: собеседник ещё готовит ответ."); return; }
   if (synth){ try{ synth.cancel(); setSpeaking(false); }catch(e){} }
 
+  state.stopRequested = false;
   let rec;
   try{ rec = new SR(); }
   catch(e){ addSystem("Не удалось запустить распознавание. Отвечай текстом.", true); return; }
@@ -2886,7 +2893,11 @@ function startRecording(){
       } else interim += r[0].transcript;
     }
     const shown = (finalText || interim).trim();
-    micLabel.textContent = shown ? shown.slice(0,38) : "Слушаю…";
+    micLabel.textContent = shown ? shown.slice(0,34) : "Слушаю…";
+    if (shown){
+      const single = state.expect && state.expect.single;
+      armSilence(finalText.trim() ? (single ? 700 : 1100) : (single ? 1000 : 1500));
+    }
   };
   rec.onerror = (ev)=>{
     const code = (ev && ev.error) || "unknown";
@@ -2902,7 +2913,12 @@ function startRecording(){
   rec.onend = ()=>{
     const said = finalText.trim();
     const secs = (Date.now() - t0) / 1000;
+    const early = !said && !state.stopRequested && secs < 2.5 && !state.expect;
     cleanupRecognition();
+    if (early){                                        /* Safari оборвал сессию сразу — слушаем снова */
+      setTimeout(()=>{ if (!state.isRecording && !state.busy) startRecording(); }, 250);
+      return;
+    }
     if (state.expect){ handleSpoken(said, secs, bestConf); return; }   /* ждали конкретную фразу */
     if (!said) return;
     if (state.prefix){                                                 /* подсказка + продолжение голосом */
@@ -2923,6 +2939,8 @@ function startRecording(){
   }
 }
 function stopRecording(){
+  state.stopRequested = true;
+  clearTimeout(silenceTimer);
   if (!state.recognition){ cleanupRecognition(); return; }
   try{ state.recognition.stop(); }
   catch(e){ try{ state.recognition.abort(); }catch(e2){} cleanupRecognition(); }
@@ -3193,23 +3211,10 @@ function submitText(){
   handleLearnerInput(v).finally(()=>{ sending = false; });
 }
 sendBtn.addEventListener("click", submitText);
-/* push-to-talk: короткий тап — переключатель, удержание — говоришь пока держишь */
-let micDown = 0, micHeld = false;
-micBtn.addEventListener("pointerdown",()=>{
-  micDown = Date.now(); micHeld = false;
-  if (!state.isRecording && !state.busy) startRecording();
-});
-micBtn.addEventListener("pointerup",()=>{
-  if (!micDown) return;
-  micHeld = Date.now() - micDown > 450;
-  micDown = 0;
-  if (micHeld && state.isRecording) stopRecording();   /* отпустил — отправляем */
-});
-micBtn.addEventListener("pointercancel",()=>{ micDown = 0; if (state.isRecording) stopRecording(); });
-micBtn.addEventListener("click",(e)=>{
-  if (micHeld){ micHeld = false; return; }             /* удержание уже обработано */
-  if (!state.isRecording && !state.busy) startRecording();
-  else if (state.isRecording) stopRecording();
+/* тап включает запись; конец фразы ловится по тишине и отправляется сам */
+micBtn.addEventListener("click",()=>{
+  if (state.isRecording) stopRecording();              /* второй тап — отправить сразу */
+  else if (!state.busy) startRecording();
 });
 
 /* ===== 13. управление ===== */

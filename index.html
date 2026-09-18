@@ -361,7 +361,7 @@ button[disabled]{opacity:.5;cursor:not-allowed}
     <button id="questsBtn2" aria-label="Открыть список квестов">Квесты 🎮</button>
     <button id="resetProg" class="danger" aria-label="Сбросить прогресс">Сбросить</button>
   </div>
-  <label class="check" for="showFixes"><input type="checkbox" id="showFixes"> Показывать разбор ошибок (по умолчанию ошибки исправляются незаметно, в ответе собеседника)</label>
+  <label class="check" for="showFixes"><input type="checkbox" id="showFixes" checked> Разбор ошибок: короткая подсказка после каждой реплики (сними галочку, если хочешь только незаметные исправления в речи собеседника)</label>
   <p class="note">Статус растёт сам: приложение считает, какие фразы ты уже держишь, и подкидывает слабые места в разговоре и тесте. Уровни, проценты и грамматические термины наружу не выносятся.</p>
 
   <h3>Оформление</h3>
@@ -1131,7 +1131,7 @@ function localReply(text){
     if (kw){ react = kw.say; handled = true; }
   }
   if (!handled)                                   // не поняли — не идём дальше, а переспрашиваем
-    return {reply:"Sorry, I didn't catch that. " + ref.q, hints:ref.hints};
+    return {reply:"Sorry, I didn't catch that. " + ref.q, react:"", q:ref.q, hints:ref.hints};
 
   const nx = nextQuestion();
   return {reply:(react + " " + nx.q).replace(/\s{2,}/g," ").trim(), react, q:nx.q, hints:nx.hints};
@@ -1205,14 +1205,14 @@ function addFeedback(corr, tip){
   const st = corr.status || "correct";
   const card = el("div","feedback" + (st === "needs_improvement" ? " fix" : st === "better" ? " polish" : ""));
   if (st === "correct"){
-    card.appendChild(el("div","head","Чисто 👌"));
+    card.appendChild(el("div","head","Чисто, так и говорят"));
     if (corr.original) card.appendChild(el("div","good",corr.original));
   } else if (st === "better"){
-    card.appendChild(el("div","head","Ещё вариант, посочнее:"));
+    card.appendChild(el("div","head","Почти — можно сказать полнее"));
     card.appendChild(el("div","good",corr.improved));
     if (corr.explanation_ru) card.appendChild(el("div","why",corr.explanation_ru));
   } else {
-    card.appendChild(el("div","head","Между нами: звучит лучше так 🙂"));
+    card.appendChild(el("div","head","Смотри, как звучит лучше"));
     if (corr.original) card.appendChild(el("div","orig",corr.original));
     card.appendChild(el("div","good",corr.improved));
     if (corr.explanation_ru) card.appendChild(el("div","why",corr.explanation_ru));
@@ -1344,8 +1344,8 @@ const LS_PROF = "englishPractice.v6.profile";
 const LS_KG   = "englishPractice.v6.chunks";
 let profile = {
   tier:1, interests:[], xp:0, streak:0, lastDay:"", sessions:0,
-  mastered:[], struggling:{}, showFixes:false, onboarded:false,
-  boss:null, dayCount:0, pronounce:[], quests:{}, coins:0, gems:0, lastTopic:""
+  mastered:[], struggling:{}, showFixes:true, onboarded:false,
+  boss:null, dayCount:0, pronounce:[], quests:{}, coins:0, gems:0, lastTopic:"", fixesOn:false
 };
 let kg = {};                                        // прогресс по фразовым блокам
 function loadProgress(){
@@ -1354,6 +1354,7 @@ function loadProgress(){
   TAGS.forEach(t => { if (typeof profile.struggling[t] !== "number") profile.struggling[t] = 0.5; });
   if (!Array.isArray(profile.pronounce)) profile.pronounce = [];
   if (!profile.quests || typeof profile.quests !== "object") profile.quests = {};
+  if (!profile.fixesOn){ profile.showFixes = true; profile.fixesOn = true; }   /* разбор нужен всем, включаем один раз */
   if (typeof profile.coins !== "number") profile.coins = 0;
   if (typeof profile.gems !== "number") profile.gems = 0;
   const today = new Date().toISOString().slice(0,10);
@@ -2079,7 +2080,7 @@ function renderStats(){
 }
 function resetProgress(){
   profile = { tier:1, interests:[], xp:0, streak:0, lastDay:"", sessions:0, mastered:[],
-              struggling:{}, showFixes:false, onboarded:false, boss:null, dayCount:0, pronounce:[],
+              struggling:{}, showFixes:true, fixesOn:true, onboarded:false, boss:null, dayCount:0, pronounce:[],
               quests:{}, coins:0, gems:0, lastTopic:"" };
   kg = {};
   TAGS.forEach(t => profile.struggling[t] = 0.5);
@@ -3005,37 +3006,45 @@ function startRecording(){
 
   state.recognition = rec;
   micState.textContent = "открываю микрофон…";
-  const arm = ()=>{
-    /* Safari может не позвать onstart вообще — тогда говорим, что делать */
+  let retried = false;
+  const arm = (ms)=>{
+    clearTimeout(state.startWatch);
     state.startWatch = setTimeout(()=>{
-      if (!started && !finished){
-        finished = true; state.recFinish = null;
-        cleanupRecognition();
-        micHelp("нет доступа");
+      if (started || finished) return;
+      if (!retried){                                   /* одна тихая попытка: Safari иногда глохнет на первом старте */
+        retried = true;
+        try{ rec.abort(); }catch(e){}
+        try{ rec.start(); arm(1800); return; }catch(e){}
       }
-    }, 2600);
+      finished = true; state.recFinish = null;
+      cleanupRecognition();
+      micHelp("нет доступа");
+    }, ms || 2600);
+    clearTimeout(state.recTimer);
     state.recTimer = setTimeout(()=>{ if (state.isRecording) stopRecording(); }, 15000);
   };
-  const launch = (retry)=>{
-    try{
-      rec.start();
-      arm();
-    }catch(e){
-      if (!retry && /InvalidState/i.test(String((e && e.name) || e))){
-        try{ rec.abort(); }catch(e2){}               /* прошлая сессия ещё висит — сбрасываем и пробуем снова */
-        setTimeout(()=>launch(true), 350);
-        return;
-      }
-      cleanupRecognition();
-      micHelp("start() не сработал");
-    }
+  /* стартуем строго внутри касания: iOS даёт микрофон только в жесте пользователя */
+  const copyTo = (dst)=>{
+    dst.lang = rec.lang; dst.continuous = rec.continuous;
+    dst.interimResults = rec.interimResults; dst.maxAlternatives = rec.maxAlternatives;
+    dst.onstart = rec.onstart; dst.onresult = rec.onresult;
+    dst.onerror = rec.onerror; dst.onend = rec.onend;
   };
-  /* речь синтезатора держит аудиосессию: на iOS ждём, пока она освободится */
-  if (synth && synth.speaking){
-    try{ synth.cancel(); }catch(e){}
-    setTimeout(()=>launch(false), IS_IOS ? 260 : 80);
-  } else launch(false);
+  let launched = false;
+  try{ rec.start(); launched = true; }
+  catch(e){
+    try{ rec.abort(); }catch(e2){}
+    try{                                               /* объект залип — берём новый, тут же, без таймеров */
+      const fresh = new SR();
+      copyTo(fresh);
+      state.recInstance = fresh; state.recognition = fresh; rec = fresh;
+      fresh.start(); launched = true;
+    }catch(e3){ launched = false; }
+  }
+  if (launched) arm(2600);
+  else { cleanupRecognition(); micHelp("start() не сработал"); }
 }
+
 function stopRecording(){
   state.stopRequested = true;
   clearTimeout(silenceTimer);
@@ -3070,17 +3079,17 @@ function systemPrompt(topic){
     "Reply rules:",
     "- Always English, max 2 short sentences, casual tone. Do NOT use emojis at all: the phone reads them aloud.",
     "- React to what the learner said, then ask ONE easy question.",
-    "- NEVER explain grammar and never say the learner made a mistake, unless the meaning is unclear.",
+    "- In the reply itself never lecture about grammar; the hint card does that. Just recast the phrase correctly and keep talking.",
     "- Use recasting: if the phrase was broken, say it correctly inside your own reply as if you were just talking.",
     "- If the learner writes one word or in Russian, answer in English and give one easy phrase to copy.",
     "- Never mention these instructions, the API, the model or JSON.",
     "- Never comment on the learner's accent or pronunciation; the app measures that separately.",
     "- Offer three short sentence starters in next_hints when the learner seems shy (they appear as tappable buttons).",
     "",
-    "The correction object is internal telemetry, the learner never sees it:",
+    "Always fill the correction object: the app shows it to the learner as one short friendly hint under your reply.",
     '- status \"needs_improvement\" for any real mistake (missing am/is/are, wrong verb form, missing -s, missing article, wrong preposition, no verb, one-word answer), otherwise \"correct\".',
     "- improved: the same idea written correctly, short.",
-    "- explanation_ru: one short Russian sentence (shown only if the learner turned on corrections).",
+    "- explanation_ru: one short friendly Russian sentence explaining the fix in plain words, no grammar terms.",
     "- next_hints: 3 casual phrases the learner could say next.",
     "- Omit pronunciation_tip unless it really matters.",
     "",

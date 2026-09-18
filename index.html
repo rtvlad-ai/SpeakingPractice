@@ -58,34 +58,34 @@ body{font-family:var(--ui);color:var(--ink);background:var(--page);-webkit-text-
   background:linear-gradient(180deg,var(--scrim-a) 0%,var(--scrim-a) 34%,var(--scrim-b) 100%)}
 .app > .bar,.app > .stage,.app > .chat,.app > .chips,.app > .composer{position:relative;z-index:2}
 
-.bar{display:flex;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top) + 8px) 12px 6px}
-.brand{font-family:var(--en);font-size:17px}
-.mode{font-size:11px;padding:3px 8px;border-radius:999px;background:var(--badge);color:var(--ink-soft);white-space:nowrap}
+.bar{display:flex;align-items:center;gap:6px;padding:calc(env(safe-area-inset-top) + 6px) 10px 4px}
+.brand{font-family:var(--en);font-size:15px}
+.mode{font-size:10px;padding:2px 7px;border-radius:999px;background:var(--badge);color:var(--ink-soft);white-space:nowrap}
 .mode.live{background:var(--accent);color:#fff}
-.bar-actions{margin-left:auto;display:flex;gap:6px}
-.ico{width:34px;height:34px;min-height:34px;padding:0;font-size:15px;border-radius:11px;border:none;
+.bar-actions{margin-left:auto;display:flex;gap:4px}
+.ico{width:30px;height:30px;min-height:30px;padding:0;font-size:13px;border-radius:10px;border:none;
   background:var(--ico);color:var(--ink);display:grid;place-items:center}
 
-.stage{display:flex;align-items:flex-end;gap:8px;padding:4px 12px 8px;flex:none;max-height:38vh;overflow:hidden}
-.avatar{width:96px;height:96px;flex:none;filter:drop-shadow(0 6px 14px rgba(0,0,0,.28));transition:width .3s ease,height .3s ease}
-.app.min .avatar{width:68px;height:68px}
+.stage{display:flex;align-items:flex-end;gap:7px;padding:2px 10px 6px;flex:none;max-height:30vh;overflow:hidden}
+.avatar{width:72px;height:72px;flex:none;filter:drop-shadow(0 6px 14px rgba(0,0,0,.28));transition:width .3s ease,height .3s ease}
+.app.min .avatar{width:54px;height:54px}
 .avatar svg,.avatar img{width:100%;height:100%;overflow:visible}
 .avatar img{object-fit:contain;border-radius:14px}
 .avatar.speaking img{animation:bob .55s ease-in-out infinite alternate}
 @keyframes bob{from{transform:translateY(0)}to{transform:translateY(-3px)}}
 /* облако с репликой собеседника — рядом с персонажем */
-.cloud{position:relative;flex:1 1 auto;min-width:0;background:var(--cloud);border-radius:22px;
-  padding:9px 12px 10px;box-shadow:var(--shadow);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.cloud{position:relative;flex:1 1 auto;min-width:0;background:var(--cloud);border-radius:18px;
+  padding:7px 10px 8px;box-shadow:var(--shadow);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .cloud::before,.cloud::after{content:"";position:absolute;background:var(--cloud);border-radius:50%}
 .cloud::before{width:15px;height:15px;left:-7px;bottom:16px}
 .cloud::after{width:9px;height:9px;left:-16px;bottom:5px}
 .cloud .top{display:flex;align-items:center;gap:6px;margin-bottom:2px}
-.cloud .name{font-size:11.5px;font-weight:700;color:var(--accent)}
-.cloud .role{font-size:11px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cloud .say{margin-left:auto;flex:none;width:30px;height:30px;min-height:30px;padding:0;border-radius:50%;
-  border:none;background:var(--accent);color:#fff;font-size:14px}
-.cloud .line{font-family:var(--en);font-size:19px;line-height:1.34;max-height:20vh;overflow-y:auto;overflow-wrap:anywhere}
-.app.min .cloud .line{font-size:18px}
+.cloud .name{font-size:11px;font-weight:700;color:var(--accent)}
+.cloud .role{font-size:10px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cloud .say{margin-left:auto;flex:none;width:26px;height:26px;min-height:26px;padding:0;border-radius:50%;
+  border:none;background:var(--accent);color:#fff;font-size:12px}
+.cloud .line{font-family:var(--en);font-size:16px;line-height:1.3;max-height:16vh;overflow-y:auto;overflow-wrap:anywhere}
+.app.min .cloud .line{font-size:15px}
 .avatar .mouth{transform-box:fill-box;transform-origin:center}
 .avatar.speaking .mouth{animation:talk .26s ease-in-out infinite alternate}
 @keyframes talk{from{transform:scaleY(.35)}to{transform:scaleY(1.25)}}
@@ -97,27 +97,27 @@ body{font-family:var(--ui);color:var(--ink);background:var(--page);-webkit-text-
 .avatar .lid{transform-box:fill-box;transform-origin:center;animation:blink 6.5s infinite}
 @keyframes blink{0%,96%,100%{transform:scaleY(0)}98%{transform:scaleY(1)}}
 
-.topics{position:relative;z-index:2;display:flex;gap:6px;overflow-x:auto;padding:0 12px 2px;scrollbar-width:none;flex:none}
+.topics{position:relative;z-index:2;display:flex;gap:5px;overflow-x:auto;padding:0 10px 2px;scrollbar-width:none;flex:none}
 .topics::-webkit-scrollbar{display:none}
-.tchip{flex:none;border:none;min-height:32px;padding:5px 11px;font-size:13px;font-weight:600;border-radius:999px;background:var(--ico);color:var(--ink-soft)}
+.tchip{flex:none;border:none;min-height:27px;padding:4px 9px;font-size:11.5px;font-weight:600;border-radius:999px;background:var(--ico);color:var(--ink-soft)}
 .tchip[aria-selected="true"]{background:var(--accent);color:#fff}
 
-.chat{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:10px 14px 4px;display:flex;flex-direction:column;gap:11px}
+.chat{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:7px 11px 4px;display:flex;flex-direction:column;gap:8px}
 .msg{display:flex;flex-direction:column;gap:4px;max-width:88%}
-.msg .who-label{font-size:11px;color:var(--ink-soft)}
-.bubble{padding:11px 14px;border-radius:18px;line-height:1.45}
+.msg .who-label{font-size:10px;color:var(--ink-soft)}
+.bubble{padding:8px 11px;border-radius:15px;line-height:1.38}
 .msg.tutor{align-self:flex-start}
 .msg.tutor .bubble{background:var(--glass);border:1px solid var(--glass-line);border-bottom-left-radius:6px;
-  font-family:var(--en);font-size:18px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  font-family:var(--en);font-size:15.5px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .msg.learner{align-self:flex-end;align-items:flex-end}
 .msg.learner .bubble{background:var(--learner-bg);color:var(--learner-fg);border-bottom-right-radius:6px;
-  font-family:var(--en);font-size:17px;box-shadow:var(--shadow)}
+  font-family:var(--en);font-size:15px;box-shadow:var(--shadow)}
 .msg.system{align-self:center;max-width:100%}
-.msg.system .bubble{background:var(--glass);color:var(--ink-soft);font-size:12.5px;text-align:center;padding:7px 12px;
+.msg.system .bubble{background:var(--glass);color:var(--ink-soft);font-size:11.5px;text-align:center;padding:5px 10px;
   backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .msg.system.bad .bubble{background:var(--red-soft);color:var(--red-ink)}
 .bubble-row{display:flex;align-items:flex-start;gap:6px}
-.mini{min-height:32px;padding:5px 9px;font-size:13px;border-radius:10px;border:1px solid var(--line);
+.mini{min-height:28px;padding:4px 8px;font-size:12px;border-radius:10px;border:1px solid var(--line);
   background:var(--card);color:var(--ink);font-weight:600;flex:none}
 
 .feedback{align-self:stretch;max-width:100%;border-radius:14px;padding:10px 13px;display:flex;flex-direction:column;gap:6px;
@@ -147,17 +147,17 @@ body{font-family:var(--ui);color:var(--ink);background:var(--page);-webkit-text-
 
 .composer{flex:none;background:var(--glass);border-top:1px solid var(--glass-line);
   backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-  padding:9px 12px calc(9px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px}
-.mic{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-height:52px;font-size:17px;
-  font-weight:700;border-radius:16px;border:none;background:var(--accent);color:#fff}
+  padding:6px 10px calc(6px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:6px}
+.mic{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;min-height:42px;font-size:15px;
+  font-weight:700;border-radius:13px;border:none;background:var(--accent);color:#fff}
 .mic.rec{background:var(--red)}
 .mic .dot{width:11px;height:11px;border-radius:50%;background:#fff;animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{transform:scale(.8);opacity:.7}50%{transform:scale(1.2);opacity:1}}
 .send-row{display:flex;gap:8px;align-items:flex-end}
-.send-row textarea{flex:1 1 auto;font:inherit;font-size:16px;line-height:1.35;resize:none;border:1px solid var(--line);
-  border-radius:14px;padding:9px 12px;background:var(--card);color:var(--ink)}
-.send{flex:none;width:48px;min-height:42px;padding:0;font-size:18px;border-radius:14px;border:none;background:var(--accent);color:#fff}
-.meta-row{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-soft);min-height:13px}
+.send-row textarea{flex:1 1 auto;font:inherit;font-size:16px;line-height:1.3;resize:none;border:1px solid var(--line);
+  border-radius:12px;padding:7px 10px;background:var(--card);color:var(--ink)}
+.send{flex:none;width:42px;min-height:38px;padding:0;font-size:16px;border-radius:12px;border:none;background:var(--accent);color:#fff}
+.meta-row{display:flex;justify-content:space-between;font-size:10px;color:var(--ink-soft);min-height:13px}
 
 .veil{position:fixed;inset:0;background:rgba(5,8,18,.55);z-index:40}
 .veil[hidden],.sheet[hidden]{display:none}
@@ -188,9 +188,9 @@ body{font-family:var(--ui);color:var(--ink);background:var(--page);-webkit-text-
 .diag .mark{flex:none;width:18px;text-align:center}
 
 /* панель прогресса сессии */
-.rail{position:relative;z-index:2;display:flex;gap:6px;overflow-x:auto;padding:2px 12px 6px;scrollbar-width:none;flex:none;align-items:center}
+.rail{position:relative;z-index:2;display:flex;gap:5px;overflow-x:auto;padding:1px 10px 4px;scrollbar-width:none;flex:none;align-items:center}
 .rail::-webkit-scrollbar{display:none}
-.rail .pill,.rail .seg{flex:none;font-size:11.5px;padding:4px 9px;border-radius:999px;white-space:nowrap;
+.rail .pill,.rail .seg{flex:none;font-size:10.5px;padding:3px 8px;border-radius:999px;white-space:nowrap;
   background:var(--glass);border:1px solid var(--glass-line);color:var(--ink-soft);
   backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .rail .pill{font-weight:700;color:#fff;background:var(--accent);border-color:transparent}
@@ -204,37 +204,37 @@ body{font-family:var(--ui);color:var(--ink);background:var(--page);-webkit-text-
   backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .teach{border-left:4px solid var(--accent)}
 .dtitle{font-size:11.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.03em}
-.dq{font-family:var(--en);font-size:17px;line-height:1.35}
+.dq{font-family:var(--en);font-size:15px;line-height:1.3}
 .dopts{display:flex;flex-direction:column;gap:6px}
 .dopt{text-align:left;font-family:var(--en);font-size:16px;padding:9px 12px;border-radius:12px;
   border:1px solid var(--line);background:var(--card);color:var(--ink)}
 .dopt.right{background:var(--good);border-color:var(--good-line);font-weight:700}
 .dopt.wrong{background:var(--red-soft);border-color:transparent;color:var(--red-ink)}
-.dwhy{font-size:13px;line-height:1.45;color:var(--ink)}
+.dwhy{font-size:12px;line-height:1.4;color:var(--ink)}
 .dex{display:flex;flex-direction:column;gap:5px;align-items:flex-start}
 .modal h2{margin:0 0 4px}
 .modal #mBody{display:flex;flex-direction:column;gap:9px}
 
 /* карточки фраз, тесты, награды */
-.chunk,.gossip,.swipe,.reward,.meme,.choice,.builder{align-self:stretch;max-width:100%;border-radius:16px;padding:12px 13px;
-  display:flex;flex-direction:column;gap:8px;background:var(--glass);border:1px solid var(--glass-line);
+.chunk,.gossip,.swipe,.reward,.meme,.choice,.builder{align-self:stretch;max-width:100%;border-radius:14px;padding:9px 11px;
+  display:flex;flex-direction:column;gap:6px;background:var(--glass);border:1px solid var(--glass-line);
   box-shadow:var(--shadow);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .crow{display:flex;gap:10px;align-items:center}
-.cplay{flex:none;width:44px;height:44px;min-height:44px;padding:0;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:18px}
+.cplay{flex:none;width:38px;height:38px;min-height:38px;padding:0;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:18px}
 .ctext{min-width:0}
-.cen{font-family:var(--en);font-size:21px;line-height:1.25}
-.cru{font-size:13px;color:var(--ink-soft)}
+.cen{font-family:var(--en);font-size:17px;line-height:1.25}
+.cru{font-size:11.5px;color:var(--ink-soft)}
 .cacts{display:flex;gap:7px;flex-wrap:wrap}
-.cbtn{flex:1 1 auto;min-height:42px;border-radius:13px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:14.5px;font-weight:600}
+.cbtn{flex:1 1 auto;min-height:36px;border-radius:11px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:13px;font-weight:600;padding:6px 8px}
 .cbtn.ok{background:var(--accent);border-color:transparent;color:#fff}
 .cbtn.on{background:var(--accent);border-color:transparent;color:#fff}
-.cbtn.wide{flex:1 1 100%;font-family:var(--en);font-size:16px;font-weight:500;text-align:left;padding:10px 12px}
+.cbtn.wide{flex:1 1 100%;font-family:var(--en);font-size:14px;font-weight:500;text-align:left;padding:7px 10px}
 .gtitle,.rtitle,.stitle{font-size:11.5px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.03em}
-.gline{font-family:var(--en);font-size:17px;line-height:1.4}
-.sen{font-family:var(--en);font-size:20px;line-height:1.3;text-align:center;padding:6px 0}
+.gline{font-family:var(--en);font-size:15px;line-height:1.35}
+.sen{font-family:var(--en);font-size:17px;line-height:1.3;text-align:center;padding:6px 0}
 .shint{font-size:12px;color:var(--ink-soft);text-align:center}
 .sbtns{display:flex;gap:8px}
-.sbtn{flex:1 1 0;min-height:48px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:16px;font-weight:700}
+.sbtn{flex:1 1 0;min-height:40px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:14px;font-weight:700}
 .sbtn.good{background:var(--good);border-color:var(--good-line)}
 .sbtn.bad{background:var(--red-soft);border-color:transparent;color:var(--red-ink)}
 .swhy{font-size:13.5px;text-align:center}
@@ -244,8 +244,8 @@ body{font-family:var(--ui);color:var(--ink);background:var(--page);-webkit-text-
 .memoji{font-size:44px;line-height:1}
 .bline{min-height:30px;font-family:var(--en);font-size:19px}
 .bbank{display:flex;gap:6px;flex-wrap:wrap}
-.brick{min-height:38px;padding:7px 11px;border-radius:11px;border:1px solid var(--line);background:var(--card);
-  color:var(--ink);font-family:var(--en);font-size:16px}
+.brick{min-height:32px;padding:5px 9px;border-radius:10px;border:1px solid var(--line);background:var(--card);
+  color:var(--ink);font-family:var(--en);font-size:14px}
 .brick:disabled{opacity:.35}
 .ichips{display:flex;gap:7px;flex-wrap:wrap}
 .ichips .cbtn{flex:1 1 40%}
@@ -261,15 +261,15 @@ body{font-family:var(--ui);color:var(--ink);background:var(--page);-webkit-text-
 .starters::-webkit-scrollbar{display:none}
 .starter{flex:none;display:flex;border:1px dashed var(--accent);border-radius:999px;background:var(--glass);overflow:hidden;
   backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-.starter button{border:none;background:transparent;color:var(--ink);min-height:34px;font-weight:500}
-.starter .stxt{font-family:var(--en);font-size:15px;white-space:nowrap;padding:5px 11px}
+.starter button{border:none;background:transparent;color:var(--ink);min-height:30px;font-weight:500}
+.starter .stxt{font-family:var(--en);font-size:13.5px;white-space:nowrap;padding:4px 9px}
 .starter .smic{padding:5px 9px;border-left:1px dashed var(--accent);font-size:13px}
 /* скрытое караоке */
 .karaoke{align-self:stretch;max-width:100%;border-radius:16px;padding:12px 13px;display:flex;flex-direction:column;gap:8px;
   background:var(--glass);border:1px solid var(--glass-line);box-shadow:var(--shadow);
   backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .kline{display:flex;flex-wrap:wrap;gap:6px}
-.kw{font-family:var(--en);font-size:19px;padding:4px 8px;border-radius:9px;border:none;color:#fff}
+.kw{font-family:var(--en);font-size:16px;padding:3px 7px;border-radius:9px;border:none;color:#fff}
 .kw.good{background:#0FA678}
 .kw.soso{background:#E0A32E}
 .kw.bad{background:#D6455B}
@@ -279,8 +279,8 @@ body{font-family:var(--ui);color:var(--ink);background:var(--page);-webkit-text-
 .qcard,.goals{align-self:stretch;max-width:100%;border-radius:16px;padding:11px 13px;display:flex;flex-direction:column;gap:6px;
   background:var(--glass);border:1px solid var(--glass-line);box-shadow:var(--shadow)}
 .qcard.locked{opacity:.55}
-.qtop{font-family:var(--en);font-size:17px;font-weight:600}
-.qbrief{font-size:13px;line-height:1.4}
+.qtop{font-family:var(--en);font-size:15px;font-weight:600}
+.qbrief{font-size:12px;line-height:1.35}
 .qmeta{font-size:12px;color:var(--ink-soft)}
 .grow{display:flex;gap:7px;align-items:center;font-size:13.5px}
 .grow.ok{color:var(--ink-soft);text-decoration:line-through}
@@ -295,7 +295,8 @@ button:active{transform:translateY(1px)}
 button[disabled]{opacity:.5;cursor:not-allowed}
 :focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-@media (max-height:680px){.avatar{width:76px;height:76px}.cloud .line{font-size:17px}.msg.tutor .bubble{font-size:17px}}
+@media (max-height:740px){.avatar{width:60px;height:60px}.cloud .line{font-size:15px;max-height:14vh}
+  .msg.tutor .bubble{font-size:15px}.chat{gap:7px}.stage{max-height:26vh}.mic{min-height:38px;font-size:14px}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -382,7 +383,7 @@ button[disabled]{opacity:.5;cursor:not-allowed}
     <button id="rememberKey" aria-label="Сохранить ключ в этом браузере">Запомнить</button>
     <button id="forgetKey" class="danger" aria-label="Удалить сохранённый ключ из браузера">Удалить ключ</button>
   </div>
-  <p class="note">Без ключа работает локальный собеседник: он разбирает ответ, реагирует на него и ведёт свою линию вопросов. Произношение, фразы и очки считаются локально и без ключа. С ключом DeepSeek (api.deepseek.com, модель deepseek-chat) разговор становится свободным. Ключ в localStorage — только для личного теста; для публичной страницы нужен backend-прокси.</p>
+  <p class="note">Общий ключ DeepSeek уже вшит — AI-диалог работает сразу на любом устройстве. Можно вписать свой ключ, тогда запросы пойдут с него; «Удалить ключ» возвращает общий. Важно: ключ виден в исходнике страницы, любой посетитель может его вытащить и потратить твой баланс — для публичного запуска переноси его на backend-прокси и меняй, если утечёт.</p>
 
   <h3>Голос собеседника</h3>
   <label class="field" for="voiceSel">Голос (лучше выбрать Natural / Enhanced / Siri, если есть)
@@ -1133,6 +1134,8 @@ function localReply(text){
 
 /* ===== 4. состояние ===== */
 const LS_KEY = "englishPractice.deepseekKey";
+/* общий ключ, чтобы не вводить его на каждом устройстве; свой можно вписать в настройках */
+const SHARED_KEY = "sk-fa8cb67b4a154011a6e5af943c161ef8";
 const LS_VOICE = "englishPractice.voice";
 const LS_THEME = "englishPractice.theme";
 const LS_PHOTOS = "englishPractice.photos";
@@ -1467,23 +1470,25 @@ function startSession(){
 function chooseStartCard(){
   const card = el("div","choice");
   card.appendChild(el("div","dtitle","С чего начнём?"));
-  card.appendChild(el("div","dwhy","Разогрев — 3 карточки фраз с озвучкой, минута. Разговор — сразу тема «" +
+  card.appendChild(el("div","dwhy","Разогрев — 3 карточки фраз. Разговор — сразу тема «" +
     (state.topic ? state.topic.ru : "") + "»."));
-  const warm = el("button","cbtn ok wide","🔥 Разогрев на минуту");
+  const row = el("div","cacts");
+  const warm = el("button","cbtn ok","🔥 Разогрев");
   warm.type = "button";
   warm.addEventListener("click",()=>{
     if (card.dataset.done) return;
     card.dataset.done = "1";
     beginWarm();
   });
-  const talk = el("button","cbtn wide","💬 Сразу к разговору");
+  const talk = el("button","cbtn","💬 Разговор");
   talk.type = "button";
   talk.addEventListener("click",()=>{
     if (card.dataset.done) return;
     card.dataset.done = "1";
     toPhase("talk");
   });
-  card.appendChild(warm); card.appendChild(talk);
+  row.appendChild(warm); row.appendChild(talk);
+  card.appendChild(row);
   chat.appendChild(card);
   scrollChat();
 }
@@ -1682,10 +1687,16 @@ function finishSession(){
   card.appendChild(el("div","rline","Время: " + Math.floor(secs / 60) + ":" + String(secs % 60).padStart(2,"0") +
     " · тест: " + session.quizOk + "/" + Math.max(1, session.quizDone) + " · XP: " + profile.xp));
   card.appendChild(el("div","rline","Серия дней: " + profile.streak + " 🔥 · фраз в копилке: " + profile.mastered.length));
-  const again = el("button","mini","Ещё 3 минуты ▶");
+  const row2 = el("div","cacts");
+  const again = el("button","cbtn ok","▶ Ещё 3 минуты");
   again.type = "button";
   again.addEventListener("click",()=>{ startSession(); });
-  card.appendChild(again);
+  row2.appendChild(again);
+  const quest = el("button","cbtn","🎮 Квест");
+  quest.type = "button";
+  quest.addEventListener("click", openQuests);
+  row2.appendChild(quest);
+  card.appendChild(row2);
   if (canBoss()){
     const boss = el("button","mini","Челлендж 🎯");
     boss.type = "button";
@@ -1898,9 +1909,40 @@ function assessTurn(text, corr){
   saveProgress();
   return { ok, errTag, recast: ok ? "" : recastLine(corr) };
 }
+/* тема закрыта: все слоты отвечены — зовём в квест */
+function maybeOfferQuest(){
+  if (state.quest || !state.topic || !state.topic.slots) return;
+  const all = state.topic.slots.every(sl => state.answered.has(sl.id));
+  if (!all) return;
+  if (session && session.questOffered) return;
+  if (session) session.questOffered = true;
+  const q = QUESTS.find(x => x.topic === state.topic.id && questUnlocked(x)) ||
+            QUESTS.find(x => questUnlocked(x) && !(profile.quests[x.id] && profile.quests[x.id].done)) ||
+            QUESTS[0];
+  const card = el("div","choice");
+  card.appendChild(el("div","dtitle","Тема пройдена 🎉"));
+  card.appendChild(el("div","dwhy","Все вопросы темы «" + state.topic.ru + "» закрыты. Проверим в сценке: " +
+    q.emoji + " " + q.ru + " — " + q.brief));
+  const row = el("div","cacts");
+  const go = el("button","cbtn ok","🎮 Квест");
+  go.type = "button";
+  go.addEventListener("click",()=>{ if (!card.dataset.done){ card.dataset.done = "1"; startQuest(q); } });
+  const list = el("button","cbtn","Другие");
+  list.type = "button";
+  list.addEventListener("click",()=>{ if (!card.dataset.done){ card.dataset.done = "1"; openQuests(); } });
+  const stay = el("button","cbtn","💬 Дальше");
+  stay.type = "button";
+  stay.addEventListener("click",()=>{ card.dataset.done = "1"; flash("Болтаем дальше 💬"); });
+  row.appendChild(go); row.appendChild(list); row.appendChild(stay);
+  card.appendChild(row);
+  chat.appendChild(card);
+  scrollChat();
+}
+
 /* что сделать после реплики: помочь, притормозить или просто идти дальше */
 function afterTurn(text, corr, res){
   const slot = state.topic.slots.find(s => s.id === state.pending) || null;
+  maybeOfferQuest();
   if (session.errStreak >= 3 && !profile.boss){ softStop(res.errTag); return; }
   if (vibeShort(text) && !profile.boss && !session.helperShown){
     session.helperShown = true;
@@ -3227,10 +3269,12 @@ $("questsBtn2").addEventListener("click",()=>{ closeSheet(); openQuests(); });
 
 /* ===== 14. ключ API ===== */
 const keyInput = $("apiKey");
+state.apiKey = SHARED_KEY;
 try{
   const saved = localStorage.getItem(LS_KEY);
-  if (saved){ state.apiKey = saved; keyInput.value = saved; }
-}catch(e){}
+  if (saved){ state.apiKey = saved; }
+  keyInput.value = state.apiKey;
+}catch(e){ keyInput.value = SHARED_KEY; }
 function refreshModePill(){
   const p = $("pillMode");
   p.textContent = state.apiKey ? "AI" : "офлайн";
@@ -3240,7 +3284,8 @@ function refreshModePill(){
 $("saveKey").addEventListener("click",()=>{
   state.apiKey = keyInput.value.trim();
   refreshModePill();
-  addSystem(state.apiKey ? "DeepSeek подключён: диалог стал свободным." : "Поле пустое — работает локальный собеседник.");
+  if (!state.apiKey) state.apiKey = SHARED_KEY;
+  addSystem("DeepSeek подключён: диалог свободный.");
   closeSheet();
 });
 $("rememberKey").addEventListener("click",()=>{
@@ -3254,8 +3299,8 @@ $("rememberKey").addEventListener("click",()=>{
 });
 $("forgetKey").addEventListener("click",()=>{
   try{ localStorage.removeItem(LS_KEY); }catch(e){}
-  state.apiKey = ""; keyInput.value = ""; refreshModePill();
-  addSystem("Ключ удалён. Работает локальный собеседник.");
+  state.apiKey = SHARED_KEY; keyInput.value = SHARED_KEY; refreshModePill();
+  addSystem("Свой ключ удалён — снова работает общий.");
 });
 
 /* ===== 15. темы разговора ===== */

@@ -275,6 +275,21 @@ body{font-family:var(--ui);color:var(--ink);background:var(--page);-webkit-text-
 .kw.bad{background:#D6455B}
 .kmeta{font-size:12px;color:var(--ink-soft)}
 
+/* квесты, цели, мимика */
+.qcard,.goals{align-self:stretch;max-width:100%;border-radius:16px;padding:11px 13px;display:flex;flex-direction:column;gap:6px;
+  background:var(--glass);border:1px solid var(--glass-line);box-shadow:var(--shadow)}
+.qcard.locked{opacity:.55}
+.qtop{font-family:var(--en);font-size:17px;font-weight:600}
+.qbrief{font-size:13px;line-height:1.4}
+.qmeta{font-size:12px;color:var(--ink-soft)}
+.grow{display:flex;gap:7px;align-items:center;font-size:13.5px}
+.grow.ok{color:var(--ink-soft);text-decoration:line-through}
+.gmark{flex:none}
+.emo{flex:none;font-size:17px;line-height:1}
+.avatar.happy .mouth{transform:scaleY(1.35) translateY(1px)}
+.avatar.huh{animation:tilt 1.4s ease-in-out infinite alternate}
+@keyframes tilt{from{transform:rotate(-3deg)}to{transform:rotate(4deg)}}
+
 button{font:inherit;cursor:pointer}
 button:active{transform:translateY(1px)}
 button[disabled]{opacity:.5;cursor:not-allowed}
@@ -293,6 +308,7 @@ button[disabled]{opacity:.5;cursor:not-allowed}
     <span class="mode" id="levelPill">A1.1</span>
     <span class="mode" id="pillMode">локальный</span>
     <div class="bar-actions">
+      <button class="ico" id="questBtn" aria-label="Открыть квесты">🎮</button>
       <button class="ico" id="themeBtn" aria-label="Тема оформления: авто">🌗</button>
       <button class="ico" id="soundBtn" aria-label="Выключить звук">🔊</button>
       <button class="ico" id="resetBtn" aria-label="Начать разговор заново">↺</button>
@@ -306,6 +322,7 @@ button[disabled]{opacity:.5;cursor:not-allowed}
       <div class="top">
         <span class="name" id="charName">Alex</span>
         <span class="role" id="charRole">новый знакомый</span>
+        <span class="emo" id="emo" aria-hidden="true">🙂</span>
         <button class="say" id="repeatBtn" aria-label="Повторить последнюю фразу собеседника">🔊</button>
       </div>
       <div class="line" id="cloudLine"></div>
@@ -340,6 +357,7 @@ button[disabled]{opacity:.5;cursor:not-allowed}
   <div class="row">
     <button id="placeBtn" aria-label="Выбрать интересы заново">Сменить интересы</button>
     <button id="sessionBtn" aria-label="Начать новую трёхминутную сессию">Новая сессия ▶</button>
+    <button id="questsBtn2" aria-label="Открыть список квестов">Квесты 🎮</button>
     <button id="resetProg" class="danger" aria-label="Сбросить прогресс">Сбросить</button>
   </div>
   <label class="check" for="showFixes"><input type="checkbox" id="showFixes"> Показывать разбор ошибок (по умолчанию ошибки исправляются незаметно, в ответе собеседника)</label>
@@ -406,6 +424,22 @@ button[disabled]{opacity:.5;cursor:not-allowed}
 
 <script>
 "use strict";
+
+/* ===== 0a. перехват ошибок: показываем причину, но не роняем приложение ===== */
+window.addEventListener("error",(ev)=>{
+  try{
+    const msg = (ev && (ev.message || (ev.error && ev.error.message))) || "неизвестная ошибка";
+    const at = ev && ev.lineno ? " (строка " + ev.lineno + ")" : "";
+    const box = document.getElementById("chat");
+    if (box && typeof addSystem === "function") addSystem("Сбой: " + msg + at, true);
+  }catch(e){}
+});
+window.addEventListener("unhandledrejection",(ev)=>{
+  try{
+    const r = ev && ev.reason;
+    if (typeof addSystem === "function") addSystem("Сбой запроса: " + ((r && r.message) || r || "нет ответа"), true);
+  }catch(e){}
+});
 
 /* ===== 0. утилиты и формы глаголов ===== */
 const cap = (s)=>String(s||"").charAt(0).toUpperCase()+String(s||"").slice(1);
@@ -1106,7 +1140,7 @@ const state = {
   history:[], answered:new Set(), facts:{}, pending:null, extraIdx:0, asked:0, lastAsk:null,
   isRecording:false, recognition:null, recTimer:null,
   soundOn:true, rate:1, autoMic:false, themeMode:"auto", photosOn:true,
-  lastTutorLine:"", audioUnlocked:false, pendingSpeech:null, expect:null, prefix:"",
+  lastTutorLine:"", audioUnlocked:false, pendingSpeech:null, expect:null, prefix:"", quest:null,
   busy:false, micBlocked:false, exchanges:0
 };
 
@@ -1301,7 +1335,7 @@ const LS_KG   = "englishPractice.v6.chunks";
 let profile = {
   tier:1, interests:[], xp:0, streak:0, lastDay:"", sessions:0,
   mastered:[], struggling:{}, showFixes:false, onboarded:false,
-  boss:null, dayCount:0, pronounce:[]
+  boss:null, dayCount:0, pronounce:[], quests:{}, coins:0, gems:0, lastTopic:""
 };
 let kg = {};                                        // прогресс по фразовым блокам
 function loadProgress(){
@@ -1309,6 +1343,9 @@ function loadProgress(){
   try{ const k = JSON.parse(localStorage.getItem(LS_KG) || "null"); if (k) kg = k; }catch(e){}
   TAGS.forEach(t => { if (typeof profile.struggling[t] !== "number") profile.struggling[t] = 0.5; });
   if (!Array.isArray(profile.pronounce)) profile.pronounce = [];
+  if (!profile.quests || typeof profile.quests !== "object") profile.quests = {};
+  if (typeof profile.coins !== "number") profile.coins = 0;
+  if (typeof profile.gems !== "number") profile.gems = 0;
   const today = new Date().toISOString().slice(0,10);
   if (profile.lastDay !== today){
     const y = new Date(Date.now() - 864e5).toISOString().slice(0,10);
@@ -1824,6 +1861,19 @@ function renderRail(){
   rail.textContent = "";
   rail.appendChild(el("span","pill","🔥 " + profile.streak));
   rail.appendChild(el("span","seg", profile.xp + " XP"));
+  if (profile.coins) rail.appendChild(el("span","seg", profile.coins + " 🪙"));
+  if (profile.gems) rail.appendChild(el("span","seg", profile.gems + " 💎"));
+  if (state.quest){
+    const st = state.quest, done = st.q.goals.filter(g => st.done[g.id]).length;
+    rail.appendChild(el("span","seg now","квест · цели " + done + "/" + st.q.goals.length));
+    const quit = el("button","seg","выйти");
+    quit.type = "button";
+    quit.addEventListener("click",()=>endQuest(false));
+    rail.appendChild(quit);
+    const pill2 = $("levelPill");
+    if (pill2) pill2.textContent = st.q.char.name;
+    return;
+  }
   if (session){
     const names = { warm:"разогрев", talk:"болтаем", quiz:"тест", done:"готово" };
     const left = Math.max(0, Math.round((PHASE_MS[session.phase] - (Date.now() - session.phaseStart)) / 1000));
@@ -1871,8 +1921,7 @@ function startPlacement(){
     saveProgress();
     $("modalVeil").hidden = true; $("modal").hidden = true;
     renderTopics();
-    const wish = TOPICS.find(t => profile.interests.indexOf(t.id) !== -1 && topicAllowed(t));
-    startTopic(wish || allowedTopics()[0], false);
+    startTopic(TOPICS[0], false);                     /* начинаем со знакомства, дальше выбор за тобой */
     startSession();
   });
   box.appendChild(go);
@@ -1907,6 +1956,8 @@ function renderStats(){
   line("Серия дней", profile.streak + " 🔥");
   line("Сессий", profile.sessions);
   line("Фраз в копилке", profile.mastered.length);
+  line("Монеты", (profile.coins || 0) + " 🪙 · " + (profile.gems || 0) + " 💎");
+  line("Квестов пройдено", Object.keys(profile.quests || {}).filter(k => profile.quests[k].done).length + " из " + QUESTS.length);
   if (profile.mastered.length) line("Последние", profile.mastered.slice(-3).join(" · "));
   line("Интересы", (profile.interests.map(id => (INTERESTS.find(i => i.id === id) || {}).ru).filter(Boolean).join(", ") || "не выбраны"));
   if (profile.showFixes){
@@ -1916,7 +1967,8 @@ function renderStats(){
 }
 function resetProgress(){
   profile = { tier:1, interests:[], xp:0, streak:0, lastDay:"", sessions:0, mastered:[],
-              struggling:{}, showFixes:false, onboarded:false, boss:null, dayCount:0, pronounce:[] };
+              struggling:{}, showFixes:false, onboarded:false, boss:null, dayCount:0, pronounce:[],
+              quests:{}, coins:0, gems:0, lastTopic:"" };
   kg = {};
   TAGS.forEach(t => profile.struggling[t] = 0.5);
   saveProgress();
@@ -2002,6 +2054,9 @@ function karaokeCard(res, expected, chunk){
   card.appendChild(line);
   const acc = Math.round(res.accuracy * 100), flu = Math.round(res.fluency * 100);
   card.appendChild(el("div","kmeta","точность " + acc + "% · беглость " + flu + "%"));
+  let gems = 0;                                        /* 2 за зелёное слово, 1 за жёлтое */
+  res.words.forEach(w => { gems += w.score >= 0.85 ? 2 : w.score >= 0.55 ? 1 : 0; });
+  giveGems(Math.min(12, gems));
 
   if (pass){
     const red = res.words.filter(w => w.score < 0.55).map(w => w.w);
@@ -2161,6 +2216,271 @@ function renderStarters(){
     chip.appendChild(t); chip.appendChild(m);
     box.appendChild(chip);
   });
+}
+
+/* ============================================================
+   5d. КВЕСТЫ (AI Roleplay Engine)
+   Персонаж + скрытая цель + счётчик целей по ключевым словам из речи.
+   Ошибки не оцениваются: персонаж просит повторить внутри роли.
+   ============================================================ */
+
+const QUESTS = [
+  { id:"coffee", emoji:"☕", ru:"Кофейня в Нью-Йорке", topic:"cafe", coins:15,
+    char:{ name:"Sam", role:"бариста", skin:"#E8B98D", hair:"#8A5A2B", style:"short", shirt:"#2B2F4A", extra:"apron" },
+    brief:"Закажи кофе без лактозы, возьми круассан со скидкой и узнай, где туалет.",
+    start:"Hi! What can I get for you today? ☕",
+    repeat:"Sorry, the machine is loud — can you say that again?",
+    hints:["Can I have a coffee with oat milk…","Is the croissant cheaper today…","Where is the toilet…"],
+    goals:[
+      { id:"milk", ru:"Кофе без лактозы", any:["oat milk","almond milk","soy","lactose","no milk","without milk","plant milk"],
+        done:"Oat milk, good choice 👍" },
+      { id:"croissant", ru:"Круассан со скидкой", any:["croissant","discount","cheaper","offer","deal","sale"],
+        done:"The croissant is on offer today 🥐" },
+      { id:"toilet", ru:"Где туалет", any:["toilet","restroom","bathroom","washroom"],
+        done:"It's at the back, on the left 🚻" }],
+    win:"All set — enjoy your coffee! ☕" },
+
+  { id:"heathrow", emoji:"🛂", ru:"Паспортный контроль в Хитроу", topic:"travel", coins:20,
+    char:{ name:"Officer Blake", role:"офицер контроля", skin:"#EFC49F", hair:"#2B2F4A", style:"short", shirt:"#1F2A44", extra:"glasses" },
+    brief:"Скажи цель поездки, на сколько дней и где остановишься.",
+    start:"Passport, please. What is the purpose of your visit?",
+    repeat:"Sorry, the line is bad — can you repeat that clearly?",
+    hints:["I'm here for vacation…","I'm staying for…","My friend lives here…"],
+    goals:[
+      { id:"purpose", ru:"Цель поездки", any:["vacation","holiday","tourist","study","visit","see my","business"],
+        done:"Vacation. Fine." },
+      { id:"days", ru:"Сколько дней", any:["days","week","weeks","month","nights","two","three","five","ten"],
+        done:"Ten days, noted." },
+      { id:"stay", ru:"Где остановишься", any:["hotel","hostel","friend","family","airbnb","flat","apartment"],
+        done:"A hotel in the centre. Okay." }],
+    win:"Welcome to London. Next! 🛂" },
+
+  { id:"return", emoji:"🛍", ru:"Вернуть футболку в магазине", topic:"shopping", coins:20,
+    char:{ name:"Ella", role:"продавец", skin:"#F0C6A0", hair:"#2B1D16", style:"bun", shirt:"#C43E86", extra:"scarf" },
+    brief:"Скажи, что хочешь вернуть футболку, объясни причину и спроси про деньги.",
+    start:"Hi! How can I help you today?",
+    repeat:"Sorry, it's noisy in here — one more time?",
+    hints:["I'd like to return this…","It's too small…","Can I get my money back…"],
+    goals:[
+      { id:"return", ru:"Хочу вернуть", any:["return","give back","take it back","refund this"], done:"Sure, we can take it back." },
+      { id:"why", ru:"Причина", any:["too small","too big","broken","hole","wrong size","doesn't fit","don't like"],
+        done:"Too small, I see." },
+      { id:"money", ru:"Про деньги", any:["money back","refund","card","cash","exchange"], done:"Refund to your card, two days ⏳" }],
+    win:"Done! Here's your receipt 🧾" },
+
+  { id:"train", emoji:"🚂", ru:"Случайный попутчик в поезде", topic:"series", coins:25, needs:2,
+    char:{ name:"Milo", role:"попутчик", skin:"#C98A5E", hair:"#1F1B18", style:"curly", shirt:"#0FA678", extra:"headphones" },
+    brief:"Познакомься, расскажи, куда едешь, и посоветуй сериал.",
+    start:"Long trip, huh? Where are you heading? 🚂",
+    repeat:"Sorry, the tunnel killed the sound — say it again?",
+    hints:["I'm going to…","My name is…","You should watch…"],
+    goals:[
+      { id:"name", ru:"Представился", any:["my name is","i'm ","i am ","call me"], done:"Nice to meet you!" },
+      { id:"where", ru:"Куда едешь", any:["going to","travelling to","heading to","to moscow","to london","home","to the sea"],
+        done:"Cool, that's a nice place." },
+      { id:"rec", ru:"Посоветовал сериал", any:["you should watch","i recommend","watch it","my favourite show","try "],
+        done:"Adding it to my list 📝" }],
+    win:"Great talk — enjoy the ride! 🚂" },
+
+  { id:"doctor", emoji:"🩺", ru:"У врача за границей", topic:"routine", coins:25, needs:2,
+    char:{ name:"Dr. Reed", role:"врач", skin:"#F2CDA7", hair:"#9A9AA8", style:"short", shirt:"#F6F7FB", extra:"glasses" },
+    brief:"Скажи, что болит, как давно, и спроси про лекарство.",
+    start:"Hello! What's the problem today?",
+    repeat:"Sorry, I didn't catch that — slowly, please?",
+    hints:["I have a headache…","It started…","Do I need medicine…"],
+    goals:[
+      { id:"what", ru:"Что болит", any:["headache","stomach","throat","tooth","cough","fever","my head","my back","hurts"],
+        done:"A headache, okay." },
+      { id:"when", ru:"Как давно", any:["yesterday","two days","since","last night","a week","this morning"],
+        done:"Since yesterday, I see." },
+      { id:"med", ru:"Про лекарство", any:["medicine","pills","tablets","what should i take","prescription","drink"],
+        done:"Take these pills twice a day 💊" }],
+    win:"Get well soon! 🩺" }
+];
+
+function questUnlocked(q){
+  if (!q.needs) return true;
+  return Object.keys(profile.quests || {}).filter(k => profile.quests[k].done).length >= q.needs;
+}
+function questState(){ return state.quest; }
+
+/* ---------- выбор миссии ---------- */
+function openQuests(){
+  $("mTitle").textContent = "Квесты 🎮";
+  $("modalVeil").hidden = false; $("modal").hidden = false;
+  const box = $("mBody");
+  box.textContent = "";
+  box.appendChild(el("div","dwhy","Сюжетная сценка с персонажем: у тебя три цели, ошибки не считаются. Можно говорить голосом — держи 🎤 нажатым."));
+  QUESTS.forEach(q => {
+    const done = profile.quests && profile.quests[q.id] && profile.quests[q.id].done;
+    const open = questUnlocked(q);
+    const card = el("div","qcard" + (open ? "" : " locked"));
+    card.appendChild(el("div","qtop", q.emoji + " " + q.ru + (done ? " ✅" : "")));
+    card.appendChild(el("div","qbrief", open ? q.brief : "Открывается после " + q.needs + " пройденных квестов 🔒"));
+    card.appendChild(el("div","qmeta", q.char.name + " · " + q.char.role + " · " + q.coins + " 🪙"));
+    if (open){
+      const go = el("button","cbtn ok", done ? "Пройти снова ▶" : "Начать ▶");
+      go.type = "button";
+      go.addEventListener("click",()=>{ closeModal(); startQuest(q); });
+      card.appendChild(go);
+    }
+    box.appendChild(card);
+  });
+  const free = el("button","mini","Свободный чат");
+  free.type = "button";
+  free.addEventListener("click",()=>{ closeModal(); if (state.quest) endQuest(false); });
+  box.appendChild(free);
+}
+function closeModal(){ $("modalVeil").hidden = true; $("modal").hidden = true; }
+
+/* ---------- запуск и ведение квеста ---------- */
+function startQuest(q){
+  const topic = TOPICS.find(t => t.id === q.topic) || TOPICS[0];
+  state.quest = { q, done:{}, turns:0, fails:0 };
+  startTopic(topic, true, true);                     /* тема только для фона, диалог ведёт квест */
+  state.topic = Object.assign({}, topic, { char:q.char, slots:topic.slots });
+  renderCharacter(state.topic);
+  chat.textContent = "";
+  addSystem("Квест: " + q.ru + " — " + q.brief);
+  goalsCard();
+  state.lastTutorLine = q.start;
+  addTutor(q.start);
+  setEmotion("neutral");
+  renderStarters();
+  renderHints(q.hints);
+  speak(q.start);
+  renderRail();
+}
+function goalsCard(){
+  const st = state.quest;
+  if (!st) return;
+  const old = document.getElementById("goals");
+  if (old && old.parentNode) old.parentNode.removeChild(old);
+  const card = el("div","goals");
+  card.id = "goals";
+  card.appendChild(el("div","stitle","Цели квеста"));
+  st.q.goals.forEach(g=>{
+    const row = el("div","grow" + (st.done[g.id] ? " ok" : ""));
+    row.appendChild(el("span","gmark", st.done[g.id] ? "✅" : "⬜"));
+    row.appendChild(el("span",null,g.ru));
+    card.appendChild(row);
+  });
+  chat.appendChild(card);
+  scrollChat();
+}
+/* ключевые слова из речи закрывают цели — это и есть state machine */
+function checkGoals(text){
+  const st = state.quest;
+  if (!st) return [];
+  const t = " " + String(text).toLowerCase().replace(/\s+/g," ") + " ";
+  const hit = [];
+  st.q.goals.forEach(g=>{
+    if (st.done[g.id]) return;
+    if (g.any.some(k => t.indexOf(k.toLowerCase()) !== -1)){
+      st.done[g.id] = true;
+      hit.push(g);
+    }
+  });
+  return hit;
+}
+const questAllDone = ()=>state.quest && state.quest.q.goals.every(g => state.quest.done[g.id]);
+
+/* реплика персонажа в квесте: реакция на цель + следующий шаг */
+function questReply(text, ok){
+  const st = state.quest;
+  const hits = checkGoals(text);
+  if (hits.length) addXP(3, "цель закрыта");
+  if (!ok && !hits.length){
+    st.fails++;
+    setEmotion("huh");
+    return st.q.repeat;                              /* внутри роли, без оценок */
+  }
+  setEmotion(hits.length ? "happy" : "neutral");
+  if (questAllDone()) return st.q.win;
+  const left = st.q.goals.filter(g => !st.done[g.id]);
+  const nudge = {
+    milk:"Which milk do you want in it?", croissant:"Anything to eat with that?", toilet:"Anything else I can help with?",
+    purpose:"So, why are you visiting?", days:"How long are you staying?", stay:"And where will you stay?",
+    return:"So what would you like to do with it?", why:"What's wrong with it?", money:"Card or cash for the refund?",
+    name:"By the way, what's your name?", where:"So where are you going?", rec:"Any series I should watch?",
+    what:"Tell me what hurts.", when:"When did it start?", med:"Do you have any questions for me?"
+  }[left[0].id] || "Tell me more.";
+  return (hits.length ? hits[0].done + " " : "") + nudge;
+}
+function endQuest(win){
+  const st = state.quest;
+  state.quest = null;
+  if (!st) return;
+  if (!win){
+    addSystem("Квест отложен — возвращайся, когда захочешь 🙂");
+    renderRail();
+    return;
+  }
+  profile.quests = profile.quests || {};
+  const first = !(profile.quests[st.q.id] && profile.quests[st.q.id].done);
+  profile.quests[st.q.id] = { done:true };
+  profile.coins = (profile.coins || 0) + (first ? st.q.coins : Math.round(st.q.coins / 2));
+  profile.xp += 10;
+  saveProgress();
+  setEmotion("happy");
+  const card = el("div","reward");
+  card.appendChild(el("div","rtitle","Квест пройден 🏆"));
+  card.appendChild(el("div","rline","+" + (first ? st.q.coins : Math.round(st.q.coins / 2)) + " 🪙 · +10 XP · серия " + profile.streak + " 🔥"));
+  const nextQ = QUESTS.find(q => !(profile.quests[q.id] && profile.quests[q.id].done) && questUnlocked(q));
+  if (nextQ) card.appendChild(el("div","rline","Открыт персонаж: " + nextQ.char.name + " — " + nextQ.ru + " " + nextQ.emoji));
+  const more = el("button","cbtn ok","Ещё квест 🎮");
+  more.type = "button";
+  more.addEventListener("click", openQuests);
+  card.appendChild(more);
+  const chatBtn = el("button","cbtn","Свободный чат 💬");
+  chatBtn.type = "button";
+  chatBtn.addEventListener("click",()=>startTopic(state.topic, true));
+  card.appendChild(chatBtn);
+  chat.appendChild(card);
+  scrollChat();
+  flash("+" + st.q.coins + " монет 🪙");
+  renderRail();
+  renderStats();
+}
+
+/* ---------- мимика персонажа вместо оценок ---------- */
+function setEmotion(kind){
+  const box = $("avatar");
+  if (box){
+    box.classList.remove("happy","huh");
+    if (kind === "happy" || kind === "huh") box.classList.add(kind);
+  }
+  const badge = $("emo");
+  if (badge) badge.textContent = kind === "happy" ? "😊" : kind === "huh" ? "🤔" : "🙂";
+  if (kind === "huh") flash("Персонаж не разобрал — повтори чётче 🙂");
+}
+
+/* ---------- XP за длину фразы и самоцветы за произношение ---------- */
+function xpForSentence(text){
+  const n = String(text).trim().split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.min(6, 1 + Math.floor(n / 3)));
+}
+function giveGems(n){
+  if (!n) return;
+  profile.gems = (profile.gems || 0) + n;
+  saveProgress();
+  flash("+" + n + " 💎");
+  renderRail();
+}
+
+/* ---------- системный промпт персонажа для AI ---------- */
+function questPrompt(){
+  const st = state.quest;
+  if (!st) return "";
+  const left = st.q.goals.filter(g => !st.done[g.id]).map(g => g.ru).join("; ");
+  return [
+    "ROLEPLAY MODE. You are " + st.q.char.name + ", " + st.q.char.role + ". Scene: " + st.q.ru + ".",
+    "Stay in character, 1-2 short sentences, light emoji, never act like a teacher.",
+    "The learner must achieve: " + st.q.goals.map(g => g.ru).join("; ") + ". Still open: " + (left || "nothing"),
+    "Steer the scene so the learner has to say the remaining things, but never list the goals.",
+    "If the learner's phrase is unclear, stay in role and say something like: " + st.q.repeat,
+    "Never correct grammar or comment on the accent."
+  ].join("\n");
 }
 
 /* ===== 6. персонаж и сцена ===== */
@@ -2405,8 +2725,8 @@ function setMicUI(mode){
     micState.textContent = "микрофон недоступен — пиши текстом";
   } else {
     micBtn.classList.remove("rec"); micBtn.disabled = false;
-    micIcon.textContent = "🎤"; micLabel.textContent = "Начать говорить";
-    micBtn.setAttribute("aria-label","Начать говорить по-английски");
+    micIcon.textContent = "🎤"; micLabel.textContent = "Нажми и говори";
+    micBtn.setAttribute("aria-label","Нажми и говори по-английски");
     micState.textContent = "микрофон готов";
   }
 }
@@ -2504,6 +2824,7 @@ function systemPrompt(topic){
     "",
     "LEARNER MODEL (follow it strictly):",
     scaffold(),
+    questPrompt(),
     "",
     "Useful words and patterns: " + topic.words.join("; ") + ".",
     "",
@@ -2643,21 +2964,33 @@ async function handleLearnerInput(text){
 
   /* оценка идёт в фон, ошибка возвращается в ответе как рекаст */
   const res = assessTurn(clean, corr);
-  if (res.recast && localQ) reply = res.recast + " " + localQ;       /* локальный собеседник */
+  if (state.quest){
+    const qr = questReply(clean, res.ok);              /* цели + реакция внутри роли */
+    if (!state.apiKey || !reply) reply = qr;
+    else if (/\b(sorry|repeat|again)\b/i.test(qr) && !res.ok) reply = qr;
+    goalsCard();
+  } else if (res.recast && localQ) reply = res.recast + " " + localQ;
   else if (res.recast && !state.apiKey) reply = res.recast + " " + reply;
 
   state.lastTutorLine = reply;
   pushHistory("model", reply);
   addTutor(reply);
-  if (shouldShowFix(corr)) addFeedback(corr, tip);                   /* обычно ошибку не показываем */
+  if (!state.quest) setEmotion(res.ok ? "happy" : "huh");
+  if (shouldShowFix(corr) && (!state.quest || profile.showFixes)) addFeedback(corr, tip);                   /* обычно ошибку не показываем */
   const nowPending = state.topic.slots.find(s=>s.id === state.pending) || null;
   renderHints(hints && hints.length ? hints
               : (nowPending ? nowPending.hints : (state.lastAsk ? state.lastAsk.hints : state.topic.slots[0].hints)));
   renderStarters();                                   /* 3 начала фразы под каждый вопрос */
   speak(reply);
 
-  tickSession();                                      /* 1 мин разогрев → 2 мин болтовня → 1 мин тест */
-  afterTurn(clean, corr, res);                        /* vibe check: варианты, кирпичики, мягкий стоп */
+  addXP(xpForSentence(clean));                        /* длиннее фраза — больше XP */
+  if (state.quest){
+    state.quest.turns++;
+    if (questAllDone()) endQuest(true);
+  } else {
+    tickSession();                                    /* 1 мин разогрев → 2 мин болтовня → 1 мин тест */
+    afterTurn(clean, corr, res);                      /* vibe check: варианты, кирпичики, мягкий стоп */
+  }
   renderStats();
 
   state.busy = false; setSendEnabled(true);
@@ -2707,7 +3040,24 @@ function submitText(){
   handleLearnerInput(v).finally(()=>{ sending = false; });
 }
 sendBtn.addEventListener("click", submitText);
-micBtn.addEventListener("click", startRecording);
+/* push-to-talk: короткий тап — переключатель, удержание — говоришь пока держишь */
+let micDown = 0, micHeld = false;
+micBtn.addEventListener("pointerdown",()=>{
+  micDown = Date.now(); micHeld = false;
+  if (!state.isRecording && !state.busy) startRecording();
+});
+micBtn.addEventListener("pointerup",()=>{
+  if (!micDown) return;
+  micHeld = Date.now() - micDown > 450;
+  micDown = 0;
+  if (micHeld && state.isRecording) stopRecording();   /* отпустил — отправляем */
+});
+micBtn.addEventListener("pointercancel",()=>{ micDown = 0; if (state.isRecording) stopRecording(); });
+micBtn.addEventListener("click",(e)=>{
+  if (micHeld){ micHeld = false; return; }             /* удержание уже обработано */
+  if (!state.isRecording && !state.busy) startRecording();
+  else if (state.isRecording) stopRecording();
+});
 
 /* ===== 13. управление ===== */
 $("repeatBtn").addEventListener("click",()=>{ if (state.lastTutorLine) speak(state.lastTutorLine); });
@@ -2720,6 +3070,7 @@ soundBtn.addEventListener("click",()=>{
 });
 $("resetBtn").addEventListener("click",()=>startTopic(state.topic, true));
 $("avatar").addEventListener("click",()=>app.classList.toggle("min"));
+$("questBtn").addEventListener("click", openQuests);
 $("themeBtn").addEventListener("click",()=>{
   setTheme(state.themeMode === "auto" ? "light" : state.themeMode === "light" ? "dark" : "auto");
 });
@@ -2732,7 +3083,7 @@ $("photosOn").addEventListener("change",(e)=>{
 });
 $("resetProg").addEventListener("click",()=>{ resetProgress(); closeSheet(); });
 $("placeBtn").addEventListener("click",()=>{ closeSheet(); startPlacement(); });
-$("modalVeil").addEventListener("click",()=>{});      /* тест закрывается только кнопкой */
+$("modalVeil").addEventListener("click",()=>{ if (!profile.onboarded) return; closeModal(); });
 $("themeAuto").addEventListener("click",()=>setTheme("auto"));
 $("themeLight").addEventListener("click",()=>setTheme("light"));
 $("themeDark").addEventListener("click",()=>setTheme("dark"));
@@ -2761,6 +3112,7 @@ $("showFixes").addEventListener("change",(e)=>{
   addSystem(profile.showFixes ? "Разбор ошибок включён." : "Ошибки снова исправляются незаметно, в ответе собеседника.");
 });
 $("sessionBtn").addEventListener("click",()=>{ closeSheet(); startSession(); });
+$("questsBtn2").addEventListener("click",()=>{ closeSheet(); openQuests(); });
 
 /* ===== 14. ключ API ===== */
 const keyInput = $("apiKey");
@@ -2809,8 +3161,12 @@ function renderTopics(){
     topicsBox.appendChild(b);
   });
 }
-function startTopic(topic, isReset){
-  if (!topicAllowed(topic)) topic = allowedTopics()[0];
+function startTopic(topic, isReset, keepQuest){
+  if (!topic) topic = TOPICS[0];
+  if (state.quest && !keepQuest) state.quest = null;   /* смена мира выключает квест */
+  state.expect = null; state.prefix = "";
+  profile.lastTopic = topic.id;
+  saveProgress();
   if (state.isRecording) stopRecording();
   if (synth){ try{ synth.cancel(); }catch(e){} setSpeaking(false); }
   state.topic = topic;
@@ -2824,6 +3180,7 @@ function startTopic(topic, isReset){
   chat.textContent = ""; clearInput();
 
   setPhoto(topic); renderCharacter(topic); renderTopics();
+  setEmotion("neutral");
   addSystem((isReset ? "Заново. " : "") + topic.ru + " / " + topic.en + " — " + topic.goal + ".");
 
   const line = topic.start;
@@ -2854,11 +3211,13 @@ function runDiagnostics(){
            "Запрос доступа к микрофону " + (navigator.mediaDevices ? "возможен" : "недоступен"));
   if (!SR || !secure){ state.micBlocked = true; setMicUI("blocked"); }
   else { state.micBlocked = false; setMicUI("idle"); }
-  if (navigator.permissions && navigator.permissions.query){
-    navigator.permissions.query({ name:"microphone" })
-      .then(p=>diagLine(p.state === "granted" ? true : p.state === "denied" ? false : null, "Разрешение на микрофон: " + p.state))
-      .catch(()=>{});
-  }
+  try{                                                 /* в Safari этот вызов может бросить сразу */
+    if (navigator.permissions && navigator.permissions.query){
+      const pr = navigator.permissions.query({ name:"microphone" });
+      if (pr && pr.then) pr.then(p=>diagLine(p.state === "granted" ? true : p.state === "denied" ? false : null,
+        "Разрешение на микрофон: " + p.state)).catch(()=>{});
+    }
+  }catch(e){}
 }
 $("micTest").addEventListener("click", async ()=>{
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
@@ -2884,8 +3243,8 @@ if (!profile.onboarded){
   renderTopics(); renderRail();
   startPlacement();
 } else {
-  const fav = TOPICS.find(t => profile.interests.indexOf(t.id) !== -1 && topicAllowed(t));
-  startTopic(fav || allowedTopics()[0], false);
+  const last = TOPICS.find(t => t.id === profile.lastTopic);
+  startTopic(last || TOPICS[0], false);               /* последняя выбранная тема, иначе знакомство */
   startSession();
 }
 </script>

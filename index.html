@@ -2861,21 +2861,16 @@ function setMicUI(mode){
     micState.textContent = "нажми — слушаю, пауза — отправляю";
   }
 }
-let silenceTimer = null;
-function armSilence(ms){                               /* тишина дольше ms = фраза закончилась */
-  clearTimeout(silenceTimer);
-  silenceTimer = setTimeout(()=>{ if (state.isRecording) stopRecording(); }, ms);
-}
 function cleanupRecognition(){
   state.isRecording = false;
-  clearTimeout(silenceTimer); silenceTimer = null;
+  clearTimeout(state.startWatch);
   if (state.recTimer){ clearTimeout(state.recTimer); state.recTimer = null; }
   if (state.recognition){
     try{
       state.recognition.onresult = null; state.recognition.onerror = null;
       state.recognition.onend = null; state.recognition.onstart = null;
     }catch(e){}
-    state.recognition = null;                          /* сам объект живёт в state.recInstance */
+    state.recognition = null;                          /* объект больше не трогаем: Safari не любит abort */
   }
   setMicUI(state.micBlocked ? "blocked" : "idle");
 }
@@ -2913,15 +2908,6 @@ function micHelp(reason){
   probeMic();
 }
 
-/* полный цикл: свежий объект -> запуск -> снос. Safari не любит переиспользование */
-function killRecognizer(){
-  const r = state.recInstance;
-  state.recInstance = null;
-  state.recognition = null;
-  if (!r) return;
-  try{ r.onstart = r.onresult = r.onerror = r.onend = null; }catch(e){}
-  try{ r.abort(); }catch(e){ try{ r.stop(); }catch(e2){} }
-}
 function offerReload(){
   if (document.getElementById("reloadCard")) return;
   const card = el("div","choice");
@@ -2941,30 +2927,34 @@ function offerReload(){
   scrollChat();
 }
 
+/* Схема как в рабочих версиях: новый объект на нажатие, конец фразы ловит сам браузер.
+   Никаких abort()/stop() по таймерам — от них Safari перестаёт слушать со второго раза. */
 function startRecording(){
   if (state.isRecording){ stopRecording(); return; }
   if (!SR){ addSystem("Этот браузер не умеет распознавать речь. Пиши ответ в поле ниже.", true); return; }
-  if (state.busy) releaseBusy();                       /* зависший запрос не должен глушить микрофон */
+  if (state.busy) releaseBusy();                       /* зависший запрос не глушит микрофон */
   if (synth){ try{ synth.cancel(); setSpeaking(false); }catch(e){} }
 
-  state.stopRequested = false;
-  let finalText = "", bestConf = 0, t0 = Date.now(), started = false, finished = false, attempt = 0;
+  let rec;
+  try{ rec = new SR(); }
+  catch(e){ micHelp("не создаётся"); return; }
+  rec.lang = "en-US";
+  rec.continuous = false;                              /* браузер сам закрывает запись после фразы */
+  rec.interimResults = true;
+  rec.maxAlternatives = 1;
 
-  const finish = ()=>{                                 /* единственная точка выхода */
-    if (finished) return;
-    finished = true;
-    state.recFinish = null;
-    clearTimeout(state.startWatch); clearTimeout(state.endWatch);
+  let finalText = "", bestConf = 0, t0 = Date.now(), started = false, done = false;
+
+  const finish = ()=>{
+    if (done) return;
+    done = true;
+    clearTimeout(state.startWatch);
     const said = finalText.trim();
     const secs = (Date.now() - t0) / 1000;
     cleanupRecognition();
-    killRecognizer();                                  /* освобождаем микрофон сразу */
 
     if (state.expect){ handleSpoken(said, secs, bestConf); return; }
-    if (!said){
-      micState.textContent = "не услышал — нажми и скажи ещё раз";
-      return;
-    }
+    if (!said){ micState.textContent = "не услышал — нажми и скажи ещё раз"; return; }
     if (state.prefix){
       const full = (state.prefix + " " + said).replace(/\s{2,}/g," ").trim();
       state.prefix = "";
@@ -2973,124 +2963,70 @@ function startRecording(){
     }
     handleLearnerInput(said);
   };
-  state.recFinish = finish;
 
-  const fail = (why)=>{
-    if (finished) return;
-    finished = true;
-    state.recFinish = null;
-    clearTimeout(state.startWatch); clearTimeout(state.recTimer);
-    cleanupRecognition(); killRecognizer();
-    state.micFails = (state.micFails || 0) + 1;
-    micState.textContent = "микрофон не открылся — нажми ещё раз";
-    micHelp(why + (state.lastRecError ? ", код " + state.lastRecError : ""));
-    if (state.micFails >= 2) offerReload();
+  rec.onstart = ()=>{
+    started = true;
+    state.micFails = 0;
+    clearTimeout(state.startWatch);
+    state.isRecording = true; t0 = Date.now();
+    setMicUI("rec");
+    announce("Микрофон слушает.");
   };
-
-  const bind = (rec)=>{
-    rec.lang = "en-US";
-    rec.continuous = false;
-    rec.interimResults = !IS_IOS;                      /* на iOS только финальный результат */
-    rec.maxAlternatives = 1;
-    rec.onstart = ()=>{
-      started = true;
-      state.micFails = 0;
-      clearTimeout(state.startWatch);
-      state.isRecording = true; t0 = Date.now();
-      setMicUI("rec");
-      announce("Микрофон слушает.");
-      armSilence(7000);
-    };
-    rec.onresult = (ev)=>{
-      let interim = "";
-      for (let i = ev.resultIndex; i < ev.results.length; i++){
-        const r = ev.results[i];
-        if (r.isFinal){
-          finalText += r[0].transcript + " ";
-          if (typeof r[0].confidence === "number" && r[0].confidence > bestConf) bestConf = r[0].confidence;
-        } else interim += r[0].transcript;
-      }
-      const shown = (finalText || interim).trim();
-      micLabel.textContent = shown ? shown.slice(0,34) : "Слушаю…";
-      if (shown){
-        const single = state.expect && state.expect.single;
-        armSilence(finalText.trim() ? (single ? 700 : 1100) : (single ? 1000 : 1500));
-      }
-    };
-    rec.onerror = (ev)=>{
-      const code = (ev && ev.error) || "unknown";
-      state.lastRecError = code;
-      if (code === "not-allowed" || code === "service-not-allowed" || code === "audio-capture"){
-        state.micBlocked = true;
-        fail(code);
-        return;
-      }
-      if (!started && (code === "aborted" || code === "network" || code === "no-speech")){
-        retry(code);                                   /* пустой запуск — пробуем заново */
-        return;
-      }
-      if (state.autoMic && (code === "no-speech" || code === "aborted")){
-        finish();
-        setTimeout(()=>{ if (!state.isRecording) startRecording(); }, 1200);
-        return;
-      }
-      if (code !== "aborted" && code !== "no-speech")
-        addSystem(REC_ERRORS[code] || "Распознавание прервалось. Попробуй ещё раз или напиши ответ.", true);
-      finish();
-    };
-    rec.onend = ()=>{
-      if (!started && !finished){ retry("пустой запуск"); return; }
-      finish();
-    };
+  rec.onresult = (ev)=>{
+    let interim = "";
+    for (let i = ev.resultIndex; i < ev.results.length; i++){
+      const r = ev.results[i];
+      if (r.isFinal){
+        finalText += r[0].transcript + " ";
+        if (typeof r[0].confidence === "number" && r[0].confidence > bestConf) bestConf = r[0].confidence;
+      } else interim += r[0].transcript;
+    }
+    const shown = (finalText || interim).trim();
+    micLabel.textContent = shown ? shown.slice(0,34) : "Слушаю…";
   };
-
-  const open = ()=>{
-    attempt++;
-    killRecognizer();
-    let rec;
-    try{ rec = new SR(); }
-    catch(e){ fail("не создаётся"); return; }
-    state.recInstance = rec; state.recognition = rec;
-    bind(rec);
-    try{ rec.start(); }
-    catch(e){
-      state.lastRecError = (e && e.name) || "start";
-      if (attempt < 3){ setTimeout(()=>{ if (!started && !finished) open(); }, 250); return; }
-      fail("start(): " + ((e && e.name) || "ошибка"));
+  rec.onerror = (ev)=>{
+    const code = (ev && ev.error) || "unknown";
+    state.lastRecError = code;
+    if (code === "not-allowed" || code === "service-not-allowed" || code === "audio-capture"){
+      state.micBlocked = true;
+      state.micFails = (state.micFails || 0) + 1;
+      micHelp(code);
+      if (state.micFails >= 2) offerReload();
+      finish();
       return;
     }
-    clearTimeout(state.startWatch);
-    state.startWatch = setTimeout(()=>{              /* Safari молчит — не ждём долго, пробуем снова */
-      if (!started && !finished) retry("нет ответа");
-    }, attempt === 1 ? 1000 : 1400);
-    clearTimeout(state.recTimer);
-    state.recTimer = setTimeout(()=>{ if (state.isRecording) stopRecording(); }, 15000);
+    if (code !== "aborted" && code !== "no-speech")
+      addSystem(REC_ERRORS[code] || "Распознавание прервалось. Попробуй ещё раз или напиши ответ.", true);
+    finish();
   };
-  const retry = (why)=>{
-    if (started || finished) return;
-    if (attempt >= 3){ fail(why); return; }
-    micState.textContent = "открываю микрофон (попытка " + (attempt + 1) + ")…";
-    open();
-  };
+  rec.onend = finish;                                  /* конец фразы определил браузер */
 
+  state.recognition = rec;
   micState.textContent = "открываю микрофон…";
-  open();
-}
-function stopRecording(){
-  state.stopRequested = true;
-  clearTimeout(silenceTimer);
-  clearTimeout(state.startWatch);
-  const rec = state.recognition || state.recInstance;
-  if (!rec){
-    if (state.recFinish) state.recFinish(); else cleanupRecognition();
-    return;
+  try{
+    rec.start();
+    /* сторож только сообщает, ничего не обрывает */
+    state.startWatch = setTimeout(()=>{
+      if (!started && !done){
+        state.micFails = (state.micFails || 0) + 1;
+        micState.textContent = "микрофон не открылся — нажми ещё раз";
+        micHelp("нет ответа");
+        if (state.micFails >= 2) offerReload();
+      }
+    }, 3000);
+    state.recTimer = setTimeout(()=>{                  /* страховка от бесконечной записи */
+      if (state.isRecording) stopRecording();
+    }, 20000);
+  }catch(e){
+    cleanupRecognition();
+    if (/InvalidState/i.test(String((e && e.name) || e))) addSystem("Микрофон ещё занят — нажми ещё раз.");
+    else micHelp("start(): " + ((e && e.name) || "ошибка"));
   }
-  try{ rec.stop(); }
-  catch(e){ try{ rec.abort(); }catch(e2){} }
-  state.endWatch = setTimeout(()=>{                    /* stop() проигнорирован — сносим жёстко */
-    try{ if (state.recInstance && state.recInstance.abort) state.recInstance.abort(); }catch(e){}
-    setTimeout(()=>{ if (state.recFinish) state.recFinish(); }, 200);
-  }, 600);
+}
+function stopRecording(){                              /* только по явному тапу или по 20-секундной страховке */
+  const rec = state.recognition;
+  if (!rec){ cleanupRecognition(); return; }
+  try{ rec.stop(); }catch(e){ try{ rec.abort(); }catch(e2){} }
 }
 
 /* ===== 10. DeepSeek ===== */

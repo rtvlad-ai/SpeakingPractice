@@ -1163,7 +1163,7 @@ const state = {
   history:[], answered:new Set(), facts:{}, pending:null, extraIdx:0, asked:0, lastAsk:null,
   isRecording:false, recognition:null, recTimer:null,
   soundOn:true, rate:1.08, autoMic:false, themeMode:"auto", photosOn:true,
-  lastTutorLine:"", audioUnlocked:false, pendingSpeech:null, expect:null, prefix:"", quest:null, stopRequested:false, recFinish:null, micFails:0, micEverStarted:false, holdStream:false, micStream:null, silentTries:0, emptyResults:0, continuous:true, speakingNow:false, gotSound:false, lastConf:0, resetSession:false, ttsSinceRec:false, lastRecError:"", startWatch:null, endWatch:null, busyWatch:null,
+  lastTutorLine:"", audioUnlocked:false, pendingSpeech:null, expect:null, prefix:"", quest:null, stopRequested:false, recFinish:null, micFails:0, micEverStarted:false, holdStream:false, micStream:null, silentTries:0, emptyResults:0, continuous:true, listenPaused:false, idleRelease:null, topicTurns:0, speakingNow:false, gotSound:false, lastConf:0, resetSession:false, ttsSinceRec:false, lastRecError:"", startWatch:null, endWatch:null, busyWatch:null,
   busy:false, micBlocked:false, exchanges:0
 };
 
@@ -1934,18 +1934,18 @@ function assessTurn(text, corr){
   return { ok, errTag, recast: ok ? "" : recastLine(corr) };
 }
 /* тема закрыта: все слоты отвечены — зовём в квест */
+const QUEST_AFTER = 10;                                /* столько реплик по теме до предложения квеста */
 function maybeOfferQuest(){
-  if (state.quest || !state.topic || !state.topic.slots) return;
-  const all = state.topic.slots.every(sl => state.answered.has(sl.id));
-  if (!all) return;
+  if (state.quest || !state.topic) return;
+  if ((state.topicTurns || 0) < QUEST_AFTER) return;
   if (session && session.questOffered) return;
   if (session) session.questOffered = true;
   const q = QUESTS.find(x => x.topic === state.topic.id && questUnlocked(x)) ||
             QUESTS.find(x => questUnlocked(x) && !(profile.quests[x.id] && profile.quests[x.id].done)) ||
             QUESTS[0];
   const card = el("div","choice");
-  card.appendChild(el("div","dtitle","Тема пройдена 🎉"));
-  card.appendChild(el("div","dwhy","Все вопросы темы «" + state.topic.ru + "» закрыты. Проверим в сценке: " +
+  card.appendChild(el("div","dtitle","Хороший разговор"));
+  card.appendChild(el("div","dwhy","Уже " + (state.topicTurns || 0) + " фраз по теме «" + state.topic.ru + "». Проверим в сценке: " +
     q.emoji + " " + q.ru + " — " + q.brief));
   const row = el("div","cacts");
   const drop = ()=>{ if (card.parentNode) card.parentNode.removeChild(card); };
@@ -2938,7 +2938,7 @@ function micHelp(reason){
 }
 
 /* лог всех событий распознавания: видно, где именно Safari останавливается */
-const BUILD = "v26";
+const BUILD = "v27";
 const micLogLines = [];
 function logMic(msg){
   const t = new Date();
@@ -3050,13 +3050,41 @@ function offerReload(){
 let contRec = null, contOn = false, contFinal = "", contInterim = "", contTimer = null, contRestart = null;
 
 function micToggle(){
-  if (contOn) stopListening("тап");
-  else startListening();
+  if (contOn && !state.listenPaused){ stopListening("тап"); return; }
+  if (contOn && state.listenPaused){ resumeListening(); return; }   /* сеанс жив, просто снимаем паузу */
+  startListening();
+}
+/* микрофон «выключается» после фразы: сеанс распознавания остаётся открытым,
+   но всё, что приходит, игнорируется — так Safari не приходится делать новый start() */
+function pauseListening(){
+  if (!contOn) return;
+  state.listenPaused = true;
+  contFinal = ""; contInterim = "";
+  clearTimeout(contTimer);
+  setMicUI("idle");
+  micState.textContent = "микрофон на паузе — нажми, когда будешь отвечать";
+  logMic("пауза микрофона после фразы");
+  clearTimeout(state.idleRelease);
+  state.idleRelease = setTimeout(()=>{                 /* долго молчим — отпускаем микрофон совсем */
+    if (contOn && state.listenPaused) stopListening("пауза дольше минуты");
+  }, 60000);
+}
+function resumeListening(){
+  clearTimeout(state.idleRelease);
+  state.listenPaused = false;
+  contFinal = ""; contInterim = "";
+  if (!contRec){ startListening(); return; }
+  state.isRecording = true;
+  setMicUI("rec");
+  micState.textContent = "слушаю — говори";
+  logMic("снимаю паузу, сеанс уже открыт");
 }
 function startListening(){
   if (!SR){ addSystem("Этот браузер не умеет распознавать речь. Пиши ответ в поле ниже.", true); return; }
   if (state.busy) releaseBusy();
   if (synth){ try{ synth.cancel(); setSpeaking(false); }catch(e){} }
+  clearTimeout(state.idleRelease);
+  state.listenPaused = false;
   contOn = true;
   contFinal = ""; contInterim = "";
   setMicUI("rec");
@@ -3066,6 +3094,8 @@ function startListening(){
 }
 function stopListening(why){
   contOn = false;
+  state.listenPaused = false;
+  clearTimeout(state.idleRelease);
   clearTimeout(contTimer); clearTimeout(contRestart);
   logMic("выключаю прослушивание: " + (why || ""));
   flushPhrase(true);
@@ -3104,6 +3134,7 @@ function openSession(first){
   rec.onspeechend = ()=>logMic("speechend");
   rec.onaudioend = ()=>logMic("audioend");
   rec.onresult = (ev)=>{
+    if (state.listenPaused){ logMic("на паузе — ответ не принимаю"); return; }
     let interim = "";
     for (let i = ev.resultIndex; i < ev.results.length; i++){
       const r = ev.results[i];
@@ -3184,7 +3215,8 @@ function flushPhrase(closing){
     return;
   }
   logMic("фраза готова: " + text.slice(0,40));
-  micLabel.textContent = contOn && !closing ? "Слушаю… (тап — выключить)" : "Нажми и говори";
+  if (!closing) pauseListening();                      /* дальше ждём нового нажатия */
+  else micLabel.textContent = "Нажми и говори";
   if (state.expect){ handleSpoken(text, 2.5, state.lastConf || 0); return; }
   if (state.prefix){
     const full = (state.prefix + " " + text).replace(/\s{2,}/g," ").trim();
@@ -3354,6 +3386,7 @@ async function handleLearnerInput(text){
   }, 25000);
   addLearner(clean); clearInput();
   state.exchanges++;
+  state.topicTurns = (state.topicTurns || 0) + 1;
   if (state.exchanges === 1) app.classList.add("min");
 
   const pendingSlot = state.topic.slots.find(s=>s.id === state.pending) || null;
@@ -3607,6 +3640,7 @@ function startTopic(topic, isReset, keepQuest, quiet){
   state.topic = topic;
   state.history = []; state.answered = new Set(); state.facts = {};
   state.extraIdx = 0; state.asked = 1; state.exchanges = 0; state.busy = false;
+  state.topicTurns = 0;
   state.pending = topic.slots[0].id;
   state.lastAsk = {q:topic.slots[0].q, ex:topic.slots[0].ex, hints:topic.slots[0].hints};
   setSendEnabled(true);

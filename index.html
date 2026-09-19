@@ -2371,79 +2371,208 @@ function renderStarters(list){
    Ошибки не оцениваются: персонаж просит повторить внутри роли.
    ============================================================ */
 
-const QUESTS = [
-  { id:"coffee", emoji:"☕", ru:"Кофейня в Нью-Йорке", topic:"cafe", coins:15,
+/* ============================================================
+   УНИВЕРСАЛЬНЫЙ ДВИЖОК КВЕСТОВ
+   Квест — это три переменные: setting, aiRole, goals.
+   Они подставляются в один общий промпт-управленец, а фоновый
+   запрос YES/NO решает, когда цели выполнены.
+   ============================================================ */
+const QUEST_DATA = {
+  coffee:{
+    emoji:"☕", ru:"Кофейня в Нью-Йорке", topic:"cafe", coins:15,
+    setting:"A busy coffee shop in New York during the morning rush",
+    aiRole:"Sam, a quick and cheerful barista behind the counter",
+    goals:"Order a coffee with non-dairy milk, ask about the croissant discount, ask where the toilet is",
+    brief:"Закажи кофе без лактозы, спроси про скидку на круассан и где туалет.",
     char:{ name:"Sam", role:"бариста", skin:"#E8B98D", hair:"#8A5A2B", style:"short", shirt:"#2B2F4A", extra:"apron" },
-    brief:"Закажи кофе без лактозы, возьми круассан со скидкой и узнай, где туалет.",
-    start:"Hi! What can I get for you today? ☕",
-    repeat:"Sorry, the machine is loud — can you say that again?",
-    hints:["Can I have a coffee with oat milk…","Is the croissant cheaper today…","Where is the toilet…"],
-    goals:[
-      { id:"milk", ru:"Кофе без лактозы", any:["oat milk","almond milk","soy","lactose","no milk","without milk","plant milk"],
-        done:"Oat milk, good choice 👍" },
-      { id:"croissant", ru:"Круассан со скидкой", any:["croissant","discount","cheaper","offer","deal","sale"],
-        done:"The croissant is on offer today 🥐" },
-      { id:"toilet", ru:"Где туалет", any:["toilet","restroom","bathroom","washroom"],
-        done:"It's at the back, on the left 🚻" }],
-    win:"All set — enjoy your coffee! ☕" },
-
-  { id:"heathrow", emoji:"🛂", ru:"Паспортный контроль в Хитроу", topic:"travel", coins:20,
-    char:{ name:"Officer Blake", role:"офицер контроля", skin:"#EFC49F", hair:"#2B2F4A", style:"short", shirt:"#1F2A44", extra:"glasses" },
-    brief:"Скажи цель поездки, на сколько дней и где остановишься.",
+    checklist:[
+      { id:"milk", ru:"Кофе без лактозы", any:["oat milk","almond milk","soy","lactose","no milk","without milk","plant milk"] },
+      { id:"croissant", ru:"Круассан со скидкой", any:["croissant","discount","cheaper","offer","deal","sale"] },
+      { id:"toilet", ru:"Где туалет", any:["toilet","restroom","bathroom","washroom"] }],
+    start:"Morning! What can I get started for you?",
+    repeat:"Sorry, the machine is loud — say that again?"
+  },
+  restaurant:{
+    emoji:"🍝", ru:"Ресторан в Лондоне", topic:"cafe", coins:20,
+    setting:"A cozy Italian restaurant in London on a busy evening",
+    aiRole:"Marco, a polite but busy Italian waiter",
+    goals:"Order a main dish, ask for tap water, ask for the bill",
+    brief:"Закажи горячее, попроси воду из-под крана и счёт.",
+    char:{ name:"Marco", role:"официант", skin:"#D79C6E", hair:"#2B1D16", style:"short", shirt:"#1F2A44", extra:"apron" },
+    checklist:[
+      { id:"dish", ru:"Горячее блюдо", any:["pasta","pizza","lasagna","risotto","steak","chicken","main","spaghetti","carbonara"] },
+      { id:"water", ru:"Вода из-под крана", any:["tap water","water","still water"] },
+      { id:"bill", ru:"Счёт", any:["bill","check","pay","card"] }],
+    start:"Good evening! Have you had time to look at the menu?",
+    repeat:"Scusi, it is noisy tonight — one more time?"
+  },
+  airport:{
+    emoji:"🛂", ru:"Паспортный контроль JFK", topic:"travel", coins:20,
+    setting:"JFK Airport border control in New York, a long queue behind the traveller",
+    aiRole:"Officer Davis, a strict and serious immigration officer",
+    goals:"Explain the purpose of travel, state the duration of stay, say where you will live",
+    brief:"Объясни цель поездки, срок и где будешь жить.",
+    char:{ name:"Officer Davis", role:"офицер контроля", skin:"#EFC49F", hair:"#2B2F4A", style:"short", shirt:"#1F2A44", extra:"glasses" },
+    checklist:[
+      { id:"purpose", ru:"Цель поездки", any:["vacation","holiday","tourist","study","visit","business","see my"] },
+      { id:"days", ru:"Срок пребывания", any:["days","week","weeks","month","nights","two","three","ten"] },
+      { id:"stay", ru:"Где остановишься", any:["hotel","hostel","friend","family","airbnb","flat","apartment"] }],
     start:"Passport, please. What is the purpose of your visit?",
-    repeat:"Sorry, the line is bad — can you repeat that clearly?",
-    hints:["I'm here for vacation…","I'm staying for…","My friend lives here…"],
-    goals:[
-      { id:"purpose", ru:"Цель поездки", any:["vacation","holiday","tourist","study","visit","see my","business"],
-        done:"Vacation. Fine." },
-      { id:"days", ru:"Сколько дней", any:["days","week","weeks","month","nights","two","three","five","ten"],
-        done:"Ten days, noted." },
-      { id:"stay", ru:"Где остановишься", any:["hotel","hostel","friend","family","airbnb","flat","apartment"],
-        done:"A hotel in the centre. Okay." }],
-    win:"Welcome to London. Next! 🛂" },
-
-  { id:"return", emoji:"🛍", ru:"Вернуть футболку в магазине", topic:"shopping", coins:20,
-    char:{ name:"Ella", role:"продавец", skin:"#F0C6A0", hair:"#2B1D16", style:"bun", shirt:"#C43E86", extra:"scarf" },
+    repeat:"Speak clearly, please. Repeat that."
+  },
+  hotel:{
+    emoji:"🛎", ru:"Заселение в отель", topic:"travel", coins:20, needs:1,
+    setting:"The reception desk of a small hotel in Rome, late evening",
+    aiRole:"Giulia, a warm and efficient receptionist",
+    goals:"Give your name and booking, ask about breakfast time, ask for the wifi password",
+    brief:"Назови бронь, спроси про завтрак и вайфай.",
+    char:{ name:"Giulia", role:"администратор", skin:"#F0C6A0", hair:"#2B1D16", style:"bun", shirt:"#0E8FA8", extra:"scarf" },
+    checklist:[
+      { id:"name", ru:"Имя и бронь", any:["my name is","booking","reservation","booked","i'm "] },
+      { id:"breakfast", ru:"Завтрак", any:["breakfast","morning","eat"] },
+      { id:"wifi", ru:"Вайфай", any:["wifi","wi-fi","password","internet"] }],
+    start:"Good evening! Do you have a reservation with us?",
+    repeat:"Sorry, could you say that again?"
+  },
+  shop:{
+    emoji:"🛍", ru:"Возврат в магазине", topic:"shopping", coins:20, needs:1,
+    setting:"The returns desk of a clothes shop in a shopping centre",
+    aiRole:"Ella, a friendly shop assistant who follows the rules",
+    goals:"Say you want to return a T-shirt, explain why, ask how you get the money back",
     brief:"Скажи, что хочешь вернуть футболку, объясни причину и спроси про деньги.",
-    start:"Hi! How can I help you today?",
-    repeat:"Sorry, it's noisy in here — one more time?",
-    hints:["I'd like to return this…","It's too small…","Can I get my money back…"],
-    goals:[
-      { id:"return", ru:"Хочу вернуть", any:["return","give back","take it back","refund this"], done:"Sure, we can take it back." },
-      { id:"why", ru:"Причина", any:["too small","too big","broken","hole","wrong size","doesn't fit","don't like"],
-        done:"Too small, I see." },
-      { id:"money", ru:"Про деньги", any:["money back","refund","card","cash","exchange"], done:"Refund to your card, two days ⏳" }],
-    win:"Done! Here's your receipt 🧾" },
-
-  { id:"train", emoji:"🚂", ru:"Случайный попутчик в поезде", topic:"series", coins:25, needs:2,
+    char:{ name:"Ella", role:"продавец", skin:"#F0C6A0", hair:"#2B1D16", style:"bun", shirt:"#C43E86", extra:"scarf" },
+    checklist:[
+      { id:"return", ru:"Хочу вернуть", any:["return","give back","take it back","refund this"] },
+      { id:"why", ru:"Причина", any:["too small","too big","broken","hole","wrong size","doesn't fit","don't like"] },
+      { id:"money", ru:"Деньги назад", any:["money back","refund","card","cash","exchange"] }],
+    start:"Hi there! How can I help you today?",
+    repeat:"Sorry, it is noisy in here — one more time?"
+  },
+  train:{
+    emoji:"🚂", ru:"Попутчик в поезде", topic:"series", coins:25, needs:2,
+    setting:"A long train ride through empty fields, two strangers facing each other",
+    aiRole:"Milo, a relaxed teenager with headphones around his neck",
+    goals:"Introduce yourself, say where you are going, recommend a series to watch",
+    brief:"Познакомься, скажи куда едешь и посоветуй сериал.",
     char:{ name:"Milo", role:"попутчик", skin:"#C98A5E", hair:"#1F1B18", style:"curly", shirt:"#0FA678", extra:"headphones" },
-    brief:"Познакомься, расскажи, куда едешь, и посоветуй сериал.",
-    start:"Long trip, huh? Where are you heading? 🚂",
-    repeat:"Sorry, the tunnel killed the sound — say it again?",
-    hints:["I'm going to…","My name is…","You should watch…"],
-    goals:[
-      { id:"name", ru:"Представился", any:["my name is","i'm ","i am ","call me"], done:"Nice to meet you!" },
-      { id:"where", ru:"Куда едешь", any:["going to","travelling to","heading to","to moscow","to london","home","to the sea"],
-        done:"Cool, that's a nice place." },
-      { id:"rec", ru:"Посоветовал сериал", any:["you should watch","i recommend","watch it","my favourite show","try "],
-        done:"Adding it to my list 📝" }],
-    win:"Great talk — enjoy the ride! 🚂" },
-
-  { id:"doctor", emoji:"🩺", ru:"У врача за границей", topic:"routine", coins:25, needs:2,
-    char:{ name:"Dr. Reed", role:"врач", skin:"#F2CDA7", hair:"#9A9AA8", style:"short", shirt:"#F6F7FB", extra:"glasses" },
+    checklist:[
+      { id:"name", ru:"Представился", any:["my name is","i'm ","i am ","call me"] },
+      { id:"where", ru:"Куда едешь", any:["going to","travelling to","heading to","home","to the sea","to moscow","to london"] },
+      { id:"rec", ru:"Совет по сериалу", any:["you should watch","i recommend","watch it","my favourite show","try "] }],
+    start:"Long ride, huh? Where are you heading?",
+    repeat:"The tunnel killed the sound — say that again?"
+  },
+  doctor:{
+    emoji:"🩺", ru:"У врача за границей", topic:"routine", coins:25, needs:2,
+    setting:"A small doctor's consulting room in a foreign city",
+    aiRole:"Dr. Reed, a calm and reassuring family doctor",
+    goals:"Say what hurts, say how long it has been hurting, ask what medicine to take",
     brief:"Скажи, что болит, как давно, и спроси про лекарство.",
-    start:"Hello! What's the problem today?",
-    repeat:"Sorry, I didn't catch that — slowly, please?",
-    hints:["I have a headache…","It started…","Do I need medicine…"],
-    goals:[
-      { id:"what", ru:"Что болит", any:["headache","stomach","throat","tooth","cough","fever","my head","my back","hurts"],
-        done:"A headache, okay." },
-      { id:"when", ru:"Как давно", any:["yesterday","two days","since","last night","a week","this morning"],
-        done:"Since yesterday, I see." },
-      { id:"med", ru:"Про лекарство", any:["medicine","pills","tablets","what should i take","prescription","drink"],
-        done:"Take these pills twice a day 💊" }],
-    win:"Get well soon! 🩺" }
-];
+    char:{ name:"Dr. Reed", role:"врач", skin:"#F2CDA7", hair:"#9A9AA8", style:"short", shirt:"#F6F7FB", extra:"glasses" },
+    checklist:[
+      { id:"what", ru:"Что болит", any:["headache","stomach","throat","tooth","cough","fever","my head","my back","hurts"] },
+      { id:"when", ru:"Как давно", any:["yesterday","two days","since","last night","a week","this morning"] },
+      { id:"med", ru:"Про лекарство", any:["medicine","pills","tablets","what should i take","prescription"] }],
+    start:"Hello! Come in, sit down. What brings you here today?",
+    repeat:"Sorry, I did not catch that — slowly, please?"
+  },
+  taxi:{
+    emoji:"🚕", ru:"Такси в аэропорт", topic:"travel", coins:15, needs:1,
+    setting:"The back seat of a taxi in heavy city traffic, a flight to catch",
+    aiRole:"Ray, a talkative taxi driver who knows every shortcut",
+    goals:"Say where you are going, ask how long it takes, ask the price",
+    brief:"Скажи, куда едешь, спроси сколько ехать и сколько стоит.",
+    char:{ name:"Ray", role:"таксист", skin:"#C98A5E", hair:"#3B2A21", style:"short", shirt:"#FFC94A", extra:"hat" },
+    checklist:[
+      { id:"where", ru:"Куда едешь", any:["airport","station","terminal","to the","centre","center"] },
+      { id:"time", ru:"Сколько ехать", any:["how long","how much time","minutes","get there","late"] },
+      { id:"price", ru:"Сколько стоит", any:["how much","price","cost","fare","dollars","euros"] }],
+    start:"Where are we headed today?",
+    repeat:"Can't hear you over the traffic — say again?"
+  }
+};
+/* превращаем данные в список квестов приложения */
+const QUESTS = Object.keys(QUEST_DATA).map(id => {
+  const q = QUEST_DATA[id];
+  return {
+    id, emoji:q.emoji, ru:q.ru, topic:q.topic, coins:q.coins, needs:q.needs || 0,
+    brief:q.brief, char:q.char, start:q.start, repeat:q.repeat,
+    setting:q.setting, aiRole:q.aiRole, goalsText:q.goals,
+    goals:q.checklist.map(g => ({ id:g.id, ru:g.ru, any:g.any, done:"" }))
+  };
+});
+
+/* ---------- один промпт-управленец на все ситуации ---------- */
+function questEnginePrompt(){
+  const st = state.quest;
+  if (!st) return "";
+  const q = st.q;
+  const doneList = q.goals.filter(g => st.done[g.id]).map(g => g.ru).join("; ");
+  return [
+    "You are an advanced AI Language Learning Quest Engine. Your job is to roleplay a specific character and guide the user through a realistic, conversational English learning simulation.",
+    "",
+    "DYNAMIC QUEST CONFIGURATION:",
+    "- LOCATION/SETTING: " + q.setting,
+    "- YOUR ROLE: " + q.aiRole,
+    "- USER'S GOALS: " + q.goalsText,
+    "",
+    "CORE ROLEPLAY RULES:",
+    "1. Stay in character 100% of the time. Match the exact tone, professionalism, or emotion implied by YOUR ROLE and SETTING.",
+    "2. Keep responses short and conversational (max 12-15 words). Never write long paragraphs.",
+    "3. Be highly dynamic. React naturally to what the user says. If they say something funny, rude, or strange, acknowledge it in character.",
+    "4. Move the conversation forward naturally toward the USER'S GOALS. Do not jump to the conclusion until the user has actually attempted to fulfill the goals.",
+    "",
+    "CASUAL LEARNER EDUCATION RULES:",
+    '1. NEVER break character to act like a teacher. Do not say "Your grammar is wrong" or "You should say...".',
+    "2. USE RECASTING: if the user makes a grammar, vocabulary or phrasing mistake, accept their answer, but subtly repeat their broken phrase correctly inside your natural, in-character response.",
+    '   Example (User: "I want book table") -> (You: "Of course, I can book a table for you! For how many people?")',
+    '3. If the user\'s input is completely incomprehensible, stay in character but ask them to repeat based on the environment ("Sorry, it is loud here, what was that?").',
+    "4. No emojis in your reply: the phone reads them aloud.",
+    doneList ? "ALREADY SETTLED (never ask about it again): " + doneList : "",
+    "Never list the goals, never number them, never tell the user they have a task."
+  ].filter(Boolean).join("\n");
+}
+
+/* ---------- фоновая проверка «цели выполнены?» ---------- */
+async function askRaw(systemText, userText, maxTokens){
+  if (!state.apiKey) return "";
+  try{
+    const ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+    const killer = ctrl ? setTimeout(()=>ctrl.abort(), 12000) : null;
+    const res = await fetch(DEEPSEEK_URL, {
+      method:"POST",
+      signal: ctrl ? ctrl.signal : undefined,
+      headers:{ "Content-Type":"application/json", "Authorization":"Bearer " + state.apiKey },
+      body: JSON.stringify({
+        model:"deepseek-chat",
+        messages:[{ role:"system", content:systemText }, { role:"user", content:userText }],
+        temperature:0, max_tokens: maxTokens || 8
+      })
+    });
+    if (killer) clearTimeout(killer);
+    if (!res.ok) return "";
+    const data = await res.json();
+    return ((((data.choices || [])[0] || {}).message || {}).content || "").trim();
+  }catch(e){ return ""; }
+}
+async function checkQuestDone(){
+  const st = state.quest;
+  if (!st || !state.apiKey || st.checking) return;
+  st.checking = true;
+  const dialogue = state.history.slice(-8)
+    .map(h => (h.role === "model" ? "Character: " : "User: ") + h.text).join("\n");
+  const answer = await askRaw(
+    "You analyse a roleplay dialogue for a language app. Answer with exactly one word: YES or NO.",
+    "Goals: " + st.q.goalsText + "\n\nDialogue:\n" + dialogue +
+    "\n\nHas the user attempted ALL the goals in this dialogue? Reply YES or NO.");
+  st.checking = false;
+  if (/^\s*yes/i.test(answer)){
+    logMic("проверка целей: YES");
+    st.q.goals.forEach(g => { st.done[g.id] = true; });
+    goalsCard();
+    endQuest(true);
+  }
+}
 
 function questUnlocked(q){
   if (!q.needs) return true;
@@ -2464,7 +2593,7 @@ function openQuests(){
     const card = el("div","qcard" + (open ? "" : " locked"));
     card.appendChild(el("div","qtop", q.emoji + " " + q.ru + (done ? " ✅" : "")));
     card.appendChild(el("div","qbrief", open ? q.brief : "Открывается после " + q.needs + " пройденных квестов 🔒"));
-    card.appendChild(el("div","qmeta", q.char.name + " · " + q.char.role + " · " + q.coins + " 🪙"));
+    card.appendChild(el("div","qmeta", q.char.name + " · " + q.char.role + " · " + q.coins + " монет"));
     if (open){
       const go = el("button","cbtn ok", done ? "Пройти снова ▶" : "Начать ▶");
       go.type = "button";
@@ -2488,15 +2617,36 @@ function startQuest(q){
   state.topic = Object.assign({}, topic, { char:q.char, slots:topic.slots });
   renderCharacter(state.topic);
   chat.textContent = "";
-  addSystem("Квест: " + q.ru + " — " + q.brief);
+  addSystem("Ситуация: " + q.ru + " — " + q.brief);
   goalsCard();
-  state.lastTutorLine = q.start;
-  addTutor(q.start);
   setEmotion("neutral");
   renderStarters();
-  renderHints(q.hints);
-  speak(q.start);
+  renderHints([]);
   renderRail();
+  openQuestScene(q);
+}
+/* первую реплику в сцене пишет сам движок квестов */
+async function openQuestScene(q){
+  if (!state.apiKey){
+    state.lastTutorLine = q.start;
+    addTutor(q.start);
+    speak(q.start);
+    return;
+  }
+  const typing = addTyping();
+  const r = await askAI("(The scene begins. Introduce yourself in character, set the scene in one short line, and ask the opening question.)");
+  typing.remove();
+  let line = "";
+  if (r.ok){
+    const parsed = parseModelJSON(r.raw) || repairModelText(r.raw);
+    if (parsed && parsed.reply) line = sanitizeReply(parsed.reply);
+    if (parsed && Array.isArray(parsed.next_hints)) renderHints(parsed.next_hints);
+  }
+  if (!line) line = q.start;
+  state.lastTutorLine = line;
+  pushHistory("model", line);
+  addTutor(line);
+  speak(line);
 }
 function goalsCard(){
   const st = state.quest;
@@ -2619,21 +2769,6 @@ function giveGems(n){
 }
 
 /* ---------- системный промпт персонажа для AI ---------- */
-function questPrompt(){
-  const st = state.quest;
-  if (!st) return "";
-  const left = st.q.goals.filter(g => !st.done[g.id]).map(g => g.ru).join("; ");
-  const done = st.q.goals.filter(g => st.done[g.id]).map(g => g.ru).join("; ");
-  return [
-    "",
-    "=== SCENE GOALS (hidden from the learner) ===",
-    "Scene: " + st.q.ru + ".",
-    done ? "Already settled, never ask about it again: " + done : "",
-    left ? "Still to come up naturally: " + left : "All goals are done: wrap the scene up warmly in one or two lines.",
-    "Steer the conversation so these things come up on their own. Never list them, never number them, never say the learner has a task."
-  ].filter(Boolean).join("\n");
-}
-
 /* ===== 6. персонаж и сцена ===== */
 function hairPath(style, color){
   if (style === "long")  return '<path d="M22 46c-2-20 8-32 28-32s30 12 28 32c-3-4-5-16-8-18-6 6-34 6-40 0-3 2-5 14-8 18z" fill="'+color+'"/><path d="M20 46c0 16 2 26 5 30-8-6-11-20-9-34zM80 46c0 16-2 26-5 30 8-6 11-20 9-34z" fill="'+color+'"/>';
@@ -2942,7 +3077,7 @@ function micHelp(reason){
 }
 
 /* лог всех событий распознавания: видно, где именно Safari останавливается */
-const BUILD = "v32";
+const BUILD = "v33";
 const micLogLines = [];
 function logMic(msg){
   const t = new Date();
@@ -3311,57 +3446,30 @@ const PERSONAS = {
   ]
 };
 
-const QUEST_PERSONAS = {
-  coffee:[
-    "ROLEPLAY: you are Sam, a barista in a busy New York coffee shop. The learner is a customer at the counter.",
-    "VOICE: quick, cheerful, real service language ('Sure thing', 'Coming up', 'For here or to go?').",
-    "SCENE: morning rush, milk steamer noise, pastry case with croissants on a discount today, toilets at the back on the left.",
-    "PLAY IT REAL: confirm the order in your own words, offer sizes or milk options, mention the croissant deal if they ask about food or price, answer directly if they ask where the toilet is.",
-    "IF THEY ASK YOU TO REPEAT: say your last question again in simpler words, nothing else.",
-    "STAY IN ROLE: never explain grammar, never break character, never list the tasks."
-  ],
-  heathrow:[
-    "ROLEPLAY: you are Officer Blake at passport control in Heathrow airport. The learner is a traveller at your desk.",
-    "VOICE: short, formal, polite but firm. Official phrases ('Purpose of your visit?', 'How long are you staying?', 'Next, please').",
-    "SCENE: long queue behind them, you check the passport while you ask.",
-    "PLAY IT REAL: ask one thing at a time, acknowledge each answer briefly ('Vacation. Fine.'), get stricter only if the answer is unclear.",
-    "IF THEY ASK YOU TO REPEAT: repeat your last question slower and simpler.",
-    "STAY IN ROLE: no grammar lessons, no friendly chit-chat beyond the check."
-  ],
-  return:[
-    "ROLEPLAY: you are Ella, a shop assistant at the returns desk of a clothes shop.",
-    "VOICE: friendly, practical, helpful even when the rules are annoying.",
-    "SCENE: the learner brings back a T-shirt; you need the reason, the receipt and the way they want the money back.",
-    "PLAY IT REAL: take the item, react to the reason ('Too small, I see'), explain refund to card in two days or an exchange.",
-    "IF THEY ASK YOU TO REPEAT: repeat your last question in simpler words.",
-    "STAY IN ROLE: never mention grammar or the task list."
-  ],
-  train:[
-    "ROLEPLAY: you are Milo, 17, a stranger sitting opposite the learner on a long train ride.",
-    "VOICE: relaxed, curious, headphones around the neck, easy jokes.",
-    "SCENE: hours to go, fields outside the window, both of you bored.",
-    "PLAY IT REAL: introduce yourself, ask where they are heading, swap series and music recommendations, react to what they say with your own quick opinion.",
-    "IF THEY ASK YOU TO REPEAT: repeat your last question simply, maybe blame the tunnel noise.",
-    "STAY IN ROLE: this is a friendly chat, not an interview."
-  ],
-  doctor:[
-    "ROLEPLAY: you are Dr. Reed, a calm family doctor abroad. The learner is your patient.",
-    "VOICE: gentle, clear, simple medical words ('Where does it hurt?', 'Since when?', 'Take these twice a day').",
-    "SCENE: small consulting room, you take notes while asking.",
-    "PLAY IT REAL: ask about the symptom, how long, temperature or sleep, then give simple advice and a prescription.",
-    "IF THEY ASK YOU TO REPEAT: repeat your last question slowly and simply.",
-    "STAY IN ROLE: no grammar comments, no scary diagnoses, keep it reassuring."
-  ]
-};
-
 /* ===== 10. DeepSeek ===== */
 function systemPrompt(topic){
   const inQuest = !!state.quest;
-  const persona = inQuest
-    ? (QUEST_PERSONAS[state.quest.q.id] || [])
-    : (PERSONAS[topic.id] || []);
-  const who = inQuest ? state.quest.q.char : topic.char;
 
+  if (inQuest){                                        /* ситуация целиком ведётся универсальным движком */
+    return [
+      questEnginePrompt(),
+      "",
+      "=== LEARNER MODEL ===",
+      scaffold(),
+      "",
+      "=== CORRECTION OBJECT (internal, the user sees it as a small friendly card) ===",
+      "- The text comes from speech recognition: a single odd or misheard word is NOT a mistake.",
+      '- status "needs_improvement" only for real grammar errors; otherwise "correct".',
+      "- improved: their sentence with the minimum fix. explanation_ru: one short friendly Russian sentence, under 90 characters, no grammar terms.",
+      "- next_hints: three very short sentence beginnings that fit this exact moment.",
+      "",
+      "Answer with STRICT JSON only, no markdown, exactly this shape:",
+      '{"reply":"...","correction":{"status":"correct|needs_improvement","original":"...","improved":"...","explanation_ru":"..."},"next_hints":["...","...","..."]}'
+    ].join("\n");
+  }
+
+  const persona = PERSONAS[topic.id] || [];
+  const who = topic.char;
   return [
     "You are a real person chatting in English with a Russian-speaking teenager (11-17) who is learning the language.",
     "Your name is " + who.name + ". Never say you are an AI, an assistant or a language app.",
@@ -3384,21 +3492,18 @@ function systemPrompt(topic){
     "- Never correct them openly in the reply and never mention grammar there.",
     "- Use recasting: say their idea back correctly as part of your own natural reply.",
     '  learner: "Yesterday I go to the cinema." you: "Oh, you went to the cinema! What did you watch?"',
-    "- The written hint goes only into the correction object below; the learner sees it as a small friendly card.",
     "",
     "=== LEARNER MODEL ===",
     scaffold(),
-    inQuest ? questPrompt() : "",
     "",
     "=== CORRECTION OBJECT (you are the only grammar checker, be precise) ===",
     "- The text comes from speech recognition. A single odd or misheard word is NOT a mistake: ignore it and ask again in character.",
     '- Use status "needs_improvement" only for real grammar errors: missing am/is/are, wrong verb form or tense, missing -s with he/she/it, wrong or missing article, wrong preposition, wrong word order, missing "to" after want/need, doubled subject, wrong question form.',
     "- Do NOT correct style, politeness, word choice, slang or British/American differences. Do not rewrite a correct sentence.",
     "- improved: their own sentence with the minimum fix, same meaning and words.",
-    "- explanation_ru: ONE short friendly sentence in Russian, simple words, no grammar terms, under 90 characters, warm in tone.",
+    "- explanation_ru: ONE short friendly sentence in Russian, simple words, no grammar terms, under 90 characters.",
     '- If the sentence is fine: status "correct", improved = the sentence, explanation_ru = "".',
-    "- Judge only their last message.",
-    "- next_hints: three very short sentence beginnings they could say next, fitting this exact moment of the conversation.",
+    "- next_hints: three very short sentence beginnings they could say next.",
     "",
     "Answer with STRICT JSON only, no markdown, exactly this shape:",
     '{"reply":"...","correction":{"status":"correct|needs_improvement","original":"...","improved":"...","explanation_ru":"..."},"next_hints":["...","...","..."],"pronunciation_tip":{"word":"...","tip_ru":"..."}}'
@@ -3606,6 +3711,7 @@ async function handleLearnerInput(text){
   if (state.quest){
     state.quest.turns++;
     if (questAllDone()) endQuest(true);
+    else if (state.apiKey && state.quest.turns % 3 === 0) checkQuestDone();   /* фоновый YES/NO */
   } else {
     tickSession();                                    /* 1 мин разогрев → 2 мин болтовня → 1 мин тест */
     afterTurn(clean, corr, res);                      /* vibe check: варианты, кирпичики, мягкий стоп */

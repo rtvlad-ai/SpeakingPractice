@@ -409,6 +409,7 @@ button[disabled]{opacity:.5;cursor:not-allowed}
   <p class="note" id="buildLine"></p>
   <label class="check" for="autoMic"><input type="checkbox" id="autoMic"> Hands-free: слушать сразу после реплики (на iPhone Safari всё равно требует одно касание)</label>
   <div class="diag" id="diag"></div>
+  <label class="check" for="contMode"><input type="checkbox" id="contMode" checked> Непрерывный режим: микрофон слушает весь разговор, фразы отправляются по паузе (выключи, если хочешь запись по одной фразе)</label>
   <label class="check" for="resetSession"><input type="checkbox" id="resetSession"> Сбрасывать аудиосессию перед записью (лечит «микрофон открыт, но тишина» после озвучки в Safari)</label>
   <label class="check" for="holdStream"><input type="checkbox" id="holdStream"> Экспериментально: держать аудиопоток открытым. На iPhone обычно делает хуже — Safari глушит распознавание, включай только если без этого совсем не слышит.</label>
   <div class="row">
@@ -1162,7 +1163,7 @@ const state = {
   history:[], answered:new Set(), facts:{}, pending:null, extraIdx:0, asked:0, lastAsk:null,
   isRecording:false, recognition:null, recTimer:null,
   soundOn:true, rate:1.08, autoMic:false, themeMode:"auto", photosOn:true,
-  lastTutorLine:"", audioUnlocked:false, pendingSpeech:null, expect:null, prefix:"", quest:null, stopRequested:false, recFinish:null, micFails:0, micEverStarted:false, holdStream:false, micStream:null, silentTries:0, emptyResults:0, resetSession:false, ttsSinceRec:false, lastRecError:"", startWatch:null, endWatch:null, busyWatch:null,
+  lastTutorLine:"", audioUnlocked:false, pendingSpeech:null, expect:null, prefix:"", quest:null, stopRequested:false, recFinish:null, micFails:0, micEverStarted:false, holdStream:false, micStream:null, silentTries:0, emptyResults:0, continuous:true, speakingNow:false, gotSound:false, lastConf:0, resetSession:false, ttsSinceRec:false, lastRecError:"", startWatch:null, endWatch:null, busyWatch:null,
   busy:false, micBlocked:false, exchanges:0
 };
 
@@ -2819,7 +2820,10 @@ function fillVoiceSelect(){
   });
 }
 if (synth){ loadVoices(); synth.onvoiceschanged = loadVoices; setTimeout(loadVoices,400); setTimeout(loadVoices,1600); }
-const setSpeaking = (on)=>{ $("avatar").classList.toggle("speaking", !!on); };
+const setSpeaking = (on)=>{
+  state.speakingNow = !!on;
+  $("avatar").classList.toggle("speaking", !!on);
+};
 function speak(text){
   if (!text || !state.soundOn || !synth) return;
   if (!state.audioUnlocked){ state.pendingSpeech = text; return; }
@@ -2870,7 +2874,7 @@ const micBtn = $("micBtn"), micIcon = $("micIcon"), micLabel = $("micLabel"), mi
 function setMicUI(mode){
   if (mode === "rec"){
     micBtn.classList.add("rec"); micBtn.disabled = false;
-    micIcon.textContent = "🔴"; micLabel.textContent = "Слушаю… (тап — отправить)";
+    micIcon.textContent = "🔴"; micLabel.textContent = "Слушаю… (тап — выключить)";
     micBtn.setAttribute("aria-label","Слушаю: нажми, чтобы отправить сразу"); micState.textContent = "говори, конец фразы поймаю сам";
   } else if (mode === "blocked"){
     micBtn.classList.remove("rec"); micBtn.disabled = true;
@@ -2934,7 +2938,7 @@ function micHelp(reason){
 }
 
 /* лог всех событий распознавания: видно, где именно Safari останавливается */
-const BUILD = "v25";
+const BUILD = "v26";
 const micLogLines = [];
 function logMic(msg){
   const t = new Date();
@@ -3037,209 +3041,162 @@ function offerReload(){
   scrollChat();
 }
 
-/* Схема как в рабочих версиях: новый объект на нажатие, конец фразы ловит сам браузер.
-   Никаких abort()/stop() по таймерам — от них Safari перестаёт слушать со второго раза. */
-function startRecording(){
-  if (state.isRecording){ stopRecording(); return; }
-  if (!SR){ addSystem("Этот браузер не умеет распознавать речь. Пиши ответ в поле ниже.", true); return; }
-  if (state.busy) releaseBusy();                       /* зависший запрос не глушит микрофон */
-  if (synth){ try{ synth.cancel(); setSpeaking(false); }catch(e){} }
+/* ============================================================
+   НЕПРЕРЫВНЫЙ РЕЖИМ
+   Один сеанс распознавания на весь разговор: continuous = true,
+   фразы отделяются паузой. Safari ломается именно на повторных
+   start(), поэтому мы просто не останавливаем сеанс.
+   ============================================================ */
+let contRec = null, contOn = false, contFinal = "", contInterim = "", contTimer = null, contRestart = null;
 
-  logMic("тап: запускаю запись" + (state.holdStream ? " (поток удерживается)" : "") +
-         " | озвучка после прошлой записи: " + (state.ttsSinceRec ? "да" : "нет"));
-  resetAudioSession(()=>grabStream(()=>openRecognition()));
+function micToggle(){
+  if (contOn) stopListening("тап");
+  else startListening();
 }
-/* сам запуск распознавания, вызывается сразу или после получения потока */
-function openRecognition(){
+function startListening(){
+  if (!SR){ addSystem("Этот браузер не умеет распознавать речь. Пиши ответ в поле ниже.", true); return; }
+  if (state.busy) releaseBusy();
+  if (synth){ try{ synth.cancel(); setSpeaking(false); }catch(e){} }
+  contOn = true;
+  contFinal = ""; contInterim = "";
+  setMicUI("rec");
+  micState.textContent = state.continuous ? "слушаю непрерывно — говори" : "говори, конец фразы поймаю сам";
+  logMic("включаю прослушивание" + (state.continuous ? " (непрерывный режим)" : " (одна фраза)"));
+  openSession(true);
+}
+function stopListening(why){
+  contOn = false;
+  clearTimeout(contTimer); clearTimeout(contRestart);
+  logMic("выключаю прослушивание: " + (why || ""));
+  flushPhrase(true);
+  const r = contRec;
+  contRec = null;
+  if (r){
+    try{ r.onend = null; r.onerror = null; r.onresult = null; }catch(e){}
+    try{ r.stop(); }catch(e){ try{ r.abort(); }catch(e2){} }
+  }
+  state.isRecording = false;
+  setMicUI(state.micBlocked ? "blocked" : "idle");
+}
+/* открываем сеанс; при обрыве переоткрываем, пока режим включён */
+function openSession(first){
   let rec;
   try{ rec = new SR(); logMic("объект создан"); }
-  catch(e){ logMic("объект НЕ создан: " + ((e && e.name) || e)); micHelp("не создаётся"); return; }
+  catch(e){ logMic("объект НЕ создан: " + ((e && e.name) || e)); micHelp("не создаётся"); contOn = false; setMicUI("idle"); return; }
+  contRec = rec;
   rec.lang = "en-US";
-  rec.continuous = false;                              /* браузер сам закрывает запись после фразы */
+  rec.continuous = !!state.continuous;                 /* главное отличие: сеанс не закрывается после фразы */
   rec.interimResults = true;
   rec.maxAlternatives = 1;
 
-  let finalText = "", lastInterim = "", bestConf = 0, t0 = Date.now(), started = false, done = false, gotSound = false;
-
-  const finish = ()=>{
-    if (done) return;
-    done = true;
-    state.recFinish = null;
-    clearTimeout(state.startWatch); clearTimeout(state.endWatch);
-    const said = finalText.trim() || lastInterim.trim();   /* запасной путь: промежуточный текст */
-    if (!finalText.trim() && said) logMic("финального результата не было — отправляю промежуточный: " + said.slice(0,40));
-    const secs = (Date.now() - t0) / 1000;
-    cleanupRecognition();
-    releaseStream();
-
-    if (state.expect){ handleSpoken(said, secs, bestConf); return; }
-    if (!said){
-      if (gotSound){                                   /* звук был, но служба распознавания молчит */
-        state.emptyResults = (state.emptyResults || 0) + 1;
-        logMic("речь услышана, но текст не вернулся (" + state.emptyResults + ")");
-        micState.textContent = "речь услышал, текста нет — см. подсказку";
-        if (state.emptyResults <= 2)
-          addSystem("Речь я услышал, но система распознавания не вернула текст. Проверь: Настройки → Основные → Клавиатура → Диктовка — включена (при первом включении iPhone докачивает языковой пакет, нужен интернет). Если диктовка включена, помогает перезагрузка страницы. Пока фразу можно надиктовать кнопкой ⌨︎🎙 рядом с полем ввода.", true);
-        if (state.emptyResults >= 2) micLogCard();
-      } else {
-        micState.textContent = "не услышал — нажми и скажи ещё раз";
-      }
-      return;
-    }
-    state.emptyResults = 0;
-    if (state.prefix){
-      const full = (state.prefix + " " + said).replace(/\s{2,}/g," ").trim();
-      state.prefix = "";
-      handleLearnerInput(full);
-      return;
-    }
-    handleLearnerInput(said);
-  };
-
-  rec.onaudiostart = ()=>{ logMic("audiostart: микрофон открыт"); micState.textContent = "микрофон открыт, говори"; };
-  rec.onsoundstart = ()=>{ gotSound = true; state.silentTries = 0; logMic("soundstart: слышу звук"); };
-  rec.onspeechstart = ()=>{ gotSound = true; state.silentTries = 0; logMic("speechstart: пошла речь"); micState.textContent = "слышу тебя"; };
-  rec.onspeechend = ()=>logMic("speechend: речь закончилась");
-  rec.onaudioend = ()=>logMic("audioend: микрофон закрыт");
-  rec.onnomatch = ()=>logMic("nomatch: не разобрал");
+  let started = false;
   rec.onstart = ()=>{
-    logMic("onstart");
     started = true;
+    state.isRecording = true;
     state.micEverStarted = true;
-    state.ttsSinceRec = false;
-    state.micFails = 0;
-    clearTimeout(state.startWatch);
-    state.isRecording = true; t0 = Date.now();
+    state.silentTries = 0;
+    logMic("onstart");
     setMicUI("rec");
-    announce("Микрофон слушает.");
   };
+  rec.onaudiostart = ()=>logMic("audiostart: микрофон открыт");
+  rec.onsoundstart = ()=>{ state.gotSound = true; logMic("soundstart: слышу звук"); };
+  rec.onspeechstart = ()=>{ state.gotSound = true; logMic("speechstart: пошла речь"); micState.textContent = "слышу тебя"; };
+  rec.onspeechend = ()=>logMic("speechend");
+  rec.onaudioend = ()=>logMic("audioend");
   rec.onresult = (ev)=>{
     let interim = "";
     for (let i = ev.resultIndex; i < ev.results.length; i++){
       const r = ev.results[i];
       if (r.isFinal){
         logMic("результат (final): " + String(r[0].transcript).slice(0,40));
-        finalText += r[0].transcript + " ";
-        if (typeof r[0].confidence === "number" && r[0].confidence > bestConf) bestConf = r[0].confidence;
+        contFinal += r[0].transcript + " ";
+        if (typeof r[0].confidence === "number") state.lastConf = r[0].confidence;
       } else interim += r[0].transcript;
     }
-    if (interim.trim()) lastInterim = interim.trim();  /* Safari часто не присылает финальный результат */
-    const shown = (finalText || interim).trim();
-    micLabel.textContent = shown ? shown.slice(0,34) : "Слушаю…";
+    if (interim.trim()) contInterim = interim.trim();
+    const shown = (contFinal || contInterim).trim();
+    if (shown) micLabel.textContent = shown.slice(0,34);
+    clearTimeout(contTimer);
+    contTimer = setTimeout(()=>flushPhrase(false), contFinal.trim() ? 900 : 1400);   /* пауза = конец фразы */
   };
   rec.onerror = (ev)=>{
     const code = (ev && ev.error) || "unknown";
     state.lastRecError = code;
-    logMic("ОШИБКА: " + code + (ev && ev.message ? " — " + String(ev.message).slice(0,60) : ""));
-    if (code === "audio-capture"){
-      /* Source is muted: аудиовход занят или заглушен системой — лечится только перезагрузкой */
-      done = true;
-      clearTimeout(state.startWatch);
-      cleanupRecognition();
-      releaseStream();
-      logMic("источник заглушен — предлагаю перезагрузку");
-      micState.textContent = "микрофон заглушен — перезагрузи страницу";
-      addSystem("Safari заглушил микрофонный вход (audio-capture: Source is muted). Закрой другие приложения со звуком и перезагрузи страницу — прогресс сохранён. Пока можно надиктовать фразу значком микрофона на клавиатуре в поле ввода.", true);
-      micLogCard(); offerReload();
-      return;
-    }
+    logMic("ОШИБКА: " + code + (ev && ev.message ? " — " + String(ev.message).slice(0,50) : ""));
     if (code === "not-allowed" || code === "service-not-allowed"){
       state.micBlocked = true;
-      state.micFails = (state.micFails || 0) + 1;
-      micHelp(code);
-      micLogCard();
-      if (state.micFails >= 2) offerReload();
-      finish();
+      contOn = false;
+      micHelp(code); micLogCard();
+      setMicUI("blocked");
       return;
     }
-    if (code === "aborted" || code === "no-speech"){
-      /* если что-то распозналось — отправляем; диагностику покажет finish() */
-      done = true;
-      state.recFinish = null;
-      clearTimeout(state.startWatch); clearTimeout(state.endWatch);
-      const text = (finalText.trim() || lastInterim.trim());
-      cleanupRecognition();
-      releaseStream();
-      if (text){
-        logMic("сессия оборвана, но текст есть — отправляю");
-        if (state.expect){ handleSpoken(text, (Date.now() - t0) / 1000, bestConf); return; }
-        if (state.prefix){
-          const full = (state.prefix + " " + text).replace(/\s{2,}/g," ").trim();
-          state.prefix = "";
-          handleLearnerInput(full);
-          return;
-        }
-        handleLearnerInput(text);
-        return;
-      }
-      if (gotSound){
-        state.emptyResults = (state.emptyResults || 0) + 1;
-        logMic("речь была, текста нет (" + state.emptyResults + ")");
-        micState.textContent = "речь услышал, текста нет — см. подсказку";
-        if (state.emptyResults <= 2)
-          addSystem("Речь я услышал, но система распознавания не вернула текст. Проверь: Настройки → Основные → Клавиатура → Диктовка — включена (при первом включении iPhone докачивает языковой пакет, нужен интернет). Пока фразу можно надиктовать кнопкой ⌨︎🎙 рядом с полем ввода.", true);
-        if (state.emptyResults >= 2) micLogCard();
-        return;
-      }
-      state.silentTries = (state.silentTries || 0) + 1;
-      logMic("тишина в сессии (" + state.silentTries + ") — запись не перезапускаю сам");
-      resetAudioSession(()=>logMic("аудиосессия сброшена в фоне"), true);
-      if (state.silentTries < 2){
-        micState.textContent = "звук не дошёл — нажми ещё раз";
-      } else {
-        state.silentTries = 0;
-        micState.textContent = "микрофон молчит — надиктуй в поле или перезагрузи";
-        addSystem("Микрофон открывается, но звук в него не идёт. Это баг аудиосессии Safari: помогает перезагрузка страницы. Быстрый путь — кнопка ⌨︎🎙 рядом с полем: надиктуй фразу микрофоном на клавиатуре.", true);
-        micLogCard(); offerReload();
-      }
+    if (code === "audio-capture"){
+      contOn = false;
+      micState.textContent = "микрофон заглушён — перезагрузи страницу";
+      addSystem("Safari заглушил микрофонный вход (Source is muted). Перезагрузи страницу — прогресс сохранён. Пока можно надиктовать фразу кнопкой ⌨︎🎙 рядом с полем.", true);
+      micLogCard(); offerReload();
+      setMicUI("idle");
       return;
     }
-    if (code !== "aborted" && code !== "no-speech")
-      addSystem(REC_ERRORS[code] || "Распознавание прервалось. Попробуй ещё раз или напиши ответ.", true);
-    finish();
+    /* no-speech / aborted / network — сеанс просто переоткроем */
   };
-  rec.onend = ()=>{ logMic("onend, символов: " + (finalText.trim() || lastInterim.trim()).length); finish(); };
-  state.recFinish = finish;
+  rec.onend = ()=>{
+    logMic("onend" + (contOn ? " — переоткрываю сеанс" : ""));
+    flushPhrase(false);
+    if (!contOn){ state.isRecording = false; setMicUI(state.micBlocked ? "blocked" : "idle"); return; }
+    clearTimeout(contRestart);
+    contRestart = setTimeout(()=>{ if (contOn) openSession(false); }, 350);
+  };
 
-  state.recognition = rec;
-  micState.textContent = "открываю микрофон…";
   try{
     rec.start();
     logMic("start() вызван без исключения");
-    /* сторож только сообщает, ничего не обрывает */
+    clearTimeout(state.startWatch);
     state.startWatch = setTimeout(()=>{
-      if (!started && !done){
+      if (!started && contOn){
+        logMic("сторож: onstart не пришёл");
         state.micFails = (state.micFails || 0) + 1;
-        logMic("сторож: onstart так и не пришёл");
         micState.textContent = "микрофон не открылся — нажми ещё раз";
-        micHelp("нет ответа");
-        micLogCard();
+        contOn = false; setMicUI("idle");
+        micHelp("нет ответа"); micLogCard();
         if (state.micFails >= 2) offerReload();
       }
-    }, 3000);
-    state.recTimer = setTimeout(()=>{                  /* страховка от бесконечной записи */
-      if (state.isRecording) stopRecording();
-    }, 20000);
+    }, first ? 3000 : 5000);
   }catch(e){
-    logMic("start() выбросил " + ((e && e.name) || e) + ": " + ((e && e.message) || ""));
-    cleanupRecognition();
-    if (/InvalidState/i.test(String((e && e.name) || e))) addSystem("Микрофон ещё занят — нажми ещё раз.");
-    else { micHelp("start(): " + ((e && e.name) || "ошибка")); micLogCard(); }
+    logMic("start() выбросил " + ((e && e.name) || e));
+    if (/InvalidState/i.test(String((e && e.name) || e)) && contOn){
+      clearTimeout(contRestart);
+      contRestart = setTimeout(()=>{ if (contOn) openSession(false); }, 400);
+      return;
+    }
+    contOn = false; setMicUI("idle");
+    micHelp("start(): " + ((e && e.name) || "ошибка")); micLogCard();
   }
 }
-function stopRecording(){                              /* только по явному тапу или по 20-секундной страховке */
-  const rec = state.recognition;
-  if (!rec){
-    if (state.recFinish) state.recFinish(); else cleanupRecognition();
+/* накопленная фраза уходит в чат */
+function flushPhrase(closing){
+  clearTimeout(contTimer);
+  const text = (contFinal.trim() || contInterim.trim());
+  contFinal = ""; contInterim = "";
+  if (!text) return;
+  if (state.speakingNow){                              /* это голос собеседника из динамика */
+    logMic("пропускаю: говорит собеседник");
     return;
   }
-  logMic("стоп по тапу");
-  try{ rec.stop(); }catch(e){ try{ rec.abort(); }catch(e2){} }
-  clearTimeout(state.endWatch);
-  state.endWatch = setTimeout(()=>{                    /* Safari иногда не присылает onend */
-    if (state.recFinish){ logMic("onend не пришёл — завершаю сам"); state.recFinish(); }
-  }, 1200);
+  logMic("фраза готова: " + text.slice(0,40));
+  micLabel.textContent = contOn && !closing ? "Слушаю… (тап — выключить)" : "Нажми и говори";
+  if (state.expect){ handleSpoken(text, 2.5, state.lastConf || 0); return; }
+  if (state.prefix){
+    const full = (state.prefix + " " + text).replace(/\s{2,}/g," ").trim();
+    state.prefix = "";
+    handleLearnerInput(full);
+    return;
+  }
+  handleLearnerInput(text);
 }
+/* совместимость со старым кодом */
+function startRecording(){ if (!contOn) startListening(); }
+function stopRecording(){ if (contOn) stopListening("stopRecording"); }
 
 /* ===== 10. DeepSeek ===== */
 function systemPrompt(topic){
@@ -3527,10 +3484,7 @@ $("dictBtn").addEventListener("click",()=>{        /* системная дик�
   flash("Нажми микрофон на клавиатуре и говори");
 });
 /* тап включает запись; конец фразы ловится по тишине и отправляется сам */
-micBtn.addEventListener("click",()=>{
-  if (state.isRecording) stopRecording();              /* второй тап — отправить сразу */
-  else startRecording();                               /* даже если ответ ещё грузится */
-});
+micBtn.addEventListener("click", micToggle);
 
 /* ===== 13. управление ===== */
 $("repeatBtn").addEventListener("click",()=>{ if (state.lastTutorLine) speak(state.lastTutorLine); });
@@ -3731,6 +3685,17 @@ try{ const rs = localStorage.getItem("englishPractice.resetSession"); if (rs !==
 try{ const hs = localStorage.getItem("englishPractice.holdStream"); if (hs !== null) state.holdStream = hs === "1"; }catch(e){}
 const bl = $("buildLine"); if (bl) bl.textContent = "Сборка " + BUILD + ". Если правки не видны — обнови страницу с очисткой кеша (потяни вниз в Safari).";
 applyTheme(); updateCounter(); autoGrow(); refreshModePill(); runDiagnostics(); envReport();
+const cmBox = $("contMode");
+if (cmBox){
+  try{ const cm = localStorage.getItem("englishPractice.continuous"); if (cm !== null) state.continuous = cm === "1"; }catch(e){}
+  cmBox.checked = state.continuous;
+  cmBox.addEventListener("change",(e)=>{
+    state.continuous = !!e.target.checked;
+    try{ localStorage.setItem("englishPractice.continuous", state.continuous ? "1" : "0"); }catch(err){}
+    logMic("непрерывный режим: " + state.continuous);
+    if (contOn) stopListening("смена режима");
+  });
+}
 const rsBox = $("resetSession");
 if (rsBox){
   rsBox.checked = state.resetSession;

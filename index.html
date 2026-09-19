@@ -2934,7 +2934,7 @@ function micHelp(reason){
 }
 
 /* лог всех событий распознавания: видно, где именно Safari останавливается */
-const BUILD = "v24";
+const BUILD = "v25";
 const micLogLines = [];
 function logMic(msg){
   const t = new Date();
@@ -3059,13 +3059,15 @@ function openRecognition(){
   rec.interimResults = true;
   rec.maxAlternatives = 1;
 
-  let finalText = "", bestConf = 0, t0 = Date.now(), started = false, done = false, gotSound = false;
+  let finalText = "", lastInterim = "", bestConf = 0, t0 = Date.now(), started = false, done = false, gotSound = false;
 
   const finish = ()=>{
     if (done) return;
     done = true;
-    clearTimeout(state.startWatch);
-    const said = finalText.trim();
+    state.recFinish = null;
+    clearTimeout(state.startWatch); clearTimeout(state.endWatch);
+    const said = finalText.trim() || lastInterim.trim();   /* запасной путь: промежуточный текст */
+    if (!finalText.trim() && said) logMic("финального результата не было — отправляю промежуточный: " + said.slice(0,40));
     const secs = (Date.now() - t0) / 1000;
     cleanupRecognition();
     releaseStream();
@@ -3121,6 +3123,7 @@ function openRecognition(){
         if (typeof r[0].confidence === "number" && r[0].confidence > bestConf) bestConf = r[0].confidence;
       } else interim += r[0].transcript;
     }
+    if (interim.trim()) lastInterim = interim.trim();  /* Safari часто не присылает финальный результат */
     const shown = (finalText || interim).trim();
     micLabel.textContent = shown ? shown.slice(0,34) : "Слушаю…";
   };
@@ -3149,15 +3152,38 @@ function openRecognition(){
       finish();
       return;
     }
-    if ((code === "aborted" || code === "no-speech") && started && !gotSound && !finalText.trim()){
-      /* микрофон открылся, но звука не было — типичный баг iOS: пробуем ещё раз другим способом */
+    if (code === "aborted" || code === "no-speech"){
+      /* если что-то распозналось — отправляем; диагностику покажет finish() */
       done = true;
-      clearTimeout(state.startWatch);
+      state.recFinish = null;
+      clearTimeout(state.startWatch); clearTimeout(state.endWatch);
+      const text = (finalText.trim() || lastInterim.trim());
       cleanupRecognition();
       releaseStream();
+      if (text){
+        logMic("сессия оборвана, но текст есть — отправляю");
+        if (state.expect){ handleSpoken(text, (Date.now() - t0) / 1000, bestConf); return; }
+        if (state.prefix){
+          const full = (state.prefix + " " + text).replace(/\s{2,}/g," ").trim();
+          state.prefix = "";
+          handleLearnerInput(full);
+          return;
+        }
+        handleLearnerInput(text);
+        return;
+      }
+      if (gotSound){
+        state.emptyResults = (state.emptyResults || 0) + 1;
+        logMic("речь была, текста нет (" + state.emptyResults + ")");
+        micState.textContent = "речь услышал, текста нет — см. подсказку";
+        if (state.emptyResults <= 2)
+          addSystem("Речь я услышал, но система распознавания не вернула текст. Проверь: Настройки → Основные → Клавиатура → Диктовка — включена (при первом включении iPhone докачивает языковой пакет, нужен интернет). Пока фразу можно надиктовать кнопкой ⌨︎🎙 рядом с полем ввода.", true);
+        if (state.emptyResults >= 2) micLogCard();
+        return;
+      }
       state.silentTries = (state.silentTries || 0) + 1;
       logMic("тишина в сессии (" + state.silentTries + ") — запись не перезапускаю сам");
-      resetAudioSession(()=>logMic("аудиосессия сброшена в фоне"), true);   /* готовим сессию к следующему тапу */
+      resetAudioSession(()=>logMic("аудиосессия сброшена в фоне"), true);
       if (state.silentTries < 2){
         micState.textContent = "звук не дошёл — нажми ещё раз";
       } else {
@@ -3172,7 +3198,8 @@ function openRecognition(){
       addSystem(REC_ERRORS[code] || "Распознавание прервалось. Попробуй ещё раз или напиши ответ.", true);
     finish();
   };
-  rec.onend = ()=>{ logMic("onend, распознано символов: " + finalText.trim().length); finish(); };
+  rec.onend = ()=>{ logMic("onend, символов: " + (finalText.trim() || lastInterim.trim()).length); finish(); };
+  state.recFinish = finish;
 
   state.recognition = rec;
   micState.textContent = "открываю микрофон…";
@@ -3202,8 +3229,16 @@ function openRecognition(){
 }
 function stopRecording(){                              /* только по явному тапу или по 20-секундной страховке */
   const rec = state.recognition;
-  if (!rec){ cleanupRecognition(); return; }
+  if (!rec){
+    if (state.recFinish) state.recFinish(); else cleanupRecognition();
+    return;
+  }
+  logMic("стоп по тапу");
   try{ rec.stop(); }catch(e){ try{ rec.abort(); }catch(e2){} }
+  clearTimeout(state.endWatch);
+  state.endWatch = setTimeout(()=>{                    /* Safari иногда не присылает onend */
+    if (state.recFinish){ logMic("onend не пришёл — завершаю сам"); state.recFinish(); }
+  }, 1200);
 }
 
 /* ===== 10. DeepSeek ===== */

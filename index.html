@@ -3102,7 +3102,7 @@ function micHelp(reason){
 }
 
 /* лог всех событий распознавания: видно, где именно Safari останавливается */
-const BUILD = "v34";
+const BUILD = "v35";
 const micLogLines = [];
 function logMic(msg){
   const t = new Date();
@@ -3572,28 +3572,48 @@ const MODELS_FALLBACK = [];
 const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
 const aiEndpoint = ()=>state.proxyUrl || DEEPSEEK_URL;
 
+/* Сообщения должны идти user/assistant по очереди и заканчиваться на user:
+   DeepSeek на «слипшихся» ролях и длинной истории отдаёт пустой content. */
+function buildMessages(userText, historyLimit){
+  const out = [{ role:"system", content: systemPrompt(state.topic) }];
+  const hist = state.history.slice(-(historyLimit || 6));
+  hist.forEach(h => {
+    const role = h.role === "model" ? "assistant" : "user";
+    const text = String(h.text || "").trim();
+    if (!text) return;
+    const last = out[out.length - 1];
+    if (last && last.role === role && out.length > 1) last.content += "\n" + text;   /* склеиваем подряд идущие */
+    else out.push({ role, content:text });
+  });
+  const tail = out[out.length - 1];
+  if (tail && tail.role === "user" && out.length > 1) tail.content += "\n" + userText;
+  else out.push({ role:"user", content:userText });
+  return out;
+}
 async function askAI(userText){
-  const messages = [{ role:"system", content: systemPrompt(state.topic) }];
-  state.history.forEach(h => messages.push({ role: h.role === "model" ? "assistant" : "user", content: h.text }));
-  messages.push({ role:"user", content: userText });
-
   let lastErr = "";
-  for (const model of MODELS.concat(MODELS_FALLBACK)){
+  for (let attempt = 1; attempt <= 2; attempt++){
     const t0 = Date.now();
+    const messages = buildMessages(userText, attempt === 1 ? 6 : 2);   /* повтор — с короткой историей */
+    const payload = {
+      model:"deepseek-chat",
+      messages,
+      temperature: attempt === 1 ? 1.05 : 0.8,
+      max_tokens: 900
+    };
+    if (attempt === 1) payload.response_format = { type:"json_object" };
+    else messages[messages.length - 1].content += "\n\n(Reply with a single JSON object only, no markdown.)";
+
     try{
-      logAI("запрос → " + model + ", сообщений: " + messages.length);
+      logAI("запрос → попытка " + attempt + ", сообщений: " + messages.length +
+            (attempt === 1 ? ", json_object" : ", без json_object, история 2"));
       const ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
-      const killer = ctrl ? setTimeout(()=>ctrl.abort(), 20000) : null;   /* 20 с и хватит */
+      const killer = ctrl ? setTimeout(()=>ctrl.abort(), 20000) : null;
       const res = await fetch(aiEndpoint(), {
         method:"POST",
         signal: ctrl ? ctrl.signal : undefined,
         headers:{ "Content-Type":"application/json", "Authorization":"Bearer " + state.apiKey },
-        body: JSON.stringify({
-          model, messages,
-          temperature:1.05,                             /* болтовня, а не документация */
-          max_tokens:900,                               /* короткий JSON не должен обрезаться */
-          response_format:{ type:"json_object" }
-        })
+        body: JSON.stringify(payload)
       });
       if (killer) clearTimeout(killer);
       if (!res.ok){
@@ -3605,12 +3625,20 @@ async function askAI(userText){
         continue;
       }
       const data = await res.json();
-      const raw = (((data.choices || [])[0] || {}).message || {}).content || "";
-      if (!raw.trim()){ lastErr = "пустой ответ модели"; logAI("ответ ← пустой"); continue; }
-      logAI("ответ ← ок за " + (Date.now() - t0) + " мс, символов: " + raw.trim().length);
+      const choice = (data.choices || [])[0] || {};
+      const raw = ((choice.message || {}).content || "").trim();
+      const why = choice.finish_reason || "?";
+      const usage = data.usage || {};
+      if (!raw){
+        lastErr = "пустой ответ (finish_reason: " + why + ")";
+        logAI("ответ ← пустой, finish_reason: " + why +
+              ", токенов вход/выход: " + (usage.prompt_tokens || "?") + "/" + (usage.completion_tokens || "?"));
+        continue;                                      /* вторая попытка — короче и без json_object */
+      }
+      logAI("ответ ← ок за " + (Date.now() - t0) + " мс, символов: " + raw.length + ", finish: " + why);
       state.lastAI = { ok:true, ms: Date.now() - t0, reason:"" };
       refreshModePill();
-      return { ok:true, raw: raw.trim() };
+      return { ok:true, raw };
     }catch(err){
       const name = (err && err.name) || "";
       const msg = (err && err.message) || "сеть";
@@ -3618,8 +3646,7 @@ async function askAI(userText){
       if (msg === "bad-key"){ state.lastAI = { ok:false, reason:"ключ не принят" }; refreshModePill(); return { ok:false, reason:"Ключ DeepSeek не принят. Проверь его в настройках." }; }
       if (msg === "no-balance"){ state.lastAI = { ok:false, reason:"нет баланса" }; refreshModePill(); return { ok:false, reason:"На балансе DeepSeek нет средств." }; }
       if (name === "AbortError") lastErr = "таймаут 20 с";
-      else if (/Failed to fetch|Load failed|NetworkError/i.test(msg))
-        lastErr = "браузер заблокировал запрос (CORS или нет сети)";
+      else if (/Failed to fetch|Load failed|NetworkError/i.test(msg)) lastErr = "браузер заблокировал запрос (CORS или нет сети)";
       else lastErr = msg;
     }
   }
@@ -3679,7 +3706,7 @@ function releaseBusy(){                                /* разблокиров
 }
 function pushHistory(role, text){
   state.history.push({ role, text });
-  while (state.history.length > 10) state.history.shift();
+  while (state.history.length > 8) state.history.shift();
 }
 /* Проверку ведёт DeepSeek: он видит контекст и не выдумывает правил.
    Локальный чекер остаётся только как запасной вариант без ключа или при сбое. */

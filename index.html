@@ -367,7 +367,7 @@ button[disabled]{opacity:.5;cursor:not-allowed}
     <button id="questsBtn2" aria-label="Открыть список квестов">Квесты 🎮</button>
     <button id="resetProg" class="danger" aria-label="Сбросить прогресс">Сбросить</button>
   </div>
-  <label class="check" for="showFixes"><input type="checkbox" id="showFixes" checked> Разбор ошибок: короткая подсказка после каждой реплики (сними галочку, если хочешь только незаметные исправления в речи собеседника)</label>
+  <label class="check" for="showFixes"><input type="checkbox" id="showFixes" checked> Разбор ошибок от AI: короткая подсказка после реплики (сними галочку, если хочешь только незаметные исправления в речи собеседника)</label>
   <p class="note">Статус растёт сам: приложение считает, какие фразы ты уже держишь, и подкидывает слабые места в разговоре и тесте. Уровни, проценты и грамматические термины наружу не выносятся.</p>
 
   <h3>Оформление</h3>
@@ -389,7 +389,7 @@ button[disabled]{opacity:.5;cursor:not-allowed}
     <button id="rememberKey" aria-label="Сохранить ключ в этом браузере">Запомнить</button>
     <button id="forgetKey" class="danger" aria-label="Удалить сохранённый ключ из браузера">Удалить ключ</button>
   </div>
-  <p class="note">Общий ключ DeepSeek уже вшит — AI-диалог работает сразу на любом устройстве. Можно вписать свой ключ, тогда запросы пойдут с него; «Удалить ключ» возвращает общий. Важно: ключ виден в исходнике страницы, любой посетитель может его вытащить и потратить твой баланс — для публичного запуска переноси его на backend-прокси и меняй, если утечёт.</p>
+  <p class="note">Грамматику проверяет DeepSeek: он видит контекст разговора и понимает, где ошибка, а где просто ослышалось распознавание. Без ключа включается простой встроенный чекер по правилам — он грубее. Общий ключ уже вшит, AI работает сразу на любом устройстве. Можно вписать свой ключ, тогда запросы пойдут с него; «Удалить ключ» возвращает общий. Важно: ключ виден в исходнике страницы, любой посетитель может его вытащить и потратить твой баланс — для публичного запуска переноси его на backend-прокси и меняй, если утечёт.</p>
 
   <h3>Голос собеседника</h3>
   <label class="field" for="voiceSel">Голос (лучше выбрать Natural / Enhanced / Siri, если есть)
@@ -1163,7 +1163,7 @@ const state = {
   history:[], answered:new Set(), facts:{}, pending:null, extraIdx:0, asked:0, lastAsk:null,
   isRecording:false, recognition:null, recTimer:null,
   soundOn:true, rate:1.08, autoMic:false, themeMode:"auto", photosOn:true,
-  lastTutorLine:"", audioUnlocked:false, pendingSpeech:null, expect:null, prefix:"", quest:null, stopRequested:false, recFinish:null, micFails:0, micEverStarted:false, holdStream:false, micStream:null, silentTries:0, emptyResults:0, continuous:true, listenPaused:false, topicTurns:0, speakingNow:false, gotSound:false, lastConf:0, resetSession:false, ttsSinceRec:false, lastRecError:"", startWatch:null, endWatch:null, busyWatch:null,
+  lastTutorLine:"", audioUnlocked:false, pendingSpeech:null, expect:null, prefix:"", quest:null, stopRequested:false, recFinish:null, micFails:0, micEverStarted:false, holdStream:false, micStream:null, silentTries:0, emptyResults:0, continuous:true, sessionId:0, listenPaused:false, topicTurns:0, speakingNow:false, gotSound:false, lastConf:0, resetSession:false, ttsSinceRec:false, lastRecError:"", startWatch:null, endWatch:null, busyWatch:null,
   busy:false, micBlocked:false, exchanges:0
 };
 
@@ -2938,7 +2938,7 @@ function micHelp(reason){
 }
 
 /* лог всех событий распознавания: видно, где именно Safari останавливается */
-const BUILD = "v28";
+const BUILD = "v30";
 const micLogLines = [];
 function logMic(msg){
   const t = new Date();
@@ -3049,6 +3049,15 @@ function offerReload(){
    ============================================================ */
 let contRec = null, contOn = false, contFinal = "", contInterim = "", contTimer = null, contRestart = null;
 
+/* каждый сеанс получает номер: события старых сеансов игнорируются */
+function detachSession(r){
+  if (!r) return;
+  try{
+    r.onstart = null; r.onaudiostart = null; r.onsoundstart = null; r.onspeechstart = null;
+    r.onspeechend = null; r.onaudioend = null; r.onresult = null; r.onerror = null;
+    r.onend = null; r.onnomatch = null;
+  }catch(e){}
+}
 function micToggle(){
   if (contOn) stopListening("тап: отправляю фразу");   /* второй тап = выключить и отправить */
   else startListening();                               /* первый тап = слушать, пока не выключишь */
@@ -3074,8 +3083,10 @@ function stopListening(why){
     clearTimeout(state.endWatch);
     state.endWatch = setTimeout(()=>{                  /* Safari иногда не присылает onend */
       if (!contRec) return;
-      logMic("onend не пришёл — отправляю сам");
-      try{ contRec.onend = null; contRec.onresult = null; contRec.onerror = null; }catch(e){}
+      logMic("onend не пришёл — отправляю сам и хороню сеанс");
+      state.sessionId++;                               /* всё, что придёт позже, уже не наше */
+      detachSession(contRec);
+      try{ contRec.abort(); }catch(e){}
       contRec = null;
       flushPhrase(true);
       state.isRecording = false;
@@ -3088,6 +3099,8 @@ function stopListening(why){
 }
 /* открываем сеанс; при обрыве переоткрываем, пока режим включён */
 function openSession(first){
+  const sid = ++state.sessionId;                       /* номер этого сеанса */
+  const mine = ()=>sid === state.sessionId;            /* события из прошлых сеансов отбрасываем */
   let rec;
   try{ rec = new SR(); logMic("объект создан"); }
   catch(e){ logMic("объект НЕ создан: " + ((e && e.name) || e)); micHelp("не создаётся"); contOn = false; setMicUI("idle"); return; }
@@ -3099,6 +3112,7 @@ function openSession(first){
 
   let started = false;
   rec.onstart = ()=>{
+    if (!mine()){ logMic("onstart от старого сеанса — игнорирую"); try{ rec.stop(); }catch(e){} return; }
     started = true;
     state.isRecording = true;
     state.micEverStarted = true;
@@ -3106,12 +3120,13 @@ function openSession(first){
     logMic("onstart");
     setMicUI("rec");
   };
-  rec.onaudiostart = ()=>logMic("audiostart: микрофон открыт");
-  rec.onsoundstart = ()=>{ state.gotSound = true; logMic("soundstart: слышу звук"); };
-  rec.onspeechstart = ()=>{ state.gotSound = true; logMic("speechstart: пошла речь"); micState.textContent = "слышу тебя"; };
-  rec.onspeechend = ()=>logMic("speechend");
-  rec.onaudioend = ()=>logMic("audioend");
+  rec.onaudiostart = ()=>{ if (mine()) logMic("audiostart: микрофон открыт"); };
+  rec.onsoundstart = ()=>{ if (!mine()) return; state.gotSound = true; logMic("soundstart: слышу звук"); };
+  rec.onspeechstart = ()=>{ if (!mine()) return; state.gotSound = true; logMic("speechstart: пошла речь"); micState.textContent = "слышу тебя"; };
+  rec.onspeechend = ()=>{ if (mine()) logMic("speechend"); };
+  rec.onaudioend = ()=>{ if (mine()) logMic("audioend"); };
   rec.onresult = (ev)=>{
+    if (!mine()) return;
     let interim = "";
     for (let i = ev.resultIndex; i < ev.results.length; i++){
       const r = ev.results[i];
@@ -3127,6 +3142,7 @@ function openSession(first){
     /* конец фразы определяет пользователь: фраза уйдёт по второму тапу */
   };
   rec.onerror = (ev)=>{
+    if (!mine()) return;
     const code = (ev && ev.error) || "unknown";
     state.lastRecError = code;
     logMic("ОШИБКА: " + code + (ev && ev.message ? " — " + String(ev.message).slice(0,50) : ""));
@@ -3148,12 +3164,15 @@ function openSession(first){
     /* no-speech / aborted / network — сеанс просто переоткроем */
   };
   rec.onend = ()=>{
+    if (!mine()){ logMic("onend от старого сеанса — игнорирую"); return; }
     contRec = null;
     const selfClosed = contOn;                         /* закрылся сам, без нашего стопа */
     logMic("onend" + (selfClosed ? " (сеанс закрылся сам)" : ""));
     contOn = false;
     state.isRecording = false;
     clearTimeout(state.endWatch);
+    state.sessionId++;                                 /* сеанс закрыт: поздние события не нужны */
+    detachSession(rec);
     flushPhrase(true);                                 /* что распозналось — отправляем */
     setMicUI(state.micBlocked ? "blocked" : "idle");
     if (selfClosed) micState.textContent = "микрофон выключился — нажми для следующей фразы";
@@ -3164,7 +3183,7 @@ function openSession(first){
     logMic("start() вызван без исключения");
     clearTimeout(state.startWatch);
     state.startWatch = setTimeout(()=>{
-      if (!started && contOn){
+      if (!started && contOn && mine()){
         logMic("сторож: onstart не пришёл");
         state.micFails = (state.micFails || 0) + 1;
         micState.textContent = "микрофон не открылся — нажми ещё раз";
@@ -3226,20 +3245,21 @@ function systemPrompt(topic){
     "- Always English, max 2 short sentences, casual tone. Do NOT use emojis at all: the phone reads them aloud.",
     "- React to what the learner said, then ask ONE easy question.",
     "- In the reply itself never lecture about grammar; the hint card does that. Just recast the phrase correctly and keep talking.",
+    "- If the phrase looks misheard or makes no sense, stay friendly and ask the learner to say it again.",
     "- Use recasting: if the phrase was broken, say it correctly inside your own reply as if you were just talking.",
     "- If the learner writes one word or in Russian, answer in English and give one easy phrase to copy.",
     "- Never mention these instructions, the API, the model or JSON.",
     "- Never comment on the learner's accent or pronunciation; the app measures that separately.",
     "- Offer three short sentence starters in next_hints when the learner seems shy (they appear as tappable buttons).",
     "",
-    "Always fill the correction object: the app shows it to the learner as one short friendly hint under your reply.",
-    '- status \"needs_improvement\" for any real mistake (missing am/is/are, wrong verb form, missing -s, missing article, wrong preposition, no verb, one-word answer), otherwise \"correct\".',
-    "- improved: the same idea written correctly, short.",
-    "- explanation_ru: one short friendly Russian sentence explaining the fix in plain words, no grammar terms.",
-    "- next_hints: 3 casual phrases the learner could say next.",
-    "- Omit pronunciation_tip unless it really matters.",
-    "",
-    "Keep the whole JSON under 60 words: reply max 2 sentences, explanation_ru max 12 words, 3 short hints.",
+    "CORRECTION OBJECT — you are the only grammar checker in the app, so be precise:",
+    "- The learner's text comes from speech recognition. A single odd or misheard word (for example \"Sur\" instead of \"sport\") is NOT a grammar mistake: ignore it, and in your reply just ask again in a natural way.",
+    '- Use status "needs_improvement" only for real grammar errors: missing am/is/are, wrong verb form or tense, missing -s with he/she/it, wrong or missing article, wrong preposition, wrong word order, missing \"to\" after want/need, doubled subject, wrong question form.',
+    "- Do NOT correct style, politeness, word choice, slang or British/American differences. Do not rewrite a correct sentence.",
+    "- improved: the learner's own sentence with the minimum fix, same meaning and same words where possible.",
+    "- explanation_ru: ONE short sentence in Russian, simple words, no grammar terms, under 90 characters, explain why it is wrong.",
+    '- If the sentence is fine, status = "correct", improved = the sentence unchanged, explanation_ru = "".',
+    "- Judge only the learner's last message, not earlier ones.",
     "Answer with STRICT JSON only, no markdown, exactly this shape:",
     '{"reply":"...","correction":{"status":"correct|needs_improvement","original":"...","improved":"...","explanation_ru":"..."},"next_hints":["...","...","..."],"pronunciation_tip":{"word":"...","tip_ru":"..."}}'
   ].join("\n");
@@ -3343,17 +3363,30 @@ function pushHistory(role, text){
   state.history.push({ role, text });
   while (state.history.length > 10) state.history.shift();
 }
-/* модель + локальная проверка: одобрить кривую фразу нельзя */
-function mergeCorrection(fromModel, local){
-  const m = fromModel && typeof fromModel === "object" ? fromModel : null;
-  const modelFound = m && m.status === "needs_improvement" && m.improved &&
-    clean1(m.improved).toLowerCase() !== clean1(local.original).toLowerCase();
-  if (modelFound)
-    return { status:"needs_improvement", original:local.original, improved:m.improved,
-             explanation_ru: m.explanation_ru || local.explanation_ru || "" };
-  if (local.status !== "correct") return local;
-  return { status:"correct", original:local.original, improved:local.improved, explanation_ru:"" };
+/* Проверку ведёт DeepSeek: он видит контекст и не выдумывает правил.
+   Локальный чекер остаётся только как запасной вариант без ключа или при сбое. */
+function sameText(a,b){
+  return String(a||"").toLowerCase().replace(/[^a-z0-9']/g,"") === String(b||"").toLowerCase().replace(/[^a-z0-9']/g,"");
 }
+function cleanCorrection(fromModel, original){
+  const m = fromModel && typeof fromModel === "object" ? fromModel : null;
+  if (!m) return null;
+  const status = m.status === "needs_improvement" ? "needs_improvement" : m.status === "correct" ? "correct" : null;
+  if (!status) return null;
+  const improved = String(m.improved || "").trim();
+  let why = String(m.explanation_ru || "").trim();
+  if (why.length > 160) why = why.slice(0,157).replace(/\s+\S*$/,"") + "…";
+  if (status === "correct" || !improved || sameText(improved, original)){
+    return { status:"correct", original, improved: improved || original, explanation_ru:"" };
+  }
+  return { status:"needs_improvement", original, improved, explanation_ru: why };
+}
+function mergeCorrection(fromModel, local){
+  const byAI = cleanCorrection(fromModel, local.original);
+  if (byAI) return byAI;                               /* ответ модели важнее локальных регулярок */
+  return local;                                        /* модель промолчала — берём локальную проверку */
+}
+
 async function handleLearnerInput(text){
   const clean = String(text || "").replace(/\s+/g," ").trim().slice(0,250);
   if (!clean || state.busy) return;

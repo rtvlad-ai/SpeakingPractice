@@ -384,6 +384,14 @@ button[disabled]{opacity:.5;cursor:not-allowed}
   <label class="field" for="apiKey">API key (необязательно)
     <input type="password" id="apiKey" autocomplete="off" spellcheck="false" placeholder="sk-…">
   </label>
+  <label class="field" for="proxyUrl">Прокси для запросов (если браузер блокирует прямой вызов)
+    <input type="url" id="proxyUrl" autocomplete="off" spellcheck="false" placeholder="https://your-worker.workers.dev/chat">
+  </label>
+  <div class="row">
+    <button id="testAI" class="solid" aria-label="Проверить связь с DeepSeek">Проверить AI</button>
+    <button id="aiLogBtn" aria-label="Показать лог запросов">Лог запросов</button>
+  </div>
+  <div class="logbox" id="aiLog"></div>
   <div class="row">
     <button id="saveKey" class="solid" aria-label="Подключить DeepSeek с введённым ключом">Подключить</button>
     <button id="rememberKey" aria-label="Сохранить ключ в этом браузере">Запомнить</button>
@@ -1163,7 +1171,7 @@ const state = {
   history:[], answered:new Set(), facts:{}, pending:null, extraIdx:0, asked:0, lastAsk:null,
   isRecording:false, recognition:null, recTimer:null,
   soundOn:true, rate:1.08, autoMic:false, themeMode:"auto", photosOn:true,
-  lastTutorLine:"", audioUnlocked:false, pendingSpeech:null, expect:null, prefix:"", quest:null, stopRequested:false, recFinish:null, micFails:0, micEverStarted:false, holdStream:false, micStream:null, silentTries:0, emptyResults:0, continuous:true, sessionId:0, listenPaused:false, topicTurns:0, speakingNow:false, gotSound:false, lastConf:0, resetSession:false, ttsSinceRec:false, lastRecError:"", startWatch:null, endWatch:null, busyWatch:null,
+  lastTutorLine:"", audioUnlocked:false, pendingSpeech:null, expect:null, prefix:"", quest:null, stopRequested:false, recFinish:null, micFails:0, micEverStarted:false, holdStream:false, micStream:null, silentTries:0, emptyResults:0, lastAI:null, aiWarned:false, proxyUrl:"", continuous:true, sessionId:0, listenPaused:false, topicTurns:0, speakingNow:false, gotSound:false, lastConf:0, resetSession:false, ttsSinceRec:false, lastRecError:"", startWatch:null, endWatch:null, busyWatch:null,
   busy:false, micBlocked:false, exchanges:0
 };
 
@@ -2081,6 +2089,9 @@ function renderStats(){
   box.textContent = "";
   const line = (a,b)=>{ const r = el("div"); r.appendChild(el("span","mark","•")); r.appendChild(el("span",null,a + ": " + b)); box.appendChild(r); };
   line("Статус", tierNow().ru + " (" + profile.tier + "/3)");
+  line("AI", !state.apiKey ? "ключ не задан" :
+        (state.lastAI && state.lastAI.ok) ? ("отвечает, " + state.lastAI.ms + " мс") :
+        (state.lastAI && state.lastAI.ok === false) ? ("не отвечает: " + state.lastAI.reason) : "ещё не проверялся");
   line("XP", profile.xp);
   line("Серия дней", profile.streak);
   line("Сессий", profile.sessions);
@@ -2539,7 +2550,7 @@ async function askRaw(systemText, userText, maxTokens){
   try{
     const ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
     const killer = ctrl ? setTimeout(()=>ctrl.abort(), 12000) : null;
-    const res = await fetch(DEEPSEEK_URL, {
+    const res = await fetch(aiEndpoint(), {
       method:"POST",
       signal: ctrl ? ctrl.signal : undefined,
       headers:{ "Content-Type":"application/json", "Authorization":"Bearer " + state.apiKey },
@@ -2550,10 +2561,24 @@ async function askRaw(systemText, userText, maxTokens){
       })
     });
     if (killer) clearTimeout(killer);
-    if (!res.ok) return "";
+    if (!res.ok){
+      const t = await res.text().catch(()=>"" );
+      logAI("проверка ← HTTP " + res.status + ": " + t.slice(0,80));
+      state.lastAI = { ok:false, reason:"HTTP " + res.status };
+      return "";
+    }
     const data = await res.json();
-    return ((((data.choices || [])[0] || {}).message || {}).content || "").trim();
-  }catch(e){ return ""; }
+    const out = ((((data.choices || [])[0] || {}).message || {}).content || "").trim();
+    logAI("проверка ← " + (out ? "ок: " + out.slice(0,20) : "пусто"));
+    return out;
+  }catch(e){
+    const name = (e && e.name) || "", msg = (e && e.message) || "";
+    const why = name === "AbortError" ? "таймаут" :
+                /Failed to fetch|Load failed|NetworkError/i.test(msg) ? "браузер заблокировал запрос (CORS или нет сети)" : msg;
+    logAI("проверка ← сбой: " + why);
+    state.lastAI = { ok:false, reason:why };
+    return "";
+  }
 }
 async function checkQuestDone(){
   const st = state.quest;
@@ -3077,7 +3102,7 @@ function micHelp(reason){
 }
 
 /* лог всех событий распознавания: видно, где именно Safari останавливается */
-const BUILD = "v33";
+const BUILD = "v34";
 const micLogLines = [];
 function logMic(msg){
   const t = new Date();
@@ -3087,6 +3112,38 @@ function logMic(msg){
   while (micLogLines.length > 60) micLogLines.shift();
   const box = $("micLog");
   if (box) box.textContent = micLogLines.join("\n");
+}
+const aiLogLines = [];
+function logAI(msg){
+  const t = new Date();
+  const stamp = String(t.getMinutes()).padStart(2,"0") + ":" + String(t.getSeconds()).padStart(2,"0");
+  aiLogLines.push(stamp + "  " + msg);
+  while (aiLogLines.length > 40) aiLogLines.shift();
+  const box = $("aiLog");
+  if (box) box.textContent = aiLogLines.join("\n");
+}
+function aiLogCard(){
+  const old = document.getElementById("aiCard");
+  if (old && old.parentNode) old.parentNode.removeChild(old);
+  const card = el("div","choice");
+  card.id = "aiCard";
+  card.appendChild(el("div","dtitle","Запросы к DeepSeek"));
+  card.appendChild(el("div","logbox", aiLogLines.join("\n") || "запросов ещё не было"));
+  const row = el("div","cacts");
+  const copy = el("button","cbtn","Скопировать");
+  copy.type = "button";
+  copy.addEventListener("click",()=>{
+    const text = aiLogLines.join("\n");
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(()=>flash("Лог скопирован"),()=>{});
+    else { input.value = text; flash("Лог в поле ввода"); }
+  });
+  const hide = el("button","cbtn","Скрыть");
+  hide.type = "button";
+  hide.addEventListener("click",()=>{ if (card.parentNode) card.parentNode.removeChild(card); });
+  row.appendChild(copy); row.appendChild(hide);
+  card.appendChild(row);
+  chat.appendChild(card);
+  scrollChat();
 }
 function micLogCard(){
   const old = document.getElementById("logCard");
@@ -3513,6 +3570,7 @@ function systemPrompt(topic){
 const MODELS = ["deepseek-chat"];                     /* reasoner не держит json_object */
 const MODELS_FALLBACK = [];
 const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
+const aiEndpoint = ()=>state.proxyUrl || DEEPSEEK_URL;
 
 async function askAI(userText){
   const messages = [{ role:"system", content: systemPrompt(state.topic) }];
@@ -3521,10 +3579,12 @@ async function askAI(userText){
 
   let lastErr = "";
   for (const model of MODELS.concat(MODELS_FALLBACK)){
+    const t0 = Date.now();
     try{
+      logAI("запрос → " + model + ", сообщений: " + messages.length);
       const ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
       const killer = ctrl ? setTimeout(()=>ctrl.abort(), 20000) : null;   /* 20 с и хватит */
-      const res = await fetch(DEEPSEEK_URL, {
+      const res = await fetch(aiEndpoint(), {
         method:"POST",
         signal: ctrl ? ctrl.signal : undefined,
         headers:{ "Content-Type":"application/json", "Authorization":"Bearer " + state.apiKey },
@@ -3539,21 +3599,33 @@ async function askAI(userText){
       if (!res.ok){
         const t = await res.text().catch(()=>"" );
         lastErr = res.status + " " + t.slice(0,140);
+        logAI("ответ ← HTTP " + res.status + " за " + (Date.now() - t0) + " мс: " + t.slice(0,80));
         if (res.status === 401 || res.status === 403) throw new Error("bad-key");
         if (res.status === 402) throw new Error("no-balance");
         continue;
       }
       const data = await res.json();
       const raw = (((data.choices || [])[0] || {}).message || {}).content || "";
-      if (!raw.trim()){ lastErr = "пустой ответ модели"; continue; }
+      if (!raw.trim()){ lastErr = "пустой ответ модели"; logAI("ответ ← пустой"); continue; }
+      logAI("ответ ← ок за " + (Date.now() - t0) + " мс, символов: " + raw.trim().length);
+      state.lastAI = { ok:true, ms: Date.now() - t0, reason:"" };
+      refreshModePill();
       return { ok:true, raw: raw.trim() };
     }catch(err){
-      if (err && err.message === "bad-key") return { ok:false, reason:"Ключ DeepSeek не принят. Проверь его в настройках." };
-      if (err && err.message === "no-balance") return { ok:false, reason:"На балансе DeepSeek нет средств." };
-      lastErr = (err && err.message) || "сеть";
+      const name = (err && err.name) || "";
+      const msg = (err && err.message) || "сеть";
+      logAI("сбой: " + name + " " + msg.slice(0,80));
+      if (msg === "bad-key"){ state.lastAI = { ok:false, reason:"ключ не принят" }; refreshModePill(); return { ok:false, reason:"Ключ DeepSeek не принят. Проверь его в настройках." }; }
+      if (msg === "no-balance"){ state.lastAI = { ok:false, reason:"нет баланса" }; refreshModePill(); return { ok:false, reason:"На балансе DeepSeek нет средств." }; }
+      if (name === "AbortError") lastErr = "таймаут 20 с";
+      else if (/Failed to fetch|Load failed|NetworkError/i.test(msg))
+        lastErr = "браузер заблокировал запрос (CORS или нет сети)";
+      else lastErr = msg;
     }
   }
-  return { ok:false, reason:"DeepSeek не ответил (" + lastErr + ")." };
+  state.lastAI = { ok:false, reason:lastErr };
+  refreshModePill();
+  return { ok:false, reason:"DeepSeek не ответил: " + lastErr };
 }
 
 /* если JSON обрезался, вытаскиваем поля регуляркой — сырой текст ученику не показываем */
@@ -3672,7 +3744,10 @@ async function handleLearnerInput(text){
     } else {
       const lr = localReply(clean);
       reply = lr.reply; hints = lr.hints; corr = local; localQ = lr.q || "";
-      note = "";
+      if (!state.aiWarned){                            /* один раз за сессию говорим прямо */
+        state.aiWarned = true;
+        note = r.reason + " Отвечаю встроенным движком — ответы будут проще.";
+      }
     }
   } else {
     const lr = localReply(clean);
@@ -3832,6 +3907,37 @@ $("showFixes").addEventListener("change",(e)=>{
 $("sessionBtn").addEventListener("click",()=>{ closeSheet(); startSession(); });
 $("questsBtn2").addEventListener("click",()=>{ closeSheet(); openQuests(); });
 $("logBtn").addEventListener("click",()=>{ closeSheet(); micLogCard(); });
+$("aiLogBtn").addEventListener("click",()=>{ closeSheet(); aiLogCard(); });
+try{
+  const pu = localStorage.getItem("englishPractice.proxy");
+  if (pu){ state.proxyUrl = pu; $("proxyUrl").value = pu; }
+}catch(e){}
+$("proxyUrl").addEventListener("change",(e)=>{
+  state.proxyUrl = String(e.target.value || "").trim();
+  try{
+    if (state.proxyUrl) localStorage.setItem("englishPractice.proxy", state.proxyUrl);
+    else localStorage.removeItem("englishPractice.proxy");
+  }catch(err){}
+  logAI("адрес запросов: " + (state.proxyUrl || DEEPSEEK_URL));
+  addSystem(state.proxyUrl ? "Запросы пойдут через прокси." : "Запросы идут напрямую в DeepSeek.");
+});
+$("testAI").addEventListener("click", async ()=>{
+  addSystem("Проверяю связь с DeepSeek…");
+  const t0 = Date.now();
+  logAI("проверка связи: " + (state.proxyUrl || DEEPSEEK_URL));
+  const answer = await askRaw("Reply with exactly one word: PONG.", "ping", 5);
+  const ms = Date.now() - t0;
+  if (answer){
+    state.lastAI = { ok:true, ms, reason:"" };
+    addSystem("DeepSeek отвечает: «" + answer.slice(0,20) + "», " + ms + " мс. Диалоги идут через AI.");
+  } else {
+    addSystem("DeepSeek не ответил (" + ((state.lastAI && state.lastAI.reason) || "нет ответа") + "). Открой «Лог запросов» — там точная причина: HTTP-код, таймаут или блокировка браузером.", true);
+    aiLogCard();
+  }
+  refreshModePill();
+  renderStats();
+  closeSheet();
+});
 
 /* ===== 14. ключ API ===== */
 const keyInput = $("apiKey");
@@ -3843,9 +3949,13 @@ try{
 }catch(e){ keyInput.value = SHARED_KEY; }
 function refreshModePill(){
   const p = $("pillMode");
-  p.textContent = state.apiKey ? "AI" : "офлайн";
-  p.className = "mode" + (state.apiKey ? " live" : "");
-  p.title = state.apiKey ? "DeepSeek подключён: свободный диалог" : "Локальный собеседник + локальная проверка";
+  const st = state.lastAI;
+  p.textContent = !state.apiKey ? "офлайн" : (st && st.ok === false) ? "AI ✕" : (st && st.ok) ? "AI ✓" : "AI";
+  p.className = "mode" + (state.apiKey && (!st || st.ok !== false) ? " live" : "");
+  p.title = !state.apiKey ? "Локальный собеседник" :
+            (state.lastAI && state.lastAI.ok === false) ? ("Последний запрос не прошёл: " + state.lastAI.reason) :
+            (state.lastAI && state.lastAI.ok) ? ("DeepSeek отвечает, " + state.lastAI.ms + " мс") : "DeepSeek подключён";
+  p.onclick = aiLogCard;
 }
 $("saveKey").addEventListener("click",()=>{
   state.apiKey = keyInput.value.trim();

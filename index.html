@@ -2532,6 +2532,7 @@ function questEnginePrompt(){
     "2. Keep responses short and conversational (max 12-15 words). Never write long paragraphs.",
     "3. Be highly dynamic. React naturally to what the user says. If they say something funny, rude, or strange, acknowledge it in character.",
     "4. Move the conversation forward naturally toward the USER'S GOALS. Do not jump to the conclusion until the user has actually attempted to fulfill the goals.",
+    "5. Never repeat a question you already asked and never ask about something the user already said. Check CONVERSATION MEMORY below, then ask something new.",
     "",
     "CASUAL LEARNER EDUCATION RULES:",
     '1. NEVER break character to act like a teacher. Do not say "Your grammar is wrong" or "You should say...".',
@@ -3102,7 +3103,7 @@ function micHelp(reason){
 }
 
 /* лог всех событий распознавания: видно, где именно Safari останавливается */
-const BUILD = "v35";
+const BUILD = "v36";
 const micLogLines = [];
 function logMic(msg){
   const t = new Date();
@@ -3539,7 +3540,8 @@ function systemPrompt(topic){
     "- No emojis: the phone reads them aloud.",
     "- Everyday words at the learner's level. No idioms they would not know, no long explanations.",
     "- React first to what they just said, with your own opinion or a small detail, then ask ONE question that follows from it.",
-    "- Never ask about anything they already told you; use their answers to choose the next question.",
+    "- Never ask a question you already asked, and never ask about anything they already told you. Check CONVERSATION MEMORY below before asking.",
+    "- Each of your questions must open a NEW subject that follows from their last answer.",
     "- Remember and reuse their facts: name, city, age, what they like, what they ordered.",
     "- If they ask you to repeat, repeat YOUR last question in simpler words and nothing else.",
     "- If their phrase looks misheard or makes no sense, say so kindly in character and ask again.",
@@ -3574,8 +3576,23 @@ const aiEndpoint = ()=>state.proxyUrl || DEEPSEEK_URL;
 
 /* Сообщения должны идти user/assistant по очереди и заканчиваться на user:
    DeepSeek на «слипшихся» ролях и длинной истории отдаёт пустой content. */
+/* короткая память разговора: что ученик уже сказал и о чём его уже спрашивали */
+function saidSoFar(){
+  const mine = state.history.filter(h => h.role === "user").slice(-8)
+    .map(h => String(h.text || "").trim()).filter(Boolean);
+  const asked = state.history.filter(h => h.role === "model").slice(-6)
+    .map(h => { const m = String(h.text || "").match(/[^.!?]*\?/g); return m ? m[m.length-1].trim() : ""; })
+    .filter(Boolean);
+  const facts = Object.keys(state.facts || {}).map(k => k + ": " + state.facts[k]);
+  const out = [];
+  if (mine.length) out.push("THE LEARNER ALREADY TOLD YOU (never ask about these again): " + mine.join(" | "));
+  if (facts.length) out.push("KNOWN FACTS: " + facts.join("; "));
+  if (asked.length) out.push("QUESTIONS YOU ALREADY ASKED (do not repeat them, ask something new): " + asked.slice(-4).join(" | "));
+  return out.join("\n");
+}
 function buildMessages(userText, historyLimit){
-  const out = [{ role:"system", content: systemPrompt(state.topic) }];
+  const memo = saidSoFar();
+  const out = [{ role:"system", content: systemPrompt(state.topic) + (memo ? "\n\n=== CONVERSATION MEMORY ===\n" + memo : "") }];
   const hist = state.history.slice(-(historyLimit || 6));
   hist.forEach(h => {
     const role = h.role === "model" ? "assistant" : "user";
@@ -3594,19 +3611,19 @@ async function askAI(userText){
   let lastErr = "";
   for (let attempt = 1; attempt <= 2; attempt++){
     const t0 = Date.now();
-    const messages = buildMessages(userText, attempt === 1 ? 6 : 2);   /* повтор — с короткой историей */
+    const messages = buildMessages(userText, attempt === 1 ? 8 : 6);   /* история нужна обеим попыткам */
     const payload = {
       model:"deepseek-chat",
       messages,
-      temperature: attempt === 1 ? 1.05 : 0.8,
+      temperature: attempt === 1 ? 1.0 : 0.7,
       max_tokens: 900
     };
-    if (attempt === 1) payload.response_format = { type:"json_object" };
-    else messages[messages.length - 1].content += "\n\n(Reply with a single JSON object only, no markdown.)";
+    /* response_format: json_object отдавал пустой content на длинной истории — не используем */
+    if (attempt === 2) messages[messages.length - 1].content += "\n\n(Reply with a single JSON object only, no markdown, no extra text.)";
 
     try{
       logAI("запрос → попытка " + attempt + ", сообщений: " + messages.length +
-            (attempt === 1 ? ", json_object" : ", без json_object, история 2"));
+            ", история " + (attempt === 1 ? 8 : 6));
       const ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
       const killer = ctrl ? setTimeout(()=>ctrl.abort(), 20000) : null;
       const res = await fetch(aiEndpoint(), {

@@ -409,6 +409,21 @@ button[disabled]{opacity:.5;cursor:not-allowed}
   <p class="note">Ключ сейчас вшит в страницу — на публичном сайте его видно в исходнике, и тратить баланс сможет любой. Как только появится прокси, впиши его адрес выше: запросы пойдут через него, а ключ останется на сервере.</p>
   <p class="note">Грамматику проверяет DeepSeek: он видит контекст разговора и понимает, где ошибка, а где просто ослышалось распознавание. Без ключа включается простой встроенный чекер по правилам — он грубее. Общий ключ уже вшит, AI работает сразу на любом устройстве. Можно вписать свой ключ, тогда запросы пойдут с него; «Удалить ключ» возвращает общий. Важно: ключ виден в исходнике страницы, любой посетитель может его вытащить и потратить твой баланс — для публичного запуска переноси его на backend-прокси и меняй, если утечёт.</p>
 
+  <h3>Azure: оценка произношения</h3>
+  <label class="field" for="azureKey">Ключ Speech (хранится только на этом устройстве)
+    <input type="password" id="azureKey" autocomplete="off" spellcheck="false" placeholder="ключ ресурса Speech">
+  </label>
+  <label class="field" for="azureRegion">Регион ресурса
+    <input type="text" id="azureRegion" autocomplete="off" spellcheck="false" placeholder="westeurope">
+  </label>
+  <div class="row">
+    <button id="saveAzure" class="solid" aria-label="Сохранить ключ Azure">Сохранить</button>
+    <button id="detectAzure" aria-label="Определить регион автоматически">Найти регион</button>
+    <button id="testAzure" aria-label="Проверить Azure">Проверить</button>
+    <button id="forgetAzure" class="danger" aria-label="Вернуть общий ключ Azure">Сбросить</button>
+  </div>
+  <p class="note">Ключ для тестов уже вшит, нужно только нажать «Найти регион» — приложение переберёт регионы Azure и запомнит рабочий. С Azure оценка произношения становится настоящей: точность звуков, беглость, полнота фразы, интонация и оценки по каждому слову и фонеме. Без ключа остаётся предварительная оценка по распознаванию. Свой ключ, если впишешь, хранится только в localStorage. Общий вшит в файл и виден в исходнике — после тестов перевыпусти его в портале Azure, а для публичного запуска выдавай короткий токен с backend.</p>
+
   <h3>Голос собеседника</h3>
   <label class="field" for="voiceSel">Голос (лучше выбрать Natural / Enhanced / Siri, если есть)
     <select id="voiceSel" aria-label="Выбрать голос собеседника"></select>
@@ -1182,7 +1197,7 @@ const state = {
   history:[], answered:new Set(), facts:{}, pending:null, extraIdx:0, asked:0, lastAsk:null,
   isRecording:false, recognition:null, recTimer:null,
   soundOn:true, rate:1.08, autoMic:false, themeMode:"auto", photosOn:true,
-  lastTutorLine:"", audioUnlocked:false, pendingSpeech:null, expect:null, prefix:"", quest:null, stopRequested:false, recFinish:null, micFails:0, micEverStarted:false, holdStream:false, micStream:null, silentTries:0, emptyResults:0, turnId:0, aiCtrl:null, recordAudio:false, myAudio:null, lastSecs:0, lastAI:null, aiWarned:false, proxyUrl:"", continuous:true, sessionId:0, listenPaused:false, topicTurns:0, speakingNow:false, gotSound:false, lastConf:0, resetSession:false, ttsSinceRec:false, lastRecError:"", startWatch:null, endWatch:null, busyWatch:null,
+  lastTutorLine:"", audioUnlocked:false, pendingSpeech:null, expect:null, prefix:"", quest:null, stopRequested:false, recFinish:null, micFails:0, micEverStarted:false, holdStream:false, micStream:null, silentTries:0, emptyResults:0, turnId:0, aiCtrl:null, recordAudio:false, myAudio:null, azureKey:"", azureRegion:"", lastSecs:0, lastAI:null, aiWarned:false, proxyUrl:"", continuous:true, sessionId:0, listenPaused:false, topicTurns:0, speakingNow:false, gotSound:false, lastConf:0, resetSession:false, ttsSinceRec:false, lastRecError:"", startWatch:null, endWatch:null, busyWatch:null,
   busy:false, micBlocked:false, exchanges:0
 };
 
@@ -2106,6 +2121,7 @@ function renderStats(){
   box.textContent = "";
   const line = (a,b)=>{ const r = el("div"); r.appendChild(el("span","mark","•")); r.appendChild(el("span",null,a + ": " + b)); box.appendChild(r); };
   line("Статус", tierNow().ru + " (" + profile.tier + "/3)");
+  line("Произношение", azureReady() ? ("Azure, регион " + state.azureRegion) : "предварительная оценка по распознаванию");
   line("AI", !state.apiKey ? "ключ не задан" :
         (state.lastAI && state.lastAI.ok) ? ("отвечает, " + state.lastAI.ms + " мс") :
         (state.lastAI && state.lastAI.ok === false) ? ("не отвечает: " + state.lastAI.reason) : "ещё не проверялся");
@@ -2264,6 +2280,10 @@ function singleWordRow(card, word, chunk){
 }
 /* запуск режима «скажи это»: ждём конкретную фразу или слово */
 function sayThis(text, chunk, single){
+  if (azureReady() && !single){                        /* настоящая оценка вместо эвристики */
+    azurePractice(String(text), chunk || null);
+    return;
+  }
   state.expect = { text:String(text), chunk:chunk || null, single:!!single };
   state.myAudio = null;
   speak(text);
@@ -3094,6 +3114,338 @@ function base_fluency(expected, said){
   return scorePronunciation(expected, said, state.lastSecs || 2.5, state.lastConf || 0).fluency;
 }
 
+/* ============================================================
+   AZURE PRONUNCIATION ASSESSMENT
+   Настоящая оценка произношения: своё аудио -> WAV 16 kHz mono ->
+   REST Azure -> accuracy / fluency / completeness / prosody,
+   оценки по словам и фонемам. DeepSeek потом объясняет результат.
+   ============================================================ */
+/* общий ключ для тестов. Внимание: он виден в исходнике опубликованной страницы —
+   после тестов его нужно перевыпустить, а в продакшене выдавать токен с backend. */
+const SHARED_AZURE_KEY = "FQz4KAZxvw3CReb4kTRbUOMGkqsB1QoHzFxTP7KKxAXkUbJ2djrhJQQJ99CIACYeBjFXJ3w3AAAYACOGEnGh";
+const AZURE_REGIONS = ["westeurope","eastus","northeurope","swedencentral","uksouth","germanywestcentral",
+  "francecentral","switzerlandnorth","westus","westus2","westus3","eastus2","centralus","southcentralus",
+  "canadacentral","brazilsouth","southeastasia","eastasia","japaneast","australiaeast","koreacentral",
+  "centralindia","uaenorth","southafricanorth","polandcentral","italynorth","norwayeast","qatarcentral"];
+const azureReady = ()=>!!(state.azureKey && state.azureRegion);
+
+/* короткая тишина в WAV — для проверки ключа и поиска региона */
+function silenceWav(seconds){
+  const len = Math.round(16000 * (seconds || 0.6));
+  const out = new ArrayBuffer(44 + len * 2), view = new DataView(out);
+  const str = (off, x)=>{ for (let i = 0; i < x.length; i++) view.setUint8(off + i, x.charCodeAt(i)); };
+  str(0,"RIFF"); view.setUint32(4, 36 + len * 2, true); str(8,"WAVE"); str(12,"fmt ");
+  view.setUint32(16,16,true); view.setUint16(20,1,true); view.setUint16(22,1,true);
+  view.setUint32(24,16000,true); view.setUint32(28,32000,true); view.setUint16(32,2,true); view.setUint16(34,16,true);
+  str(36,"data"); view.setUint32(40, len * 2, true);
+  return new Blob([out], { type:"audio/wav" });
+}
+/* ключ не содержит региона, поэтому перебираем список и запоминаем рабочий */
+async function detectAzureRegion(onProgress){
+  if (!state.azureKey) return "";
+  const wav = silenceWav(0.6);
+  for (const reg of AZURE_REGIONS){
+    if (onProgress) onProgress(reg);
+    try{
+      await azureAssess(wav, "hello", reg);
+      logAI("Azure регион найден: " + reg);
+      return reg;
+    }catch(e){
+      const why = String((e && e.message) || "");
+      if (/не распознал|NBest/i.test(why)){          /* запрос принят, просто тишина */
+        logAI("Azure регион найден (тишина не распознана): " + reg);
+        return reg;
+      }
+      if (/HTTP 401|HTTP 403/.test(why)) continue;    /* не тот регион — пробуем дальше */
+      if (/HTTP 429/.test(why)){ logAI("Azure 429 в " + reg + " — регион верный, но лимит"); return reg; }
+      continue;
+    }
+  }
+  return "";
+}
+
+/* ---------- webm/mp4 -> WAV 16 kHz mono 16-bit ---------- */
+async function blobToWav16k(blob){
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) throw new Error("нет AudioContext");
+  const buf = await blob.arrayBuffer();
+  const ctx = new AC();
+  let decoded;
+  try{ decoded = await ctx.decodeAudioData(buf.slice(0)); }
+  finally{ try{ ctx.close(); }catch(e){} }
+
+  /* сводим каналы в моно */
+  const chans = decoded.numberOfChannels;
+  const src = decoded.getChannelData(0);
+  let mono = src;
+  if (chans > 1){
+    mono = new Float32Array(src.length);
+    for (let c = 0; c < chans; c++){
+      const data = decoded.getChannelData(c);
+      for (let i = 0; i < data.length; i++) mono[i] += data[i] / chans;
+    }
+  }
+  /* линейная передискретизация в 16 kHz */
+  const target = 16000, ratio = decoded.sampleRate / target;
+  const outLen = Math.floor(mono.length / ratio);
+  const pcm = new Int16Array(outLen);
+  for (let i = 0; i < outLen; i++){
+    const pos = i * ratio, i0 = Math.floor(pos), i1 = Math.min(mono.length - 1, i0 + 1);
+    const v = mono[i0] + (mono[i1] - mono[i0]) * (pos - i0);
+    pcm[i] = Math.max(-32768, Math.min(32767, Math.round(v * 32767)));
+  }
+  /* заголовок WAV */
+  const bytes = pcm.length * 2;
+  const out = new ArrayBuffer(44 + bytes);
+  const view = new DataView(out);
+  const str = (off, s2)=>{ for (let i = 0; i < s2.length; i++) view.setUint8(off + i, s2.charCodeAt(i)); };
+  str(0,"RIFF"); view.setUint32(4, 36 + bytes, true); str(8,"WAVE");
+  str(12,"fmt "); view.setUint32(16, 16, true); view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true); view.setUint32(24, target, true);
+  view.setUint32(28, target * 2, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+  str(36,"data"); view.setUint32(40, bytes, true);
+  new Int16Array(out, 44).set(pcm);
+  return { wav: new Blob([out], { type:"audio/wav" }), seconds: outLen / target };
+}
+
+/* ---------- запрос к Azure ---------- */
+function b64(obj){
+  const json = JSON.stringify(obj);
+  const utf8 = unescape(encodeURIComponent(json));
+  return btoa(utf8);
+}
+async function azureAssess(wavBlob, referenceText, regionOverride){
+  const region = regionOverride || state.azureRegion;
+  const url = "https://" + region + ".stt.speech.microsoft.com" +
+              "/speech/recognition/conversation/cognitiveservices/v1?language=en-US";
+  const cfg = {
+    ReferenceText: referenceText,
+    GradingSystem: "HundredMark",
+    Granularity: "Phoneme",
+    Dimension: "Comprehensive",
+    EnableMiscue: true,
+    EnableProsodyAssessment: true
+  };
+  const ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+  const killer = ctrl ? setTimeout(()=>ctrl.abort(), 20000) : null;
+  logAI("Azure → " + region + ", " + Math.round(wavBlob.size / 1024) + " КБ");
+  const t0 = Date.now();
+  const res = await fetch(url, {
+    method:"POST",
+    signal: ctrl ? ctrl.signal : undefined,
+    headers:{
+      "Ocp-Apim-Subscription-Key": state.azureKey,
+      "Content-Type": "audio/wav; codecs=audio/pcm; samplerate=16000",
+      "Pronunciation-Assessment": b64(cfg),
+      "Accept": "application/json"
+    },
+    body: wavBlob
+  });
+  if (killer) clearTimeout(killer);
+  if (!res.ok){
+    const t = await res.text().catch(()=>"" );
+    logAI("Azure ← HTTP " + res.status + ": " + t.slice(0,120));
+    throw new Error("HTTP " + res.status + (res.status === 401 ? " (ключ или регион не подходят)" : ""));
+  }
+  const data = await res.json();
+  logAI("Azure ← ок за " + (Date.now() - t0) + " мс, статус: " + (data.RecognitionStatus || "?"));
+  const nb = (data.NBest || [])[0];
+  if (!nb) throw new Error("Azure не распознал речь (" + (data.RecognitionStatus || "нет NBest") + ")");
+  const pa = nb.PronunciationAssessment || {};
+  const words = (nb.Words || []).map(w => {
+    const wa = w.PronunciationAssessment || {};
+    return {
+      word: w.Word,
+      score: typeof wa.AccuracyScore === "number" ? wa.AccuracyScore : null,
+      error: wa.ErrorType || "None",
+      phonemes: (w.Phonemes || []).map(ph => ({
+        p: ph.Phoneme,
+        score: ((ph.PronunciationAssessment || {}).AccuracyScore)
+      })).filter(x => typeof x.score === "number")
+    };
+  });
+  return {
+    text: nb.Display || nb.Lexical || data.DisplayText || "",
+    pron: Math.round(pa.PronScore || 0),
+    accuracy: Math.round(pa.AccuracyScore || 0),
+    fluency: Math.round(pa.FluencyScore || 0),
+    completeness: Math.round(pa.CompletenessScore || 0),
+    prosody: typeof pa.ProsodyScore === "number" ? Math.round(pa.ProsodyScore) : null,
+    words
+  };
+}
+
+/* ---------- DeepSeek объясняет цифры Azure ---------- */
+async function explainAzure(expected, az){
+  if (!state.apiKey) return null;
+  const weak = az.words.filter(w => w.error !== "None" || (w.score !== null && w.score < 80))
+    .slice(0,6)
+    .map(w => {
+      const ph = w.phonemes.filter(p => p.score < 70).map(p => p.p + " " + Math.round(p.score)).slice(0,3);
+      return w.word + ": " + (w.score === null ? w.error : Math.round(w.score) +
+             (w.error !== "None" ? " / " + w.error : "")) + (ph.length ? " [слабые звуки: " + ph.join(", ") + "]" : "");
+    });
+  const payload = {
+    expected,
+    recognized: az.text,
+    pronunciation:{ score:az.pron, accuracy:az.accuracy, fluency:az.fluency, completeness:az.completeness, prosody:az.prosody },
+    weak_words: weak
+  };
+  const user = [
+    "Данные от профессионального сервиса оценки произношения (Azure), это надёжные цифры:",
+    JSON.stringify(payload, null, 1),
+    "",
+    "Объясни ученику-подростку результат по-русски: одно-два дружелюбных предложения, без терминов.",
+    "Назови максимум два слова, над которыми стоит поработать, и дай одно короткое упражнение на английском.",
+    "Грамматику не разбирай — только произношение.",
+    'Верни только JSON: {"explanation_ru":"...","issues":["..."],"exercises":["..."]}'
+  ].join("\n");
+  const raw = await askRaw("Ты — дружелюбный тренер по английскому произношению. Отвечаешь только JSON.", user, 400);
+  const obj = parseJSONLoose(raw);
+  if (!obj) return null;
+  return {
+    score: az.pron,
+    issues: normIssues(obj.issues),
+    explanation_ru: String(obj.explanation_ru || "").slice(0,300),
+    exercises: (Array.isArray(obj.exercises) ? obj.exercises : []).map(x => String(x).slice(0,120)).slice(0,2)
+  };
+}
+
+/* ---------- карточка с настоящими метриками ---------- */
+function azureCard(expected, az, ai, blob, chunk){
+  const card = el("div","karaoke");
+  card.appendChild(el("div","stitle","Произношение по Azure · " + az.pron + " из 100"));
+  const bar = el("div","pbar");
+  const fill = el("div","pfill" + (az.pron >= 85 ? " good" : az.pron >= 70 ? " ok" : " weak"));
+  fill.style.width = Math.max(4, az.pron) + "%";
+  bar.appendChild(fill);
+  card.appendChild(bar);
+
+  /* слова с реальными оценками, тап — послушать слово */
+  const line = el("div","kline");
+  (az.words.length ? az.words : [{ word:expected, score:az.accuracy, error:"None", phonemes:[] }]).forEach(w=>{
+    const sc = w.score === null ? 0 : w.score;
+    const cls = w.error === "Omission" ? "kw bad" : sc >= 85 ? "kw good" : sc >= 60 ? "kw soso" : "kw bad";
+    const b = el("button", cls, w.word + (w.score !== null ? " " + Math.round(w.score) : ""));
+    b.type = "button";
+    b.setAttribute("aria-label","Послушать слово " + w.word);
+    b.addEventListener("click",()=>{
+      speakSlow(w.word);
+      const ph = w.phonemes.filter(x => x.score < 70).map(x => x.p + " (" + Math.round(x.score) + ")");
+      if (ph.length) flash(w.word + ": слабые звуки " + ph.join(", "));
+    });
+    line.appendChild(b);
+  });
+  card.appendChild(line);
+
+  const rows = el("div","pissues");
+  rows.appendChild(el("div","pissue","Точность звуков: " + az.accuracy));
+  rows.appendChild(el("div","pissue","Беглость: " + az.fluency));
+  rows.appendChild(el("div","pissue","Полнота фразы: " + az.completeness));
+  if (az.prosody !== null) rows.appendChild(el("div","pissue","Интонация: " + az.prosody));
+  card.appendChild(rows);
+  card.appendChild(el("div","kmeta","Azure услышал: " + (az.text || "—")));
+
+  if (ai && ai.explanation_ru) card.appendChild(el("div","swhy", ai.explanation_ru));
+  if (ai && ai.issues.length){
+    const ul = el("div","pissues");
+    ai.issues.forEach(t => ul.appendChild(el("div","pissue","• " + t)));
+    card.appendChild(ul);
+  }
+  if (ai && ai.exercises.length){
+    const ex = el("div","dex");
+    ai.exercises.forEach(t=>{
+      const b = el("button","mini","🔊 " + t);
+      b.type = "button";
+      b.addEventListener("click",()=>speakSlow(t.replace(/^[^:]*:\s*/,"")));
+      ex.appendChild(b);
+    });
+    card.appendChild(ex);
+  }
+
+  const row = el("div","cacts");
+  const ref = el("button","cbtn","🔊 Эталон");
+  ref.type = "button"; ref.addEventListener("click",()=>speak(expected));
+  const slow = el("button","cbtn","🐢 Медленно");
+  slow.type = "button"; slow.addEventListener("click",()=>speakSlow(expected));
+  const again = el("button","cbtn ok","🎤 Ещё раз");
+  again.type = "button"; again.addEventListener("click",()=>azurePractice(expected, chunk));
+  row.appendChild(ref); row.appendChild(slow); row.appendChild(again);
+  const mine = myRecordingButton(blob);
+  if (mine) row.appendChild(mine);
+  card.appendChild(row);
+  chat.appendChild(card);
+  scrollChat();
+
+  if (chunk) gradeChunk(chunk, az.pron >= 70);
+  giveGems(az.pron >= 85 ? 3 : az.pron >= 70 ? 2 : 1);
+  addXP(az.pron >= 85 ? 3 : az.pron >= 70 ? 2 : 1, "за произношение");
+  az.words.forEach(w=>{
+    const word = normWord(w.word);
+    if (w.score !== null && w.score < 80 && word.length > 2 && profile.pronounce.indexOf(word) === -1){
+      profile.pronounce.push(word);
+      while (profile.pronounce.length > 30) profile.pronounce.shift();
+    }
+  });
+  saveProgress();
+}
+
+/* ---------- практика через Azure: запись по кнопке, без Web Speech ---------- */
+function azurePractice(text, chunk){
+  const card = el("div","choice");
+  card.appendChild(el("div","dtitle","Произнеси фразу"));
+  card.appendChild(el("div","cen", text));
+  const row = el("div","cacts");
+  const ref = el("button","cbtn","🔊 Эталон");
+  ref.type = "button"; ref.addEventListener("click",()=>speak(text));
+  const slow = el("button","cbtn","🐢 Медленно");
+  slow.type = "button"; slow.addEventListener("click",()=>speakSlow(text));
+  const rec = el("button","cbtn ok","🎤 Записать");
+  rec.type = "button";
+  row.appendChild(ref); row.appendChild(slow); row.appendChild(rec);
+  card.appendChild(row);
+  const status = el("div","kmeta","нажми «Записать», скажи фразу и нажми «Готово»");
+  card.appendChild(status);
+  chat.appendChild(card);
+  scrollChat();
+
+  let recording = false;
+  rec.addEventListener("click", async ()=>{
+    if (!recording){
+      if (synth){ try{ synth.cancel(); setSpeaking(false); }catch(e){} }
+      const before = state.recordAudio;
+      state.recordAudio = true;                        /* запись нужна именно сейчас */
+      await startAudioRecording();
+      state.recordAudio = before;
+      if (!mediaRec){ status.textContent = "не удалось начать запись — проверь доступ к микрофону"; return; }
+      recording = true;
+      rec.textContent = "⏹ Готово";
+      status.textContent = "говорю… скажи фразу и нажми «Готово»";
+      return;
+    }
+    recording = false;
+    rec.disabled = true;
+    rec.textContent = "🎤 Записать";
+    status.textContent = "отправляю в Azure…";
+    const blob = await stopAudioRecording();
+    if (!blob){ status.textContent = "запись пустая — попробуй ещё раз"; rec.disabled = false; return; }
+    try{
+      const conv = await blobToWav16k(blob);
+      status.textContent = "оценка произношения (" + conv.seconds.toFixed(1) + " с)…";
+      const az = await azureAssess(conv.wav, text);
+      const ai = await explainAzure(text, az).catch(()=>null);
+      if (card.parentNode) card.parentNode.removeChild(card);
+      addLearner(az.text || "(запись)");
+      azureCard(text, az, ai, blob, chunk);
+    }catch(e){
+      const why = (e && e.message) || "ошибка";
+      status.textContent = "Azure не ответил: " + why;
+      addSystem("Оценка произношения не прошла: " + why + ". Проверь ключ и регион в настройках — там есть кнопка «Проверить Azure».", true);
+      rec.disabled = false;
+    }
+  });
+}
+
 /* ===== 6. персонаж и сцена ===== */
 function hairPath(style, color){
   if (style === "long")  return '<path d="M22 46c-2-20 8-32 28-32s30 12 28 32c-3-4-5-16-8-18-6 6-34 6-40 0-3 2-5 14-8 18z" fill="'+color+'"/><path d="M20 46c0 16 2 26 5 30-8-6-11-20-9-34zM80 46c0 16-2 26-5 30 8-6 11-20 9-34z" fill="'+color+'"/>';
@@ -3402,7 +3754,7 @@ function micHelp(reason){
 }
 
 /* лог всех событий распознавания: видно, где именно Safari останавливается */
-const BUILD = "v38";
+const BUILD = "v40";
 const micLogLines = [];
 function logMic(msg){
   const t = new Date();
@@ -4483,6 +4835,78 @@ try{ const rs = localStorage.getItem("englishPractice.resetSession"); if (rs !==
 try{ const hs = localStorage.getItem("englishPractice.holdStream"); if (hs !== null) state.holdStream = hs === "1"; }catch(e){}
 const bl = $("buildLine"); if (bl) bl.textContent = "Сборка " + BUILD + ". Если правки не видны — обнови страницу с очисткой кеша (потяни вниз в Safari).";
 applyTheme(); updateCounter(); autoGrow(); refreshModePill(); runDiagnostics(); envReport();
+/* по умолчанию берём вшитый ключ, свой — из localStorage */
+state.azureKey = SHARED_AZURE_KEY;
+try{
+  const ak = localStorage.getItem("englishPractice.azureKey");
+  const ar = localStorage.getItem("englishPractice.azureRegion");
+  if (ak) state.azureKey = ak;
+  if (ar) state.azureRegion = ar;
+}catch(e){}
+$("azureKey").value = state.azureKey;
+$("azureRegion").value = state.azureRegion;
+if (state.azureKey && !state.azureRegion){
+  setTimeout(async ()=>{                               /* один раз найдём регион в фоне */
+    const reg = await detectAzureRegion();
+    if (reg){
+      state.azureRegion = reg;
+      try{ localStorage.setItem("englishPractice.azureRegion", reg); }catch(e){}
+      const f = $("azureRegion"); if (f) f.value = reg;
+      addSystem("Azure подключён (регион " + reg + "): произношение оценивается по звукам.");
+      renderStats();
+    }
+  }, 1500);
+}
+
+$("saveAzure").addEventListener("click",()=>{
+  state.azureKey = $("azureKey").value.trim();
+  state.azureRegion = $("azureRegion").value.trim().toLowerCase().replace(/\s+/g,"");
+  try{
+    if (state.azureKey) localStorage.setItem("englishPractice.azureKey", state.azureKey);
+    if (state.azureRegion) localStorage.setItem("englishPractice.azureRegion", state.azureRegion);
+  }catch(e){}
+  addSystem(azureReady()
+    ? "Azure подключён: произношение будет оцениваться по звукам, а не по распознанному тексту."
+    : "Нужны и ключ, и регион — например westeurope.", !azureReady());
+  renderStats();
+  closeSheet();
+});
+$("forgetAzure").addEventListener("click",()=>{
+  try{ localStorage.removeItem("englishPractice.azureKey"); localStorage.removeItem("englishPractice.azureRegion"); }catch(e){}
+  state.azureKey = SHARED_AZURE_KEY; state.azureRegion = "";
+  $("azureKey").value = SHARED_AZURE_KEY; $("azureRegion").value = "";
+  addSystem("Свой ключ убран — вернулся общий. Регион нужно найти заново.");
+  renderStats();
+});
+$("detectAzure").addEventListener("click", async ()=>{
+  if (!state.azureKey){ addSystem("Сначала впиши ключ Azure.", true); return; }
+  closeSheet();
+  const msg = addSystem("Ищу регион ресурса Azure…");
+  const reg = await detectAzureRegion((r)=>{ try{ msg.querySelector(".bubble").textContent = "Проверяю регион: " + r + "…"; }catch(e){} });
+  if (reg){
+    state.azureRegion = reg;
+    try{ localStorage.setItem("englishPractice.azureRegion", reg); }catch(e){}
+    $("azureRegion").value = reg;
+    addSystem("Регион найден: " + reg + ". Оценка произношения теперь идёт через Azure.");
+  } else {
+    addSystem("Ни один регион не подошёл — похоже, ключ не от ресурса Speech или исчерпан. Смотри «Лог запросов».", true);
+  }
+  renderStats();
+});
+$("testAzure").addEventListener("click", async ()=>{
+  if (!state.azureKey){ addSystem("Сначала впиши ключ Azure.", true); return; }
+  if (!state.azureRegion){ addSystem("Регион не задан — сначала нажми «Найти регион».", true); return; }
+  addSystem("Проверяю Azure: записываю одну секунду тишины…");
+  try{
+    await azureAssess(silenceWav(1), "hello");
+    addSystem("Azure ответил — ключ и регион рабочие.");
+  }catch(e){
+    const why = (e && e.message) || "ошибка";
+    if (/NBest|не распознал/i.test(why)) addSystem("Azure принял запрос (тишину он не распознал — это нормально). Ключ и регион рабочие.");
+    else addSystem("Azure не ответил: " + why + ". Смотри «Лог запросов».", true);
+  }
+  closeSheet();
+});
 const raBox = $("recAudio");
 if (raBox){
   try{ const ra = localStorage.getItem("englishPractice.recAudio"); if (ra !== null) state.recordAudio = ra === "1"; }catch(e){}

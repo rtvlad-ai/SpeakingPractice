@@ -295,6 +295,14 @@ body{font-family:var(--ui);color:var(--ink);background:var(--page);-webkit-text-
 .logbox{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;line-height:1.35;white-space:pre-wrap;
   max-height:30vh;overflow:auto;background:var(--page);border:1px solid var(--line);border-radius:10px;padding:7px 8px;color:var(--ink)}
 
+.pbar{height:7px;border-radius:4px;background:var(--sys);overflow:hidden}
+.pfill{height:100%;border-radius:4px;background:var(--accent);transition:width .4s ease}
+.pfill.good{background:#0FA678}
+.pfill.ok{background:#E0A32E}
+.pfill.weak{background:#D6455B}
+.pissues{display:flex;flex-direction:column;gap:3px}
+.pissue{font-size:12.5px;line-height:1.35;color:var(--ink)}
+
 button{font:inherit;cursor:pointer}
 button:active{transform:translateY(1px)}
 button[disabled]{opacity:.5;cursor:not-allowed}
@@ -1243,9 +1251,15 @@ function addFeedback(corr, tip){
   const acts = el("div","acts");
   const phrase = st === "correct" ? (corr.original || "") : (corr.improved || "");
   if (phrase){
-    const b = el("button","mini","🔊 Повторить правильный вариант");
+    const b = el("button","mini","🔊 Эталон");
     b.type = "button"; b.setAttribute("aria-label","Озвучить правильный вариант фразы");
     b.addEventListener("click",()=>speak(phrase)); acts.appendChild(b);
+    const sl = el("button","mini","🐢 Медленно");
+    sl.type = "button"; sl.setAttribute("aria-label","Озвучить медленно");
+    sl.addEventListener("click",()=>speakSlow(phrase)); acts.appendChild(sl);
+    const rp = el("button","mini","🎤 Повторить");
+    rp.type = "button"; rp.setAttribute("aria-label","Сказать правильный вариант голосом");
+    rp.addEventListener("click",()=>sayThis(phrase, null)); acts.appendChild(rp);
     if (st !== "correct"){
       const use = el("button","mini","✍️ В поле");
       use.type = "button"; use.setAttribute("aria-label","Подставить правильный вариант в поле ввода");
@@ -2259,7 +2273,7 @@ function sayThis(text, chunk, single){
   setTimeout(()=>{ if (!state.isRecording && !state.busy) startRecording(); }, wait);
 }
 /* результат речи, когда ждали конкретную фразу */
-function handleSpoken(said, seconds, confidence){
+async function handleSpoken(said, seconds, confidence){
   const exp = state.expect;
   state.expect = null;
   if (!exp) return;
@@ -2267,31 +2281,46 @@ function handleSpoken(said, seconds, confidence){
     addSystem("Не услышал — нажми 🎤 и попробуй ещё раз.");
     return;
   }
-  const res = scorePronunciation(exp.text, said, seconds, confidence);
   addLearner(said);
-  if (exp.single){
-    const ok = res.total >= PRON_PASS;
+
+  const met = werMetrics(exp.text, said);
+  const base = scorePronunciation(exp.text, said, seconds, confidence);
+  const local = localScore(met, base.fluency);
+
+  if (exp.single){                                     /* тренировка одного слова — коротко */
+    const ok = local >= 70;
     const card = el("div","karaoke");
-    card.appendChild(el("div","stitle","Слово · " + exp.text));
-    card.appendChild(el("div","kline"));
-    card.appendChild(el("div","swhy", ok ? "Готово, слово взято 👍" : "Ещё раз послушай и повтори — получится 🙂"));
+    card.appendChild(el("div","stitle","Слово · " + exp.text + " · " + local + " из 100"));
+    card.appendChild(el("div","swhy", ok ? "Готово, слово взято." : "Послушай эталон и повтори — почти получилось."));
+    const row = el("div","cacts");
+    const ref = el("button","cbtn","🔊 Эталон");
+    ref.type = "button"; ref.addEventListener("click",()=>speak(exp.text));
+    const slow = el("button","cbtn","🐢 Медленно");
+    slow.type = "button"; slow.addEventListener("click",()=>speakSlow(exp.text));
+    const again = el("button","cbtn ok","🎤 Ещё раз");
+    again.type = "button"; again.addEventListener("click",()=>sayThis(exp.text, exp.chunk, true));
+    row.appendChild(ref); row.appendChild(slow); row.appendChild(again);
+    card.appendChild(row);
+    chat.appendChild(card);
+    scrollChat();
     if (ok){
-      addXP(2);
+      giveGems(2); addXP(2);
       const i = profile.pronounce.indexOf(normWord(exp.text));
       if (i !== -1) profile.pronounce.splice(i,1);
       saveProgress();
     }
-    const again = el("button","mini", ok ? "🔊 Послушать ещё" : "🎤 Ещё попытка");
-    again.type = "button";
-    again.addEventListener("click",()=>{ if (ok) speak(exp.text); else sayThis(exp.text, exp.chunk, true); });
-    card.appendChild(again);
-    chat.appendChild(card);
-    scrollChat();
     return;
   }
-  karaokeCard(res, exp.text, exp.chunk);
-  if (res.total >= PRON_PASS) tickSession();
+
+  const typing = addTyping();                          /* пока DeepSeek разбирает произношение */
+  let ai = null;
+  try{ ai = await askPronunciation(exp.text, said, met, seconds, confidence); }catch(e){ ai = null; }
+  typing.remove();
+  if (!ai) logAI("разбор произношения: без AI, считаю локально");
+  pronCard(exp.text, said, met, local, ai, exp.chunk);
+  if (((ai && ai.score) || local) >= 70) tickSession();
 }
+
 /* карточка тренировки слова из копилки «жёлтых» */
 function pronounceCard(){
   if (!profile.pronounce.length) return;
@@ -2795,6 +2824,204 @@ function giveGems(n){
 }
 
 /* ---------- системный промпт персонажа для AI ---------- */
+/* ============================================================
+   GOOD ENOUGH PRONUNCIATION SCORING
+   STT + эвристики (WER, пропуски, вставки, темп) + разбор от DeepSeek.
+   Наружу: оценка 1-100, подсветка слов, объяснение по-русски,
+   упражнения и озвучка эталона (обычная и медленная).
+   ============================================================ */
+
+/* ---------- метрики: выравнивание по словам ---------- */
+function werMetrics(expected, said){
+  const exp = String(expected).toLowerCase().replace(/[^a-z0-9' ]/g," ").split(/\s+/).filter(Boolean);
+  const got = String(said).toLowerCase().replace(/[^a-z0-9' ]/g," ").split(/\s+/).filter(Boolean);
+  const n = exp.length, m = got.length;
+  /* матрица правок: считаем замены, пропуски и вставки */
+  const d = [];
+  for (let i = 0; i <= n; i++){ d[i] = [i]; }
+  for (let j = 0; j <= m; j++){ d[0][j] = j; }
+  for (let i = 1; i <= n; i++){
+    for (let j = 1; j <= m; j++){
+      const near = simWord(exp[i-1], got[j-1]) >= 0.8 ? 0 : 1;
+      d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + near);
+    }
+  }
+  let i = n, j = m, sub = 0, del = 0, ins = 0;
+  const missing = [], inserted = [], wrong = [];
+  while (i > 0 || j > 0){
+    if (i > 0 && j > 0){
+      const near = simWord(exp[i-1], got[j-1]) >= 0.8 ? 0 : 1;
+      if (d[i][j] === d[i-1][j-1] + near){
+        if (near){ sub++; wrong.push({ expected:exp[i-1], heard:got[j-1] }); }
+        i--; j--; continue;
+      }
+    }
+    if (i > 0 && d[i][j] === d[i-1][j] + 1){ del++; missing.push(exp[i-1]); i--; continue; }
+    ins++; inserted.push(got[j-1]); j--;
+  }
+  missing.reverse(); inserted.reverse(); wrong.reverse();
+  return { words:n, heard:m, sub, del, ins, missing, inserted, wrong,
+           wer: n ? Math.min(1, (sub + del + ins) / n) : 1 };
+}
+/* локальная оценка на случай, если AI недоступен */
+function localScore(met, fluency){
+  const acc = Math.max(0, 1 - met.wer);
+  return Math.round(Math.max(1, Math.min(100, (acc * 0.8 + fluency * 0.2) * 100)));
+}
+
+/* ---------- разбор от DeepSeek ---------- */
+function parseJSONLoose(raw){
+  let txt = String(raw || "").replace(/^```(?:json)?/i,"").replace(/```$/,"").trim();
+  const a = txt.indexOf("{"), b = txt.lastIndexOf("}");
+  if (a !== -1 && b > a) txt = txt.slice(a, b + 1);
+  try{ return JSON.parse(txt); }catch(e){ return null; }
+}
+function normIssues(list){
+  if (!Array.isArray(list)) return [];
+  return list.map(it => {
+    if (typeof it === "string") return it;
+    if (it && typeof it === "object"){
+      const w = it.word ? "«" + it.word + "»: " : "";
+      return w + (it.explanation || it.type || "");
+    }
+    return "";
+  }).filter(Boolean).slice(0,4);
+}
+async function askPronunciation(expected, said, met, secs, conf){
+  if (!state.apiKey) return null;
+  const metrics = [
+    "WER: " + met.wer.toFixed(2),
+    "пропущено слов: " + (met.missing.join(", ") || "нет"),
+    "вставлено лишних: " + (met.inserted.join(", ") || "нет"),
+    "искажено: " + (met.wrong.map(w => w.expected + " → " + w.heard).join(", ") || "нет"),
+    "длительность: " + secs.toFixed(1) + " с (" + (met.heard / Math.max(0.5, secs)).toFixed(1) + " слов/с)",
+    "уверенность распознавания: " + (conf ? conf.toFixed(2) : "неизвестна")
+  ].join("; ");
+  const user = [
+    'Ученик должен был сказать: "' + expected + '"',
+    'Браузер распознал: "' + said + '"',
+    "Метрики: " + metrics,
+    "",
+    "Проанализируй:",
+    "1. Какие слова или звуки пропущены, искажены или лишние.",
+    "2. Дай оценку 1-100 (понятность для носителя, а не идеальность).",
+    "3. Объясни по-русски простыми словами, что исправить — одно-два предложения, дружелюбно.",
+    "4. Предложи 1-2 очень коротких упражнения на английском.",
+    "",
+    "Важно: распознавание могло ослышаться. Если слово похоже по звучанию — это проблема произношения, а не грамматики.",
+    "Если распознано почти точно, ставь 90-100 и хвали.",
+    "",
+    'Верни только JSON: {"score":72,"issues":["Пропущено am","Moscow → Mosko: смазано окончание"],"explanation_ru":"...","exercises":["Повтори 3 раза: I AM from Moscow"]}'
+  ].join("\n");
+  const raw = await askRaw("Ты — эксперт по обучению английскому произношению. Отвечаешь только JSON, без markdown.", user, 400);
+  const obj = parseJSONLoose(raw);
+  if (!obj) return null;
+  const score = Math.max(1, Math.min(100, Math.round(Number(obj.score) || 0)));
+  return {
+    score: score || null,
+    issues: normIssues(obj.issues),
+    explanation_ru: String(obj.explanation_ru || "").trim().slice(0,220),
+    exercises: (Array.isArray(obj.exercises) ? obj.exercises : (obj.exercise ? [obj.exercise] : []))
+      .map(x => String(x).trim()).filter(Boolean).slice(0,2)
+  };
+}
+
+/* ---------- эталон: обычная и медленная озвучка ---------- */
+function speakSlow(text){
+  const save = state.rate;
+  state.rate = 0.7;
+  speak(text);
+  setTimeout(()=>{ state.rate = save; }, 60);
+}
+
+/* ---------- карточка результата ---------- */
+function pronCard(expected, said, met, local, ai, chunk){
+  const score = (ai && ai.score) || local;
+  const pass = score >= 70;
+  const card = el("div","karaoke");
+  card.appendChild(el("div","stitle","Произношение · " + score + " из 100"));
+
+  /* шкала оценки */
+  const bar = el("div","pbar");
+  const fill = el("div","pfill" + (score >= 85 ? " good" : score >= 70 ? " ok" : " weak"));
+  fill.style.width = Math.max(4, score) + "%";
+  bar.appendChild(fill);
+  card.appendChild(bar);
+
+  /* подсветка слов: зелёный / жёлтый / красный, тап — послушать слово */
+  const line = el("div","kline");
+  local_words(expected, said).forEach(item=>{
+    const cls = item.score >= 0.85 ? "kw good" : item.score >= 0.55 ? "kw soso" : "kw bad";
+    const b = el("button", cls, item.w);
+    b.type = "button";
+    b.setAttribute("aria-label","Послушать слово " + item.w);
+    b.addEventListener("click",()=>speakSlow(item.w));
+    line.appendChild(b);
+  });
+  card.appendChild(line);
+
+  card.appendChild(el("div","kmeta",
+    "распознано: " + (said || "—") + " · WER " + met.wer.toFixed(2) +
+    (met.missing.length ? " · пропущено: " + met.missing.join(", ") : "") +
+    (met.inserted.length ? " · лишнее: " + met.inserted.join(", ") : "")));
+
+  if (ai && ai.explanation_ru) card.appendChild(el("div","swhy", ai.explanation_ru));
+  else card.appendChild(el("div","swhy", pass ? "Понятно и близко к эталону." : "Скажи чуть медленнее и договаривай слова до конца."));
+
+  if (ai && ai.issues.length){
+    const ul = el("div","pissues");
+    ai.issues.forEach(t => ul.appendChild(el("div","pissue","• " + t)));
+    card.appendChild(ul);
+  }
+
+  if (ai && ai.exercises.length){
+    const ex = el("div","dex");
+    ai.exercises.forEach(t=>{
+      const b = el("button","mini","🔊 " + t);
+      b.type = "button";
+      b.setAttribute("aria-label","Упражнение: " + t);
+      b.addEventListener("click",()=>speakSlow(t.replace(/^[^:]*:\s*/,"")));
+      ex.appendChild(b);
+    });
+    card.appendChild(ex);
+  }
+
+  /* эталон и повтор */
+  const row = el("div","cacts");
+  const ref = el("button","cbtn","🔊 Эталон");
+  ref.type = "button";
+  ref.addEventListener("click",()=>speak(expected));
+  const slow = el("button","cbtn","🐢 Медленно");
+  slow.type = "button";
+  slow.addEventListener("click",()=>speakSlow(expected));
+  const again = el("button","cbtn ok","🎤 Ещё раз");
+  again.type = "button";
+  again.addEventListener("click",()=>sayThis(expected, chunk));
+  row.appendChild(ref); row.appendChild(slow); row.appendChild(again);
+  card.appendChild(row);
+
+  chat.appendChild(card);
+  scrollChat();
+
+  /* награды и учёт */
+  if (chunk) gradeChunk(chunk, pass);
+  const gems = score >= 85 ? 3 : score >= 70 ? 2 : 1;
+  giveGems(gems);
+  addXP(score >= 85 ? 3 : score >= 70 ? 2 : 1, "за произношение");
+  /* слова с жёлтой и красной подсветкой уходят в копилку на потом */
+  local_words(expected, said).forEach(w=>{
+    const word = normWord(w.w);
+    if (w.score < 0.85 && word.length > 2 && profile.pronounce.indexOf(word) === -1){
+      profile.pronounce.push(word);
+      while (profile.pronounce.length > 30) profile.pronounce.shift();
+    }
+  });
+  saveProgress();
+}
+function local_words(expected, said){
+  return scorePronunciation(expected, said, 2.5, 0).words;
+}
+
 /* ===== 6. персонаж и сцена ===== */
 function hairPath(style, color){
   if (style === "long")  return '<path d="M22 46c-2-20 8-32 28-32s30 12 28 32c-3-4-5-16-8-18-6 6-34 6-40 0-3 2-5 14-8 18z" fill="'+color+'"/><path d="M20 46c0 16 2 26 5 30-8-6-11-20-9-34zM80 46c0 16-2 26-5 30 8-6 11-20 9-34z" fill="'+color+'"/>';
@@ -3103,7 +3330,7 @@ function micHelp(reason){
 }
 
 /* лог всех событий распознавания: видно, где именно Safari останавливается */
-const BUILD = "v36";
+const BUILD = "v37";
 const micLogLines = [];
 function logMic(msg){
   const t = new Date();

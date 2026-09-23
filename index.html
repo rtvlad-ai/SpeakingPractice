@@ -302,6 +302,7 @@ body{font-family:var(--ui);color:var(--ink);background:var(--page);-webkit-text-
 .pfill.weak{background:#D6455B}
 .pissues{display:flex;flex-direction:column;gap:3px}
 .pissue{font-size:12.5px;line-height:1.35;color:var(--ink)}
+.pnote{font-size:11px;line-height:1.35;color:var(--ink-soft)}
 
 button{font:inherit;cursor:pointer}
 button:active{transform:translateY(1px)}
@@ -405,6 +406,7 @@ button[disabled]{opacity:.5;cursor:not-allowed}
     <button id="rememberKey" aria-label="Сохранить ключ в этом браузере">Запомнить</button>
     <button id="forgetKey" class="danger" aria-label="Удалить сохранённый ключ из браузера">Удалить ключ</button>
   </div>
+  <p class="note">Ключ сейчас вшит в страницу — на публичном сайте его видно в исходнике, и тратить баланс сможет любой. Как только появится прокси, впиши его адрес выше: запросы пойдут через него, а ключ останется на сервере.</p>
   <p class="note">Грамматику проверяет DeepSeek: он видит контекст разговора и понимает, где ошибка, а где просто ослышалось распознавание. Без ключа включается простой встроенный чекер по правилам — он грубее. Общий ключ уже вшит, AI работает сразу на любом устройстве. Можно вписать свой ключ, тогда запросы пойдут с него; «Удалить ключ» возвращает общий. Важно: ключ виден в исходнике страницы, любой посетитель может его вытащить и потратить твой баланс — для публичного запуска переноси его на backend-прокси и меняй, если утечёт.</p>
 
   <h3>Голос собеседника</h3>
@@ -425,6 +427,7 @@ button[disabled]{opacity:.5;cursor:not-allowed}
   <p class="note" id="buildLine"></p>
   <label class="check" for="autoMic"><input type="checkbox" id="autoMic"> Hands-free: слушать сразу после реплики (на iPhone Safari всё равно требует одно касание)</label>
   <div class="diag" id="diag"></div>
+  <label class="check" for="recAudio"><input type="checkbox" id="recAudio"> Записывать мой голос для прослушивания. На iPhone может заглушить распознавание — включай, только если готов к этому.</label>
   <label class="check" for="contMode"><input type="checkbox" id="contMode" checked> Держать сеанс открытым, пока микрофон включён (Safari сам не обрывает фразу на паузе)</label>
   <label class="check" for="resetSession"><input type="checkbox" id="resetSession"> Сбрасывать аудиосессию перед записью (лечит «микрофон открыт, но тишина» после озвучки в Safari)</label>
   <label class="check" for="holdStream"><input type="checkbox" id="holdStream"> Экспериментально: держать аудиопоток открытым. На iPhone обычно делает хуже — Safari глушит распознавание, включай только если без этого совсем не слышит.</label>
@@ -1179,7 +1182,7 @@ const state = {
   history:[], answered:new Set(), facts:{}, pending:null, extraIdx:0, asked:0, lastAsk:null,
   isRecording:false, recognition:null, recTimer:null,
   soundOn:true, rate:1.08, autoMic:false, themeMode:"auto", photosOn:true,
-  lastTutorLine:"", audioUnlocked:false, pendingSpeech:null, expect:null, prefix:"", quest:null, stopRequested:false, recFinish:null, micFails:0, micEverStarted:false, holdStream:false, micStream:null, silentTries:0, emptyResults:0, lastAI:null, aiWarned:false, proxyUrl:"", continuous:true, sessionId:0, listenPaused:false, topicTurns:0, speakingNow:false, gotSound:false, lastConf:0, resetSession:false, ttsSinceRec:false, lastRecError:"", startWatch:null, endWatch:null, busyWatch:null,
+  lastTutorLine:"", audioUnlocked:false, pendingSpeech:null, expect:null, prefix:"", quest:null, stopRequested:false, recFinish:null, micFails:0, micEverStarted:false, holdStream:false, micStream:null, silentTries:0, emptyResults:0, turnId:0, aiCtrl:null, recordAudio:false, myAudio:null, lastSecs:0, lastAI:null, aiWarned:false, proxyUrl:"", continuous:true, sessionId:0, listenPaused:false, topicTurns:0, speakingNow:false, gotSound:false, lastConf:0, resetSession:false, ttsSinceRec:false, lastRecError:"", startWatch:null, endWatch:null, busyWatch:null,
   busy:false, micBlocked:false, exchanges:0
 };
 
@@ -2262,6 +2265,7 @@ function singleWordRow(card, word, chunk){
 /* запуск режима «скажи это»: ждём конкретную фразу или слово */
 function sayThis(text, chunk, single){
   state.expect = { text:String(text), chunk:chunk || null, single:!!single };
+  state.myAudio = null;
   speak(text);
   if (IS_IOS){                                         /* Safari стартует запись только по касанию */
     addSystem((single ? "Слово: " : "Фраза: ") + text + " — послушай и нажми 🎤, чтобы повторить.");
@@ -2283,6 +2287,7 @@ async function handleSpoken(said, seconds, confidence){
   }
   addLearner(said);
 
+  state.lastSecs = seconds; state.lastConf = confidence || 0;
   const met = werMetrics(exp.text, said);
   const base = scorePronunciation(exp.text, said, seconds, confidence);
   const local = localScore(met, base.fluency);
@@ -2290,7 +2295,7 @@ async function handleSpoken(said, seconds, confidence){
   if (exp.single){                                     /* тренировка одного слова — коротко */
     const ok = local >= 70;
     const card = el("div","karaoke");
-    card.appendChild(el("div","stitle","Слово · " + exp.text + " · " + local + " из 100"));
+    card.appendChild(el("div","stitle","Слово · " + exp.text + " · понятность " + local + " из 100"));
     card.appendChild(el("div","swhy", ok ? "Готово, слово взято." : "Послушай эталон и повтори — почти получилось."));
     const row = el("div","cacts");
     const ref = el("button","cbtn","🔊 Эталон");
@@ -2312,6 +2317,8 @@ async function handleSpoken(said, seconds, confidence){
     return;
   }
 
+  const blob = await stopAudioRecording();             /* своя запись, если включена галочка */
+  state.myAudio = blob;
   const typing = addTyping();                          /* пока DeepSeek разбирает произношение */
   let ai = null;
   try{ ai = await askPronunciation(exp.text, said, met, seconds, confidence); }catch(e){ ai = null; }
@@ -2908,22 +2915,70 @@ async function askPronunciation(expected, said, met, secs, conf){
     "3. Объясни по-русски простыми словами, что исправить — одно-два предложения, дружелюбно.",
     "4. Предложи 1-2 очень коротких упражнения на английском.",
     "",
-    "Важно: распознавание могло ослышаться. Если слово похоже по звучанию — это проблема произношения, а не грамматики.",
+    "ВАЖНО:",
+    "Ты не слышишь аудиозапись. Нельзя утверждать, что ученик неправильно произнёс конкретный звук — нет фонемного анализа.",
+    "Используй формулировки «возможная проблема», «по результату распознавания похоже», «попробуй проверить».",
+    "Не называй текстовую ошибку доказанной ошибкой произношения.",
+    "Не снижай оценку за грамматику: грамматику разбирает отдельный слой. Оценивай только понятность речи.",
     "Если распознано почти точно, ставь 90-100 и хвали.",
     "",
     'Верни только JSON: {"score":72,"issues":["Пропущено am","Moscow → Mosko: смазано окончание"],"explanation_ru":"...","exercises":["Повтори 3 раза: I AM from Moscow"]}'
   ].join("\n");
   const raw = await askRaw("Ты — эксперт по обучению английскому произношению. Отвечаешь только JSON, без markdown.", user, 400);
-  const obj = parseJSONLoose(raw);
-  if (!obj) return null;
-  const score = Math.max(1, Math.min(100, Math.round(Number(obj.score) || 0)));
-  return {
-    score: score || null,
-    issues: normIssues(obj.issues),
-    explanation_ru: String(obj.explanation_ru || "").trim().slice(0,220),
-    exercises: (Array.isArray(obj.exercises) ? obj.exercises : (obj.exercise ? [obj.exercise] : []))
-      .map(x => String(x).trim()).filter(Boolean).slice(0,2)
-  };
+  return validatePronunciationResult(parseJSONLoose(raw));   /* схема проверяется, мусор отбрасывается */
+}
+
+/* ---------- запись своего голоса: строго по галочке, иначе микрофон не трогаем ---------- */
+let mediaRec = null, mediaChunks = [], mediaStream = null;
+function audioSupported(){
+  return typeof MediaRecorder !== "undefined" && navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
+}
+async function startAudioRecording(){
+  if (!state.recordAudio || !audioSupported() || mediaRec) return;
+  try{
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      audio:{ echoCancellation:true, noiseSuppression:true, autoGainControl:true }
+    });
+    mediaChunks = [];
+    const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus"
+               : MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4" : "";
+    mediaRec = mime ? new MediaRecorder(mediaStream, { mimeType:mime }) : new MediaRecorder(mediaStream);
+    mediaRec.ondataavailable = (ev)=>{ if (ev.data && ev.data.size > 0) mediaChunks.push(ev.data); };
+    mediaRec.start(250);
+    logMic("запись аудио начата (" + (mediaRec.mimeType || "по умолчанию") + ")");
+  }catch(e){
+    logMic("запись аудио не стартовала: " + ((e && e.name) || e));
+    mediaRec = null;
+    if (mediaStream){ try{ mediaStream.getTracks().forEach(t => t.stop()); }catch(e2){} mediaStream = null; }
+  }
+}
+function stopAudioRecording(){
+  return new Promise(resolve => {
+    if (!mediaRec){ resolve(null); return; }
+    const rec = mediaRec;
+    rec.onstop = ()=>{
+      let blob = null;
+      try{ blob = new Blob(mediaChunks, { type: rec.mimeType || "audio/webm" }); }catch(e){}
+      if (mediaStream){ try{ mediaStream.getTracks().forEach(t => t.stop()); }catch(e){} }
+      mediaRec = null; mediaStream = null; mediaChunks = [];
+      logMic("запись аудио остановлена, размер: " + (blob ? blob.size : 0));
+      resolve(blob && blob.size > 0 ? blob : null);
+    };
+    try{ rec.stop(); }catch(e){ resolve(null); }
+  });
+}
+function myRecordingButton(blob){
+  if (!blob) return null;
+  const url = URL.createObjectURL(blob);
+  const b = el("button","cbtn","▶ Моя запись");
+  b.type = "button";
+  b.addEventListener("click",()=>{
+    try{
+      const a = new Audio(url);
+      a.play().catch(()=>flash("Браузер не дал воспроизвести"));
+    }catch(e){}
+  });
+  return b;
 }
 
 /* ---------- эталон: обычная и медленная озвучка ---------- */
@@ -2939,7 +2994,7 @@ function pronCard(expected, said, met, local, ai, chunk){
   const score = (ai && ai.score) || local;
   const pass = score >= 70;
   const card = el("div","karaoke");
-  card.appendChild(el("div","stitle","Произношение · " + score + " из 100"));
+  card.appendChild(el("div","stitle","Предварительная оценка понятности · " + score + " из 100"));
 
   /* шкала оценки */
   const bar = el("div","pbar");
@@ -2960,6 +3015,16 @@ function pronCard(expected, said, met, local, ai, chunk){
   });
   card.appendChild(line);
 
+  /* разбивка по показателям: что мы правда измеряем, а что нет */
+  const understand = Math.round(Math.max(0, 1 - met.wer) * 100);
+  const fluency = Math.round(base_fluency(expected, said) * 100);
+  const completeness = met.words ? Math.round((1 - met.del / met.words) * 100) : 0;
+  const rows = el("div","pissues");
+  rows.appendChild(el("div","pissue","Понятность по распознаванию: " + understand));
+  rows.appendChild(el("div","pissue","Беглость: " + fluency));
+  rows.appendChild(el("div","pissue","Полнота фразы: " + completeness));
+  rows.appendChild(el("div","pissue","Фонемная точность: недоступна (звук не анализируется)"));
+  card.appendChild(rows);
   card.appendChild(el("div","kmeta",
     "распознано: " + (said || "—") + " · WER " + met.wer.toFixed(2) +
     (met.missing.length ? " · пропущено: " + met.missing.join(", ") : "") +
@@ -2987,6 +3052,8 @@ function pronCard(expected, said, met, local, ai, chunk){
   }
 
   /* эталон и повтор */
+  card.appendChild(el("div","pnote",
+    "Это предварительная оценка по результату распознавания речи, а не точный анализ звуков."));
   const row = el("div","cacts");
   const ref = el("button","cbtn","🔊 Эталон");
   ref.type = "button";
@@ -2998,6 +3065,8 @@ function pronCard(expected, said, met, local, ai, chunk){
   again.type = "button";
   again.addEventListener("click",()=>sayThis(expected, chunk));
   row.appendChild(ref); row.appendChild(slow); row.appendChild(again);
+  const mine = myRecordingButton(state.myAudio);
+  if (mine) row.appendChild(mine);
   card.appendChild(row);
 
   chat.appendChild(card);
@@ -3020,6 +3089,9 @@ function pronCard(expected, said, met, local, ai, chunk){
 }
 function local_words(expected, said){
   return scorePronunciation(expected, said, 2.5, 0).words;
+}
+function base_fluency(expected, said){
+  return scorePronunciation(expected, said, state.lastSecs || 2.5, state.lastConf || 0).fluency;
 }
 
 /* ===== 6. персонаж и сцена ===== */
@@ -3330,7 +3402,7 @@ function micHelp(reason){
 }
 
 /* лог всех событий распознавания: видно, где именно Safari останавливается */
-const BUILD = "v37";
+const BUILD = "v38";
 const micLogLines = [];
 function logMic(msg){
   const t = new Date();
@@ -3495,6 +3567,7 @@ function startListening(){
   setMicUI("rec");
   micState.textContent = "говори — фраза уйдёт, когда выключишь микрофон";
   logMic("включаю прослушивание" + (state.continuous ? " (непрерывный режим)" : " (одна фраза)"));
+  if (state.recordAudio && state.expect) startAudioRecording();   /* пишем только в режиме «скажи это» */
   openSession(true);
 }
 function stopListening(why){
@@ -3834,8 +3907,9 @@ function buildMessages(userText, historyLimit){
   else out.push({ role:"user", content:userText });
   return out;
 }
-async function askAI(userText){
+async function askAI(userText, turnId){
   let lastErr = "";
+  const stale = ()=>typeof turnId === "number" && turnId !== state.turnId;
   for (let attempt = 1; attempt <= 2; attempt++){
     const t0 = Date.now();
     const messages = buildMessages(userText, attempt === 1 ? 8 : 6);   /* история нужна обеим попыткам */
@@ -3852,6 +3926,7 @@ async function askAI(userText){
       logAI("запрос → попытка " + attempt + ", сообщений: " + messages.length +
             ", история " + (attempt === 1 ? 8 : 6));
       const ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+      state.aiCtrl = ctrl;                             /* новая реплика отменит этот запрос */
       const killer = ctrl ? setTimeout(()=>ctrl.abort(), 20000) : null;
       const res = await fetch(aiEndpoint(), {
         method:"POST",
@@ -3860,6 +3935,7 @@ async function askAI(userText){
         body: JSON.stringify(payload)
       });
       if (killer) clearTimeout(killer);
+      if (stale()){ logAI("ответ отброшен: реплика устарела"); return { ok:false, reason:"устаревший ход" }; }
       if (!res.ok){
         const t = await res.text().catch(()=>"" );
         lastErr = res.status + " " + t.slice(0,140);
@@ -3931,6 +4007,40 @@ function sanitizeReply(text){
   if (t.length > 240) t = t.slice(0,237).replace(/\s+\S*$/,"") + "…";
   return t;
 }
+/* строгая валидация: диалог, грамматика и произношение — три разные схемы */
+function validateTurnResult(v){
+  if (!v || typeof v !== "object") return null;
+  const reply = typeof v.reply === "string" ? v.reply.trim() : "";
+  if (!reply) return null;
+  const out = { reply, correction:null, next_hints:[] };
+  const c = v.correction;
+  if (c && typeof c === "object"){
+    const status = c.status === "needs_improvement" ? "needs_improvement" : c.status === "correct" ? "correct" : null;
+    if (status){
+      out.correction = {
+        status,
+        original: String(c.original || "").slice(0,250),
+        improved: String(c.improved || "").slice(0,250),
+        explanation_ru: String(c.explanation_ru || "").slice(0,200)
+      };
+    }
+  }
+  if (Array.isArray(v.next_hints))
+    out.next_hints = v.next_hints.filter(x => typeof x === "string").slice(0,4).map(x => x.trim().slice(0,60)).filter(Boolean);
+  return out;
+}
+function validatePronunciationResult(v){
+  if (!v || typeof v !== "object") return null;
+  const score = Number(v.score);
+  if (!Number.isFinite(score)) return null;
+  return {
+    score: Math.max(0, Math.min(100, Math.round(score))),
+    issues: Array.isArray(v.issues) ? normIssues(v.issues) : [],
+    explanation_ru: String(v.explanation_ru || "").slice(0,300),
+    exercises: Array.isArray(v.exercises) ? v.exercises.slice(0,3).map(x => String(x).slice(0,120))
+             : (v.exercise ? [String(v.exercise).slice(0,120)] : [])
+  };
+}
 function parseModelJSON(raw){
   let txt = raw.replace(/^```(?:json)?/i,"").replace(/```$/,"").trim();
   const a = txt.indexOf("{"), b = txt.lastIndexOf("}");
@@ -3978,8 +4088,15 @@ function mergeCorrection(fromModel, local){
 
 async function handleLearnerInput(text){
   const clean = String(text || "").replace(/\s+/g," ").trim().slice(0,250);
-  if (!clean || state.busy) return;
+  if (!clean) return;
+  if (state.busy){                                     /* последняя фраза ученика важнее старого запроса */
+    logAI("новая реплика — отменяю предыдущий запрос");
+    if (state.aiCtrl){ try{ state.aiCtrl.abort(); }catch(e){} state.aiCtrl = null; }
+    releaseBusy();
+  }
 
+  const myTurn = ++state.turnId;                       /* каждая реплика получает номер */
+  if (state.aiCtrl){ try{ state.aiCtrl.abort(); }catch(e){} state.aiCtrl = null; }
   state.busy = true; setSendEnabled(false);
   if (state.busyWatch) clearTimeout(state.busyWatch);
   state.busyWatch = setTimeout(()=>{                   /* запрос завис — не блокируем приложение */
@@ -3999,14 +4116,20 @@ async function handleLearnerInput(text){
 
   let localQ = "";
   if (state.apiKey){
-    const r = await askAI(clean);
+    const r = await askAI(clean, myTurn);
+    if (myTurn !== state.turnId){
+      logAI("ход " + myTurn + " устарел — ответ не показываю");
+      typing.remove();
+      return;
+    }
     if (r.ok){
-      const parsed = parseModelJSON(r.raw) || repairModelText(r.raw);
-      if (parsed && parsed.reply){
+      const parsed = validateTurnResult(parseModelJSON(r.raw)) ||
+                     validateTurnResult(repairModelText(r.raw));
+      if (parsed){
         reply = sanitizeReply(parsed.reply);
-        hints = Array.isArray(parsed.next_hints) ? parsed.next_hints : null;
-        corr = mergeCorrection(parsed.correction, local);
-        tip = parsed.pronunciation_tip || null;
+        hints = parsed.next_hints.length ? parsed.next_hints : null;
+        corr = mergeCorrection(parsed.correction, local);   /* грамматика — отдельно от произношения */
+        tip = null;
       }
       if (!reply){                                      /* ответ пришёл битым — отвечает локальный собеседник */
         const lr = localReply(clean);
@@ -4026,6 +4149,7 @@ async function handleLearnerInput(text){
   }
 
   typing.remove();
+  if (myTurn !== state.turnId) return;                 /* пока ждали, ученик сказал новое */
   if (note) addSystem(note, true);
   reply = sanitizeReply(reply);
   if (!reply){
@@ -4106,14 +4230,15 @@ function autoGrow(){ input.style.height = "auto"; input.style.height = Math.min(
 function setSendEnabled(on){ sendBtn.disabled = !on; sendBtn.textContent = on ? "➤" : "…"; }
 input.addEventListener("input",()=>{ updateCounter(); autoGrow(); });
 input.addEventListener("keydown",(e)=>{ if (e.key === "Enter" && !e.shiftKey){ e.preventDefault(); submitText(); } });
-let sending = false;
+let lastSubmit = 0;
 function submitText(){
-  if (sending) return;
+  const now = Date.now();
+  if (now - lastSubmit < 250) return;                  /* защита от двойного тапа, но не от новой фразы */
+  lastSubmit = now;
   state.prefix = "";
   const v = input.value.trim();
   if (!v){ input.focus(); return; }
-  sending = true;
-  handleLearnerInput(v).finally(()=>{ sending = false; });
+  handleLearnerInput(v);
 }
 sendBtn.addEventListener("click", submitText);
 $("dictBtn").addEventListener("click",()=>{        /* системная диктовка Safari работает всегда */
@@ -4358,6 +4483,20 @@ try{ const rs = localStorage.getItem("englishPractice.resetSession"); if (rs !==
 try{ const hs = localStorage.getItem("englishPractice.holdStream"); if (hs !== null) state.holdStream = hs === "1"; }catch(e){}
 const bl = $("buildLine"); if (bl) bl.textContent = "Сборка " + BUILD + ". Если правки не видны — обнови страницу с очисткой кеша (потяни вниз в Safari).";
 applyTheme(); updateCounter(); autoGrow(); refreshModePill(); runDiagnostics(); envReport();
+const raBox = $("recAudio");
+if (raBox){
+  try{ const ra = localStorage.getItem("englishPractice.recAudio"); if (ra !== null) state.recordAudio = ra === "1"; }catch(e){}
+  raBox.checked = state.recordAudio;
+  raBox.disabled = !audioSupported();
+  raBox.addEventListener("change",(e)=>{
+    state.recordAudio = !!e.target.checked;
+    try{ localStorage.setItem("englishPractice.recAudio", state.recordAudio ? "1" : "0"); }catch(err){}
+    logMic("запись голоса: " + state.recordAudio);
+    addSystem(state.recordAudio
+      ? "Запись голоса включена: после фразы появится кнопка «Моя запись». Если распознавание начнёт глохнуть — выключи её."
+      : "Запись голоса выключена.");
+  });
+}
 const cmBox = $("contMode");
 if (cmBox){
   try{ const cm = localStorage.getItem("englishPractice.continuous"); if (cm !== null) state.continuous = cm === "1"; }catch(e){}
